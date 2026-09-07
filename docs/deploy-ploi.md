@@ -45,7 +45,7 @@ Predložak je `.env.example`. Obavezno:
 
 ```bash
 cd /home/ploi/hub.<domena>
-git pull origin main
+git pull origin master
 
 composer install --no-dev --optimize-autoloader --no-interaction
 npm ci --omit=dev
