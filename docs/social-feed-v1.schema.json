@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://social-hub/social-feed-v1.schema.json",
+  "title": "Social Feed v1",
+  "description": "Univerzalni ugovor kojim bilo koja stranica (brend) isporučuje stavke sadržaja Social Hubu. Hub čita sve izvore istim adapterom.",
+  "type": "object",
+  "required": ["version", "brand", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "1" },
+    "brand": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$", "description": "Slug brenda, isti kao u hubu." },
+    "items": { "type": "array", "items": { "$ref": "#/$defs/item" }, "maxItems": 100 },
+    "next_cursor": { "type": ["string", "null"], "description": "Neprozirni kursor za sljedeću stranicu; null kad nema više." }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "required": ["id", "kind", "title", "url", "updated_at"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 191, "description": "Stabilan, jedinstven unutar izvora (npr. job:12345)." },
+        "kind": { "enum": ["job", "deal", "article", "event", "generic"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "subtitle": { "type": ["string", "null"], "maxLength": 300, "description": "Tvrtka, trgovački lanac, autor…" },
+        "body_text": { "type": ["string", "null"], "maxLength": 20000, "description": "Čisti tekst bez HTML-a; \\n za novi red, • za natuknice." },
+        "facts": { "type": "array", "items": { "$ref": "#/$defs/fact" }, "maxItems": 20, "default": [] },
+        "badges": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 60 }, "maxItems": 20, "default": [] },
+        "price": { "anyOf": [{ "$ref": "#/$defs/price" }, { "type": "null" }] },
+        "cta": { "anyOf": [{ "$ref": "#/$defs/cta" }, { "type": "null" }] },
+        "url": { "type": "string", "pattern": "^https?://", "maxLength": 2000, "description": "Javni URL stavke na stranici." },
+        "images": { "type": "array", "items": { "$ref": "#/$defs/image" }, "maxItems": 10, "default": [] },
+        "priority": { "type": ["integer", "null"], "minimum": 0, "description": "Veće = važnije (tier, postotak popusta…)." },
+        "tags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 60 }, "maxItems": 50, "default": [] },
+        "published_at": { "type": ["string", "null"], "format": "date-time" },
+        "expires_at": { "type": ["string", "null"], "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time", "description": "Filtar `since` uspoređuje s ovim poljem." },
+        "raw": { "type": ["object", "null"], "description": "Izvorni domenski payload, proizvoljne strukture; za predloške i AI." }
+      }
+    },
+    "fact": {
+      "type": "object",
+      "required": ["label", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "value": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "price": {
+      "type": "object",
+      "required": ["currency"],
+      "additionalProperties": false,
+      "properties": {
+        "current_cents": { "type": ["integer", "null"], "minimum": 0 },
+        "old_cents": { "type": ["integer", "null"], "minimum": 0 },
+        "discount_pct": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "unit_label": { "type": ["string", "null"], "maxLength": 40, "description": "npr. €/H, €/kg, /mj." }
+      }
+    },
+    "cta": {
+      "type": "object",
+      "required": ["label", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "url": { "type": "string", "pattern": "^https?://", "maxLength": 2000 }
+      }
+    },
+    "image": {
+      "type": "object",
+      "required": ["url"],
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string", "pattern": "^https?://", "maxLength": 2000, "description": "Apsolutni, javno dohvatljiv URL (u produkciji https)." },
+        "role": { "enum": ["primary", "logo", "gallery"], "default": "primary" },
+        "alt": { "type": ["string", "null"], "maxLength": 300 }
+      }
+    }
+  }
+}
