@@ -45,7 +45,11 @@ final class SocialFeedV1Source implements ContentSource
             }
         }
 
-        throw new SourceException("Source {$source->name}: more than {$maxPages} pages in one sync; refusing to continue.");
+        throw new SourceException(
+            "Source {$source->name}: more than {$maxPages} pages in one sync; refusing to continue. "
+            .'Narrow the feed with filter parameters in the source settings (e.g. "query.min_discount") '
+            .'or raise hub.sync.max_pages.'
+        );
     }
 
     public function test(Source $source): SourceTestResult
@@ -103,11 +107,18 @@ final class SocialFeedV1Source implements ContentSource
             throw new SourceException("Source {$source->name} has no base_url.");
         }
 
-        $query = array_filter([
-            'since' => $since?->toIso8601ZuluString(),
-            'cursor' => $cursor,
-            'limit' => $limit,
-        ], fn ($value): bool => $value !== null);
+        [$url, $inlineQuery] = $this->splitQuery($url);
+
+        // Standard contract parameters win over anything the source configured.
+        $query = [
+            ...$inlineQuery,
+            ...$this->configuredQuery($source),
+            ...array_filter([
+                'since' => $since?->toIso8601ZuluString(),
+                'cursor' => $cursor,
+                'limit' => $limit,
+            ], fn ($value): bool => $value !== null),
+        ];
 
         try {
             $response = $this->request($source)->get($url, $query);
@@ -132,6 +143,52 @@ final class SocialFeedV1Source implements ContentSource
 
         /** @var array{version: string, brand: string, items: list<array<string, mixed>>, next_cursor: string|null} $payload */
         return $payload;
+    }
+
+    /**
+     * Guzzle's `query` option replaces the whole query string, so anything the user wrote into
+     * base_url would be dropped silently. Split it off and merge it back as the weakest layer.
+     *
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private function splitQuery(string $url): array
+    {
+        $mark = mb_strpos($url, '?');
+
+        if ($mark === false) {
+            return [$url, []];
+        }
+
+        parse_str(mb_substr($url, $mark + 1), $parsed);
+
+        return [mb_substr($url, 0, $mark), $parsed];
+    }
+
+    /**
+     * Feed-specific filters a brand's endpoint accepts beyond the contract (listo's `country` and
+     * `min_discount`, say). Flat `query.*` keys keep them enterable in the panel's key/value field.
+     *
+     * @return array<string, mixed>
+     */
+    private function configuredQuery(Source $source): array
+    {
+        $config = $source->config ?? [];
+        $extra = [];
+
+        $nested = $config['query'] ?? null;
+        if (is_array($nested)) {
+            foreach ($nested as $key => $value) {
+                $extra[(string) $key] = $value;
+            }
+        }
+
+        foreach ($config as $key => $value) {
+            if (is_string($key) && str_starts_with($key, 'query.')) {
+                $extra[mb_substr($key, 6)] = $value;
+            }
+        }
+
+        return array_filter($extra, fn ($value): bool => $value !== null && $value !== '');
     }
 
     private function request(Source $source): PendingRequest

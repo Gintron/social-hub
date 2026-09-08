@@ -8,6 +8,10 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Jedan ugovor, jedan adapter.** Novi brend nikad ne dobiva vlastiti adapter: stranica implementira
   Social Feed v1, hub ga čita kroz `App\Sources\SocialFeedV1Source`. Domenske stvari (oglas, akcija) ostaju
   na stranici; hub zna samo za `ContentItem` s općim poljima (`kind`, `facts`, `badges`, `price`…).
+- **Izvor smije nositi vlastite filtere, adapter ostaje jedan.** `SocialFeedV1Source` šalje sve
+  `query.*` ključeve iz `sources.config` (i sve što stoji u query stringu `base_url`-a) uz svaki
+  zahtjev; `since`/`cursor`/`limit` iz ugovora imaju prednost. Novi filter je unos u panelu, nikad
+  grana u kodu.
 - **Predlošci slika su po `kind`, ne po brendu** (`config/templates.php`, `resources/views/templates/kinds`).
   Brend daje boje i logo. Brend-specifični predložak je iznimka s vlastitim ključem.
 - **Sve mutacije nacrta idu kroz `App\Actions\*`** — Filament, MCP alati i agent zovu iste klase.

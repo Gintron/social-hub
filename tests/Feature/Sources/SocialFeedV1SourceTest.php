@@ -139,6 +139,64 @@ final class SocialFeedV1SourceTest extends TestCase
     /**
      * @param  array<string, mixed>  $overrides
      */
+    public function test_sends_configured_filter_parameters_from_flat_config_keys(): void
+    {
+        Http::fake([self::URL.'*' => Http::response(FeedPayload::page([]))]);
+
+        $source = $this->source(['config' => ['query.country' => 'hr', 'query.min_discount' => '40']]);
+
+        iterator_to_array(app(SocialFeedV1Source::class)->fetch($source, null), false);
+
+        Http::assertSent(function (Request $request): bool {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return ($query['country'] ?? null) === 'hr'
+                && ($query['min_discount'] ?? null) === '40'
+                && ($query['limit'] ?? null) === '50';
+        });
+    }
+
+    public function test_keeps_query_parameters_written_into_the_base_url(): void
+    {
+        Http::fake([self::URL.'*' => Http::response(FeedPayload::page([]))]);
+
+        $source = $this->source(['base_url' => self::URL.'?country=hr']);
+
+        iterator_to_array(app(SocialFeedV1Source::class)->fetch($source, null), false);
+
+        Http::assertSent(function (Request $request): bool {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return ($query['country'] ?? null) === 'hr' && ($query['limit'] ?? null) === '50';
+        });
+    }
+
+    public function test_contract_parameters_win_over_configured_ones(): void
+    {
+        Http::fake([self::URL.'*' => Http::response(FeedPayload::page([]))]);
+
+        $source = $this->source(['config' => ['page_limit' => 10, 'query.limit' => '999']]);
+
+        iterator_to_array(app(SocialFeedV1Source::class)->fetch($source, null), false);
+
+        Http::assertSent(function (Request $request): bool {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return ($query['limit'] ?? null) === '10';
+        });
+    }
+
+    public function test_connection_test_uses_the_same_filter_parameters(): void
+    {
+        Http::fake([self::URL.'*' => Http::response(FeedPayload::page([]))]);
+
+        $source = $this->source(['config' => ['query.country' => 'hr']]);
+
+        app(SocialFeedV1Source::class)->test($source);
+
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'country=hr'));
+    }
+
     private function source(array $overrides = []): Source
     {
         $brand = Brand::factory()->create(['slug' => 'studentski-poslovi']);

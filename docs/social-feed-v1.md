@@ -22,6 +22,15 @@ Accept: application/json
 | `cursor` | ne | Neprozirni kursor iz prethodnog `next_cursor`. |
 | `limit` | ne | Zadano 50, najviše 100. |
 
+Stranica smije primati i **vlastite filtere** izvan ugovora (listo tako ima `country` i
+`min_discount`). Hub ih šalje na svakom zahtjevu ako ih upišeš u postavke izvora kao ključeve s
+prefiksom `query.`, npr. `query.country` = `hr`. Ugovorni parametri (`since`, `cursor`, `limit`)
+uvijek imaju prednost. Filteri upisani izravno u `base_url` također se čuvaju, ali postavke su
+preglednije i vide se u panelu.
+
+Bez filtera veliki katalog probije granicu od 50 stranica po sinkronizaciji i hub odustane s
+greškom — to je zaštita, ne kvar: znak je da izvor treba suziti.
+
 Autentikacija je obavezna. Endpoint mora biti iza rate-limita (npr. 60/min). Bez tokena → `401`,
 kriva ovlast → `403`.
 

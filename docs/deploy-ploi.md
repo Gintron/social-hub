@@ -121,6 +121,9 @@ briše tokene, isključuje račune i vraća potvrdni kod sa statusnom stranicom.
 
 1. Panel → Postavke → Brendovi → Novi (slug jednak `brand` polju u feedu stranice).
 2. Postavke → Izvori → Novi: URL feeda + token → **Testiraj vezu** → **Sinkroniziraj**.
+   Ako stranica prima vlastite filtere, upiši ih u **Napredno → Postavke** kao `query.<ime>`
+   (npr. `query.country` = `hr`, `query.min_discount` = `40`). Bez toga veliki katalog probije
+   granicu od 50 stranica po sinkronizaciji i sinkronizacija odustane.
 3. Postavke → Društveni računi → **Poveži preko Facebooka**: odaberi brend, prođi kroz Facebook
    dijalog i hub sprema Page tokene (ne istječu) i Instagram Business račune povezane s tim
    stranicama. Alternativa bez preglednika: **Zalijepi token ručno** (System User token).
