@@ -4,15 +4,6 @@
     // The crop comes from a catalog page and often carries the retailer's own price graphics, so
     // the hub's own discount badge is shown once (the circle) and the chip list is suppressed.
     $hasDiscountCircle = ! empty($item['price']['discount_pct']);
-
-    // Sites commonly state validity as a fact of their own ("VRIJEDI DO: 15.9.2026."). Repeating
-    // expires_at underneath then prints the same thing twice, so only fall back to it when no fact
-    // already carries that date.
-    $expiryInFacts = collect($item['facts'] ?? [])
-        ->contains(fn (array $fact): bool => str_contains(
-            preg_replace('/\s+/', '', (string) $fact['value']),
-            preg_replace('/\s+/', '', (string) $item['expires_at'])
-        ));
 @endphp
 
 @section('styles')
@@ -73,7 +64,7 @@
         @endforeach
       </div>
     @endif
-    @if($item['expires_at'] && ! $expiryInFacts)
+    @if($item['expires_at'])
       <div class="valid">Vrijedi do {{ $item['expires_at'] }}</div>
     @endif
   </div>

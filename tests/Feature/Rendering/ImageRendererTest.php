@@ -38,6 +38,31 @@ final class ImageRendererTest extends TestCase
         $this->assertSame('15.09.2026', $data['expires_at']);
     }
 
+    public function test_an_expiry_the_source_already_states_is_not_printed_twice(): void
+    {
+        $brand = Brand::factory()->create();
+        $item = ContentItem::factory()->for(Source::factory()->for($brand))->create([
+            'expires_at' => '2026-09-15T23:59:59Z',
+            // How listo writes it: single-digit month and a trailing full stop.
+            'facts' => [['label' => 'VRIJEDI DO', 'value' => '15.9.2026.']],
+        ]);
+
+        $data = app(TemplateData::class)->forItem($item, $brand);
+
+        $this->assertNull($data['expires_at']);
+    }
+
+    public function test_an_unrelated_fact_leaves_the_expiry_line_alone(): void
+    {
+        $brand = Brand::factory()->create();
+        $item = ContentItem::factory()->for(Source::factory()->for($brand))->create([
+            'expires_at' => '2026-09-15T23:59:59Z',
+            'facts' => [['label' => 'LOKACIJA', 'value' => 'SPLIT']],
+        ]);
+
+        $this->assertSame('15.09.2026', app(TemplateData::class)->forItem($item, $brand)['expires_at']);
+    }
+
     public function test_renders_a_job_card_as_a_1080_square_jpeg(): void
     {
         $chrome = (string) config('hub.render.chrome_path');

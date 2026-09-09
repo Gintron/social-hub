@@ -80,13 +80,15 @@ final class TemplateData
     public function forItem(ContentItem $item, Brand $brand, array $overrides = []): array
     {
         $raw = $item->raw ?? [];
+        $facts = array_slice($item->facts ?? [], 0, 4);
+        $expiresAt = $item->expires_at?->utc()->format('d.m.Y');
 
         return array_replace([
             'kind' => $item->kind->value,
             'emoji' => $raw['emoji'] ?? self::defaultEmoji($item->kind),
             'title' => $item->title,
             'subtitle' => $item->subtitle,
-            'facts' => array_slice($item->facts ?? [], 0, 4),
+            'facts' => $facts,
             'badges' => array_slice($item->badges ?? [], 0, 4),
             'price' => $item->price,
             'excerpt' => self::excerpt($item->body_text, 220),
@@ -95,7 +97,8 @@ final class TemplateData
             'logo_image' => $this->images->dataUri($item->imageUrl('logo')) ?? $this->brandLogo($brand),
             // End-of-day expiries arrive as 23:59:59Z; rendering them in the brand's timezone moves
             // them onto the next day, so the card contradicted the source's own "vrijedi do".
-            'expires_at' => $item->expires_at?->utc()->format('d.m.Y'),
+            // Dropped entirely when a fact already states it, or the card prints the date twice.
+            'expires_at' => self::expiryStatedInFacts($facts, $expiresAt) ? null : $expiresAt,
         ], $overrides);
     }
 
@@ -147,6 +150,34 @@ final class TemplateData
             'background' => $colors['background'] ?? '#ffffff',
             'surface' => $colors['surface'] ?? '#f3f4f6',
         ];
+    }
+
+    /**
+     * Does a fact already carry this date? Sites write it their own way — "15.9.2026." against the
+     * hub's "15.09.2026" — so compare on the numbers rather than on the formatting.
+     *
+     * @param  list<array{label: string, value: string}>  $facts
+     */
+    private static function expiryStatedInFacts(array $facts, ?string $expiry): bool
+    {
+        if ($expiry === null) {
+            return false;
+        }
+
+        [$day, $month, $year] = array_map('intval', explode('.', $expiry));
+        $needle = $day.'.'.$month.'.'.$year;
+
+        foreach ($facts as $fact) {
+            $value = preg_replace('/\s+/', '', (string) ($fact['value'] ?? ''));
+            // Strip leading zeros in each number so 15.09.2026 and 15.9.2026. compare equal.
+            $value = preg_replace('/\b0+(\d)/', '$1', (string) $value);
+
+            if (str_contains((string) $value, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function brandLogo(Brand $brand): ?string
