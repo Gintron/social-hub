@@ -8,6 +8,7 @@ use App\Enums\AccountStatus;
 use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\SocialAccount;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Given a user (or system user) token, lists the Pages it manages and stores a Page account plus the
@@ -33,9 +34,29 @@ final class MetaAssetDiscovery
             'limit' => 100,
         ], $userToken, 'discover');
 
+        $pages = $response['data'] ?? [];
+
+        // GraphClient only logs calls that belong to a post variant, and discovery has none — yet
+        // this is the call that fails first when a Page is owned by a business portfolio or the
+        // consent dialog granted nothing. Without this line the failure leaves no trace at all.
+        Log::info('meta.discover', [
+            'brand' => $brand->slug,
+            'connected_user_id' => $connectedUserId,
+            'page_count' => count($pages),
+            'pages' => array_map(
+                fn (array $page): array => [
+                    'id' => $page['id'] ?? null,
+                    'name' => $page['name'] ?? null,
+                    'has_token' => filled($page['access_token'] ?? null),
+                    'instagram' => $page['instagram_business_account']['id'] ?? null,
+                ],
+                $pages,
+            ),
+        ]);
+
         $accounts = [];
 
-        foreach ($response['data'] ?? [] as $page) {
+        foreach ($pages as $page) {
             $pageToken = (string) ($page['access_token'] ?? '');
 
             if ($pageToken === '' || blank($page['id'] ?? null)) {

@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 final class MetaOAuthTest extends TestCase
@@ -122,6 +123,29 @@ final class MetaOAuthTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame(0, SocialAccount::query()->count());
+    }
+
+    public function test_discovery_logs_what_facebook_returned(): void
+    {
+        Log::spy();
+
+        Http::fake([
+            '*oauth/access_token*' => Http::response(['access_token' => 'tok', 'expires_in' => 5184000]),
+            '*/me?*' => Http::response(['id' => 'fb-user-1']),
+            '*me/accounts*' => Http::response(['data' => []]),
+        ]);
+
+        $this->withSession(['meta_oauth' => ['state' => 'st-1', 'brand_id' => $this->brand->id]])
+            ->get(route('meta.callback', ['code' => 'auth-code', 'state' => 'st-1']))
+            ->assertRedirect();
+
+        // Discovery is not tied to a post variant, so publish_logs never sees it; the log line is
+        // the only record of why a connect attempt came back empty.
+        Log::shouldHaveReceived('info')->withArgs(
+            fn (string $message, array $context): bool => $message === 'meta.discover'
+                && $context['page_count'] === 0
+                && $context['connected_user_id'] === 'fb-user-1'
+        );
     }
 
     public function test_the_flow_is_closed_to_guests(): void

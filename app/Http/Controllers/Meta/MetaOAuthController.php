@@ -80,7 +80,10 @@ final class MetaOAuthController extends Controller
             return $this->fail(
                 $back,
                 'Nijedan Page nije povezan',
-                'Token ne upravlja nijednim Pageom. Provjeri da imaš ulogu na Pageu i da su dozvole odobrene u dijalogu.',
+                'Token ne upravlja nijednim Pageom. Provjeri da imaš ulogu na Pageu i da su dozvole odobrene u '
+                .'dijalogu. Ako je Page u vlasništvu poslovnog portfelja, u dijalogu treba odabrati taj '
+                .'portfelj — bez Login konfiguracije (META_LOGIN_CONFIG_ID) takvi Pageovi se uopće ne nude. '
+                .'Točan odgovor Facebooka zapisan je u log pod „meta.discover".',
             );
         }
 
