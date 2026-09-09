@@ -93,7 +93,9 @@ final class TemplateData
             'url_display' => self::displayUrl($item->url),
             'primary_image' => $this->images->dataUri($item->imageUrl('primary')),
             'logo_image' => $this->images->dataUri($item->imageUrl('logo')) ?? $this->brandLogo($brand),
-            'expires_at' => $item->expires_at?->timezone($brand->timezone)->format('d.m.Y'),
+            // End-of-day expiries arrive as 23:59:59Z; rendering them in the brand's timezone moves
+            // them onto the next day, so the card contradicted the source's own "vrijedi do".
+            'expires_at' => $item->expires_at?->utc()->format('d.m.Y'),
         ], $overrides);
     }
 

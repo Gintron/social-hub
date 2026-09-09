@@ -24,6 +24,20 @@ final class ImageRendererTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_an_end_of_day_expiry_keeps_its_own_date(): void
+    {
+        $brand = Brand::factory()->create(['timezone' => 'Europe/Zagreb']);
+        $item = ContentItem::factory()->for(Source::factory()->for($brand))->create([
+            'expires_at' => '2026-09-15T23:59:59Z',
+        ]);
+
+        $data = app(TemplateData::class)->forItem($item, $brand);
+
+        // Rendering 23:59:59Z in Europe/Zagreb lands at 01:59 on the 16th, which contradicted the
+        // "vrijedi do" the source itself states.
+        $this->assertSame('15.09.2026', $data['expires_at']);
+    }
+
     public function test_renders_a_job_card_as_a_1080_square_jpeg(): void
     {
         $chrome = (string) config('hub.render.chrome_path');
