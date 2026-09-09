@@ -54,9 +54,17 @@ npx puppeteer browsers install chrome      # no-op kad je već instaliran
 php artisan migrate --force
 php artisan storage:link
 php artisan filament:assets
-php artisan optimize
+# Namjerno bez `optimize`: config:cache + opcache znači da promjena varijable
+# okoline ne stigne do PHP-FPM-a dok ga se ručno ne reloada. Rute i pogledi
+# se predmemoriraju, konfiguracija se čita iz .env na svaki zahtjev.
+php artisan route:cache
+php artisan view:cache
 php artisan queue:restart
 ```
+
+Ako ipak želiš `php artisan optimize`, onda **svaka** promjena u Environmentu traži i reload
+PHP-FPM-a nakon deploya — inače site vrti staru konfiguraciju, a CLI novu, pa `hub:doctor` bude
+zelen dok panel tvrdi da varijabla nije postavljena.
 
 `storage/app/public/media` drži renderirane slike; **ne smije** biti u nečemu što deploy briše.
 
