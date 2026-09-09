@@ -63,10 +63,11 @@ final class MetaAssetDiscovery
                 continue;
             }
 
-            $accounts[] = SocialAccount::query()->updateOrCreate(
-                ['platform' => Platform::FacebookPage->value, 'external_id' => (string) $page['id']],
+            $accounts[] = $this->store(
+                Platform::FacebookPage,
+                (string) $page['id'],
+                $brand,
                 [
-                    'brand_id' => $brand->id,
                     'name' => (string) ($page['name'] ?? $page['id']),
                     'access_token' => $pageToken,
                     'token_expires_at' => null,
@@ -79,10 +80,11 @@ final class MetaAssetDiscovery
             $ig = $page['instagram_business_account'] ?? null;
 
             if (is_array($ig) && filled($ig['id'] ?? null)) {
-                $accounts[] = SocialAccount::query()->updateOrCreate(
-                    ['platform' => Platform::InstagramBusiness->value, 'external_id' => (string) $ig['id']],
+                $accounts[] = $this->store(
+                    Platform::InstagramBusiness,
+                    (string) $ig['id'],
+                    $brand,
                     [
-                        'brand_id' => $brand->id,
                         'name' => '@'.($ig['username'] ?? $ig['id']),
                         'access_token' => $pageToken,
                         'token_expires_at' => null,
@@ -95,5 +97,28 @@ final class MetaAssetDiscovery
         }
 
         return $accounts;
+    }
+
+    /**
+     * Discovery runs against whichever brand the operator picked, but a Page belongs to the brand it
+     * was first filed under: a later reconnect (or a connect done for a sibling brand) must not drag
+     * every account back onto that one brand and silently undo the split.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private function store(Platform $platform, string $externalId, Brand $brand, array $attributes): SocialAccount
+    {
+        $account = SocialAccount::query()->firstOrNew([
+            'platform' => $platform->value,
+            'external_id' => $externalId,
+        ]);
+
+        if (! $account->exists) {
+            $account->brand_id = $brand->id;
+        }
+
+        $account->fill($attributes)->save();
+
+        return $account;
     }
 }

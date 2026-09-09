@@ -86,6 +86,29 @@ final class MetaOAuthTest extends TestCase
         Http::assertSent(fn (Request $r): bool => str_contains($r->url(), 'grant_type=fb_exchange_token'));
     }
 
+    public function test_reconnecting_leaves_an_account_on_the_brand_it_was_filed_under(): void
+    {
+        $other = Brand::factory()->create(['name' => 'radim.hr']);
+
+        SocialAccount::factory()->create([
+            'brand_id' => $other->id,
+            'platform' => Platform::FacebookPage,
+            'external_id' => 'page-1',
+            'name' => 'stari naziv',
+        ]);
+
+        $this->fakeTokenAndAssets();
+
+        $this->withSession(['meta_oauth' => ['state' => 'st-1', 'brand_id' => $this->brand->id]])
+            ->get(route('meta.callback', ['code' => 'auth-code', 'state' => 'st-1']));
+
+        $page = SocialAccount::query()->where('external_id', 'page-1')->firstOrFail();
+        // The reconnect refreshes the token and the name, but the Page stays with radim.hr.
+        $this->assertSame($other->id, $page->brand_id);
+        $this->assertSame('Studentski poslovi HR', $page->name);
+        $this->assertSame('page-token-1', $page->access_token);
+    }
+
     public function test_callback_rejects_a_mismatched_state(): void
     {
         Http::fake();
