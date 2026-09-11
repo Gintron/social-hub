@@ -10,6 +10,13 @@ use Illuminate\Support\Facades\Route;
 Route::redirect('/', '/admin');
 
 /*
+ * Own legal pages for the hub itself (Meta/TikTok app review need working, verifiable URLs —
+ * the brands' own ToS/Privacy pages describe their consumer products, not this internal tool).
+ */
+Route::view('/uvjeti', 'legal.terms')->name('legal.terms');
+Route::view('/privatnost', 'legal.privacy')->name('legal.privacy');
+
+/*
  * Facebook login round-trip. Behind the panel's auth: only a signed-in hub admin may connect
  * accounts, and the callback needs the same session to verify its state.
  */
