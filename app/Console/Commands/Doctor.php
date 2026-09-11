@@ -125,6 +125,14 @@ final class Doctor extends Command
             return 'app id + secret present, '.config('meta.graph_version');
         }, $ok, fatal: false);
 
+        $rows[] = $this->check('AI (Anthropic) config', function (): string {
+            if (blank(config('hub.ai.api_key'))) {
+                throw new RuntimeException('ANTHROPIC_API_KEY not set (hub:agent-draft ne može pisati objave)');
+            }
+
+            return config('hub.ai.model').', effort='.config('hub.ai.effort');
+        }, $ok, fatal: false);
+
         $rows[] = $this->check('Admin e-mails', function (): string {
             $emails = (array) config('hub.admin_emails');
 
