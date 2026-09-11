@@ -59,6 +59,8 @@ return [
         'ig_min_ratio' => 0.8,
         'ig_max_ratio' => 1.91,
         'fb_caption_chars' => 63206,
+        // How long to wait for the item's own landing page before treating it as dead (App\Publishing\LinkPreflight).
+        'link_preflight_timeout' => (int) env('HUB_LINK_PREFLIGHT_TIMEOUT', 8),
     ],
 
     /*

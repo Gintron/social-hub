@@ -87,6 +87,7 @@ final class PublishFlowTest extends TestCase
         Notification::fake();
         Http::fake([
             'graph.facebook.com/v23.0/*/photos' => Http::response(['id' => '111', 'post_id' => '999_111']),
+            'example.test/*' => Http::response('', 200),
         ]);
 
         [$brand, $item] = $this->brandWithItem();
@@ -126,7 +127,10 @@ final class PublishFlowTest extends TestCase
 
     public function test_publishing_twice_does_not_post_twice(): void
     {
-        Http::fake(['graph.facebook.com/*' => Http::response(['id' => '1', 'post_id' => '9_1'])]);
+        Http::fake([
+            'graph.facebook.com/*' => Http::response(['id' => '1', 'post_id' => '9_1']),
+            'example.test/*' => Http::response('', 200),
+        ]);
 
         [$brand, $item] = $this->brandWithItem();
         $page = SocialAccount::factory()->for($brand)->create();
@@ -137,18 +141,23 @@ final class PublishFlowTest extends TestCase
         app(DispatchDraftPublishing::class)->execute($draft->refresh());
         $this->assertSame(0, app(DispatchDraftPublishing::class)->execute($draft->refresh()));
 
-        (new PublishVariantJob($variant->id))->handle(app(\App\Publishing\PublisherRegistry::class), app(\App\Support\AdminNotifier::class));
+        (new PublishVariantJob($variant->id))->handle(app(\App\Publishing\PublisherRegistry::class), app(\App\Support\AdminNotifier::class), app(\App\Publishing\LinkPreflight::class));
 
-        Http::assertSentCount(1);
+        // Idempotency claim is about the Graph call, not the total request count — the link
+        // preflight hits the item's own URL once per publish attempt, which is unrelated.
+        $this->assertCount(1, Http::recorded(fn ($request): bool => str_contains($request->url(), 'graph.facebook.com')));
         $this->assertSame(VariantStatus::Published, $variant->refresh()->status);
     }
 
     public function test_invalid_token_marks_account_for_reconnect_and_notifies(): void
     {
         Notification::fake();
-        Http::fake(['graph.facebook.com/*' => Http::response([
-            'error' => ['message' => 'Error validating access token: Session has expired', 'type' => 'OAuthException', 'code' => 190, 'error_subcode' => 463, 'fbtrace_id' => 'abc'],
-        ], 400)]);
+        Http::fake([
+            'graph.facebook.com/*' => Http::response([
+                'error' => ['message' => 'Error validating access token: Session has expired', 'type' => 'OAuthException', 'code' => 190, 'error_subcode' => 463, 'fbtrace_id' => 'abc'],
+            ], 400),
+            'example.test/*' => Http::response('', 200),
+        ]);
 
         [$brand, $item] = $this->brandWithItem();
         $page = SocialAccount::factory()->for($brand)->create();
@@ -181,6 +190,41 @@ final class PublishFlowTest extends TestCase
         $this->assertSame(VariantStatus::Skipped, $variant->status);
         $this->assertSame('content_expired', $variant->error_code);
         Http::assertNothingSent();
+    }
+
+    public function test_a_source_that_silently_dropped_the_item_is_caught_at_publish_time(): void
+    {
+        // expires_at still looks fine — the source archived it without ever telling the hub.
+        Http::fake([
+            'uselisto.test/*' => Http::response('', 404),
+        ]);
+        [$brand, $item] = $this->brandWithItem(['url' => 'https://uselisto.test/katalozi/konzum/gone']);
+        $page = SocialAccount::factory()->for($brand)->create();
+        $draft = app(CreateDraft::class)->execute($item, [$page], render: false);
+
+        app(ApproveDraft::class)->execute($draft, null);
+        app(DispatchDraftPublishing::class)->execute($draft->refresh());
+
+        $variant = $draft->variants()->firstOrFail();
+        $this->assertSame(VariantStatus::Skipped, $variant->status);
+        $this->assertSame('dead_link', $variant->error_code);
+        $this->assertStringContainsString('uselisto.test/katalozi/konzum/gone', (string) $variant->error_message);
+    }
+
+    public function test_a_reachable_link_publishes_normally(): void
+    {
+        Http::fake([
+            'uselisto.test/*' => Http::response('', 200),
+            'graph.facebook.com/*' => Http::response(['id' => '1', 'post_id' => '9_1']),
+        ]);
+        [$brand, $item] = $this->brandWithItem(['url' => 'https://uselisto.test/katalozi/konzum/still-live']);
+        $page = SocialAccount::factory()->for($brand)->create();
+        $draft = app(CreateDraft::class)->execute($item, [$page], render: false);
+
+        app(ApproveDraft::class)->execute($draft, null);
+        app(DispatchDraftPublishing::class)->execute($draft->refresh());
+
+        $this->assertSame(VariantStatus::Published, $draft->variants()->firstOrFail()->status);
     }
 
     public function test_manual_group_variant_waits_for_a_human(): void

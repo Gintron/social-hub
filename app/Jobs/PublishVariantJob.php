@@ -12,6 +12,7 @@ use App\Notifications\PublishFailed;
 use App\Publishing\Exceptions\PublishException;
 use App\Publishing\Exceptions\RateLimitedException;
 use App\Publishing\Exceptions\TokenInvalidException;
+use App\Publishing\LinkPreflight;
 use App\Publishing\PublisherRegistry;
 use App\Support\AdminNotifier;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -52,7 +53,7 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
         return [60, 300, 900];
     }
 
-    public function handle(PublisherRegistry $publishers, AdminNotifier $notifier): void
+    public function handle(PublisherRegistry $publishers, AdminNotifier $notifier, LinkPreflight $preflight): void
     {
         $variant = PostVariant::query()->with(['account', 'draft.contentItems', 'media'])->find($this->variantId);
 
@@ -90,6 +91,21 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
                 'status' => VariantStatus::Skipped,
                 'error_code' => 'content_expired',
                 'error_message' => "Stavka '{$expired->title}' je istekla ".$expired->expires_at?->diffForHumans().'; objava preskočena.',
+            ])->save();
+            $draft?->refreshStatusFromVariants();
+
+            return;
+        }
+
+        // `expires_at` is only as fresh as the last sync that actually saw this item; a source
+        // that silently drops it (archived, pulled) never gets to correct it. This catches that
+        // regardless of cause — the one thing that can't be stale is the URL itself, right now.
+        $deadLink = $draft?->contentItems->first(fn ($item): bool => $preflight->isDead($item));
+        if ($deadLink !== null) {
+            $variant->forceFill([
+                'status' => VariantStatus::Skipped,
+                'error_code' => 'dead_link',
+                'error_message' => "Poveznica stavke '{$deadLink->title}' više ne odgovara ({$deadLink->url}); objava preskočena.",
             ])->save();
             $draft?->refreshStatusFromVariants();
 
