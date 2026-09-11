@@ -73,6 +73,20 @@ final class TikTokOAuthTest extends TestCase
         $this->assertStringNotContainsString('refresh-1', $stored);
     }
 
+    public function test_the_creator_info_request_sends_an_empty_object_not_an_empty_array(): void
+    {
+        $this->fakeTikTok();
+
+        $this->withSession(['tiktok_oauth' => ['state' => 'st-1', 'brand_id' => $this->brand->id]])
+            ->get(route('tiktok.callback', ['code' => 'auth-code', 'state' => 'st-1']));
+
+        // TikTok rejected a bare `[]` body with "invalid_params: The request parameter type is
+        // incorrect" — json_encode() can't tell an empty array from an empty object, and always
+        // picks array. An empty payload must be cast to an object before it reaches the wire.
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'creator_info/query')
+            && $request->body() === '{}');
+    }
+
     public function test_a_mismatched_state_stores_nothing(): void
     {
         Http::fake();

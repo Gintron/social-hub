@@ -43,12 +43,17 @@ final class TikTokClient
     {
         $url = mb_rtrim((string) config('tiktok.api_base'), '/').'/'.mb_ltrim($path, '/');
 
+        // PHP's empty array and empty object both start life as `[]`; json_encode can't tell them
+        // apart and always picks array. TikTok's endpoints (creator_info/query in particular) want
+        // an object body even when there's nothing to send, and reject `[]` as the wrong type.
+        $requestBody = $payload === [] ? (object) [] : $payload;
+
         try {
             $response = Http::withToken($token)
                 ->acceptJson()
                 ->asJson()
                 ->timeout((int) config('tiktok.http_timeout', 30))
-                ->post($url, $payload);
+                ->post($url, $requestBody);
         } catch (ConnectionException $e) {
             $this->log($event, null, $url, $payload, ['exception' => $e->getMessage()]);
 
