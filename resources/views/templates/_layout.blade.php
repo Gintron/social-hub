@@ -26,9 +26,11 @@
   .fact .value { font-size: 36px; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .excerpt { font-size: 30px; line-height: 1.35; color: #374151; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
   .footer { flex: 0 0 120px; display: flex; align-items: center; justify-content: space-between; padding: 0 64px; background: {{ $brand['primary'] }}; color: #fff; }
+  .footer .brand { display: flex; align-items: center; gap: 20px; min-width: 0; }
   .footer .site { font-size: 34px; font-weight: 800; letter-spacing: 0.5px; }
   .footer .cta { font-size: 30px; font-weight: 600; opacity: 0.95; }
-  .footer img { height: 64px; width: auto; max-width: 320px; object-fit: contain; }
+  /* The footer sits on the primary colour, so the logo goes white here; the logo chip keeps it in colour. */
+  .footer img { height: 64px; width: auto; max-width: 320px; object-fit: contain; filter: brightness(0) invert(1); }
   .logo-chip { position: absolute; right: 40px; bottom: 24px; width: 140px; height: 140px; border-radius: 28px; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.18); display: flex; align-items: center; justify-content: center; overflow: hidden; }
   .logo-chip img { width: 100%; height: 100%; object-fit: contain; padding: 14px; }
   .price { display: flex; align-items: baseline; gap: 26px; margin-top: 6px; }
