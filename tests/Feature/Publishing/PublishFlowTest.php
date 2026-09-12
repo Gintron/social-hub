@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -242,6 +243,49 @@ final class PublishFlowTest extends TestCase
         Http::assertNothingSent();
 
         app(MarkManualPosted::class)->execute($variant, userId: null, permalink: 'https://www.facebook.com/groups/123/posts/456');
+
+        $this->assertSame(VariantStatus::ManualDone, $variant->refresh()->status);
+        $this->assertSame(DraftStatus::Published, $draft->refresh()->status);
+    }
+
+    public function test_a_tiktok_inbox_upload_waits_for_a_human_and_is_never_uploaded_twice(): void
+    {
+        Sleep::fake();
+        Http::fake([
+            '*/inbox/video/init/*' => Http::response(['data' => ['publish_id' => 'inbox-1'], 'error' => ['code' => 'ok']]),
+            '*/status/fetch/*' => Http::response(['data' => ['status' => 'SEND_TO_USER_INBOX'], 'error' => ['code' => 'ok']]),
+            '*' => Http::response('ok'),
+        ]);
+
+        [$brand, $item] = $this->brandWithItem();
+        $account = SocialAccount::factory()->for($brand)->create([
+            'platform' => Platform::TikTok,
+            'access_token' => 'tiktok-token',
+            'token_expires_at' => now()->addHours(20),
+        ]);
+
+        $draft = app(CreateDraft::class)->execute($item, [$account], render: false);
+        $variant = $draft->variants()->firstOrFail();
+        $variant->forceFill(['settings' => ['delivery' => 'inbox']])->save();
+        $variant->media()->attach(MediaAsset::factory()->for($brand)->create([
+            'width' => 1080, 'height' => 1920, 'format' => 'mp4', 'duration_ms' => 7800, 'path' => 'media/reel.mp4',
+        ])->id, ['position' => 0]);
+
+        app(ApproveDraft::class)->execute($draft, null);
+        app(DispatchDraftPublishing::class)->execute($draft->refresh());
+
+        $variant->refresh();
+        $this->assertSame(VariantStatus::ManualPending, $variant->status);
+        $this->assertSame('inbox-1', $variant->external_post_id);
+        $this->assertNull($variant->published_at);
+
+        // A duplicate run sees the id and must neither upload again nor call it published.
+        PublishVariantJob::dispatchSync($variant->id);
+
+        $this->assertSame(VariantStatus::ManualPending, $variant->refresh()->status);
+        Http::assertSentCount(3); // link preflight, inbox init, one status poll
+
+        app(MarkManualPosted::class)->execute($variant, userId: null, permalink: 'https://www.tiktok.com/@studentskiposlovi/video/1');
 
         $this->assertSame(VariantStatus::ManualDone, $variant->refresh()->status);
         $this->assertSame(DraftStatus::Published, $draft->refresh()->status);

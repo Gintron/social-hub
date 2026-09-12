@@ -110,6 +110,19 @@ final class PostDraftForm
                                     ])
                                     ->default('SELF_ONLY')
                                     ->helperText('TikTok dopušta samo razine koje sam vrati za taj račun; hub pada natrag na dopuštenu.')
+                                    ->visible(fn (Get $get): bool => FormState::platform($get('platform')) === Platform::TikTok
+                                        && $get('settings.delivery') !== 'inbox'),
+
+                                // Not `settings.mode`: the Facebook page select already binds that path.
+                                Select::make('settings.delivery')
+                                    ->label('Način objave na TikToku')
+                                    ->options([
+                                        'direct' => 'Objavi izravno (zvuk iz knjižnice brenda)',
+                                        'inbox' => 'Pošalji u TikTok inbox (dodaš trending zvuk i objaviš u aplikaciji)',
+                                    ])
+                                    ->default('direct')
+                                    ->live()
+                                    ->helperText('Inbox: video stiže kao nacrt u TikTok aplikaciju; tekst zalijepiš ondje, a u hubu označiš kao ručno objavljeno.')
                                     ->visible(fn (Get $get): bool => FormState::platform($get('platform')) === Platform::TikTok),
                             ])
                             ->columns(2),

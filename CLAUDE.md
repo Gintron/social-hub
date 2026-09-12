@@ -66,6 +66,10 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   `SELF_ONLY` — to se ne zaobilazi.
 - **TikTok tokeni istječu**: pristupni 24 h, refresh se rotira pri svakom osvježavanju. Uvijek spremi
   **novi** refresh token; `hub:refresh-tiktok-tokens` radi satno.
+- **Zvuk se miksa u hubu, iz licencirane knjižnice brenda** (`brands.audio_tracks`,
+  `Brand::audioTrackPath`). API ne može dodati TikTokov zvuk — nema `music_id`, ne tražiti ga.
+  Trending zvuk postoji samo kroz inbox (`settings.delivery = inbox`): hub preda video, čovjek
+  objavi u aplikaciji, varijanta čeka u `ManualPending` s `external_post_id` (publish_id).
 
 ## Rad
 

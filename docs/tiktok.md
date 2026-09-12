@@ -66,6 +66,7 @@ osvježavanju izda **novi** refresh token. Zato:
 | Trajanje | najmanje 3 s; gornju granicu vraća sam račun (`max_video_post_duration_sec`) |
 | Omjer | uspravno, 9:16 (hub renderira 1080×1920) |
 | Adresa | javni **https** URL na verificiranoj domeni |
+| Zvuk | umiksan u MP4 iz knjižnice brenda; API ne može dodati TikTokov zvuk |
 
 Hub sve to provjeri prije poziva i odbije s razumljivom porukom, umjesto da potroši objavu na
 TikTokovu generičku grešku.
@@ -81,3 +82,30 @@ php artisan hub:render-video --brand=uselisto --kind=deal --count=3 --seconds=3
 ```
 
 U panelu je to akcija **Renderiraj video** na nacrtu.
+
+Slajdovi se po defaultu lagano zumiraju (Ken Burns, ≤5 %, centrirano da tekst predloška ostane u
+kadru); `--no-motion` ili prekidač u akciji vraća statične slajdove.
+
+## Zvuk
+
+Content Posting API **nema parametar za zvuk iz TikTokove knjižnice** — što god svira ispod videa,
+mora već biti u MP4 datoteci. Zato dva puta:
+
+1. **Knjižnica brenda** (Brendovi → *Zvuk za video*): učitaš pjesme za koje brend ima prava
+   (royalty-free ili licencirane; poslovni računi ne smiju koristiti komercijalnu glazbu bez licence).
+   `VideoRenderer` pjesmu petlja ili reže na duljinu videa, normalizira glasnoću (−16 LUFS) i utišava
+   na kraju. `auto` rotira pjesme po nacrtu, pa objave ne zvuče sve isto, a ponovni render zadrži
+   istu. Isti video s istim zvukom ide i na Reels.
+
+   ```bash
+   php artisan hub:render-video --brand=uselisto --kind=deal --count=3 --audio=auto
+   ```
+
+2. **Inbox** (`settings.delivery = inbox` na TikTok varijanti): hub pošalje video kao nacrt u
+   TikTok inbox kreatora (`video.upload` scope). U aplikaciji dodaš trending zvuk, zalijepiš tekst
+   i objaviš, a u hubu varijantu označiš **Označi kao ručno objavljeno**. Do tada varijanta stoji u
+   „čeka ručnu objavu", kao Facebook grupe.
+
+Za Direct Post TikTokove smjernice traže da korisnik prije objave vidi izjavu o pristanku na
+[Music Usage Confirmation](https://www.tiktok.com/legal/page/global/music-usage-confirmation/en);
+hub je prikazuje u potvrdi **Objavi sada** kad nacrt ima TikTok varijantu.

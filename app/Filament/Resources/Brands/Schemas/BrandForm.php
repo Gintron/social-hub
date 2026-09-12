@@ -59,6 +59,28 @@ final class BrandForm
                             ->default(false)->columnSpanFull(),
                     ])->columns(2),
 
+                Section::make('Zvuk za video')
+                    ->description('Podloge koje hub umiksa ispod TikTok videa i Reelsa. TikTokov API ne može dodati zvuk iz TikTokove knjižnice, pa ovdje idu samo pjesme za koje brend ima prava (royalty-free ili licencirane) — poslovni računi ne smiju koristiti komercijalnu glazbu bez licence. Za trending zvuk pošalji TikTok varijantu u inbox.')
+                    ->schema([
+                        Repeater::make('audio_tracks')->label('')
+                            ->schema([
+                                TextInput::make('title')->label('Naziv')->required()->maxLength(120),
+                                TextInput::make('license')->label('Izvor / licenca')->maxLength(255)
+                                    ->placeholder('npr. Pixabay Music, Content License'),
+                                FileUpload::make('path')->label('Datoteka (MP3, M4A, WAV, do 12 MB)')->required()
+                                    ->disk('public')->directory('brands/audio')
+                                    ->acceptedFileTypes(['audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/wav', 'audio/x-wav'])
+                                    // Livewire's temporary upload refuses anything above 12 MB before this rule runs.
+                                    ->maxSize(12288)->columnSpanFull(),
+                            ])
+                            ->columns(2)
+                            ->default([])
+                            ->addActionLabel('Dodaj pjesmu')
+                            ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
+                            ->collapsible(),
+                    ])
+                    ->collapsible(),
+
                 Section::make('Termini objave')
                     ->description('Auto-publish raspoređuje objave unutar ovih prozora (lokalno vrijeme brenda).')
                     ->schema([

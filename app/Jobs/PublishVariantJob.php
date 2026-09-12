@@ -73,7 +73,8 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
         }
 
         if (filled($variant->external_post_id)) {
-            if ($variant->status !== VariantStatus::Published) {
+            // An upload handed to a human (TikTok inbox) has an id too, but it is not public until they post it.
+            if (! in_array($variant->status, [VariantStatus::Published, VariantStatus::ManualPending, VariantStatus::ManualDone], true)) {
                 $variant->forceFill(['status' => VariantStatus::Published, 'published_at' => $variant->published_at ?? now()])->save();
                 $draft?->refreshStatusFromVariants();
             }
@@ -121,6 +122,21 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
 
         try {
             $result = $publishers->for($variant->platform)->publish($variant);
+
+            if ($result->handedToCreator) {
+                // Uploaded, not posted: the inbox holds it until a human adds a sound and posts it.
+                // The id is kept so a retry never uploads a second copy.
+                $variant->forceFill([
+                    'status' => VariantStatus::ManualPending,
+                    'external_post_id' => $result->externalId,
+                    'error_code' => null,
+                    'error_message' => null,
+                ])->save();
+
+                Log::info('hub.handed_to_creator', ['variant' => $variant->id, 'platform' => $variant->platform->value]);
+
+                return;
+            }
 
             $variant->forceFill([
                 'status' => VariantStatus::Published,

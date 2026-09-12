@@ -186,6 +186,47 @@ final class TikTokPublisherTest extends TestCase
         }
     }
 
+    public function test_inbox_delivery_uploads_a_draft_and_hands_it_to_the_creator(): void
+    {
+        $this->fakeTikTok(statuses: ['PROCESSING_DOWNLOAD', 'SEND_TO_USER_INBOX']);
+
+        [$variant, $video] = $this->variant(settings: ['delivery' => 'inbox']);
+
+        $result = app(TikTokPublisher::class)->publish($variant);
+
+        $this->assertTrue($result->handedToCreator);
+        $this->assertSame('publish-1', $result->externalId);
+        $this->assertNull($result->permalink, 'nije javno dok ga čovjek ne objavi');
+
+        // Upload only: caption, privacy and the sound are chosen in the app, so no post_info.
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/inbox/video/init/')
+            && ! array_key_exists('post_info', $request->data())
+            && $request->data()['source_info']['video_url'] === $video->publicUrl());
+
+        // creator_info belongs to Direct Post; a brand may have granted only video.upload.
+        Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'creator_info')
+            || str_contains($request->url(), '/publish/video/init/'));
+
+        $this->assertSame(
+            ['tiktok.inbox_init', 'tiktok.status', 'tiktok.status'],
+            PublishLog::query()->orderBy('id')->pluck('event')->all(),
+        );
+    }
+
+    public function test_an_inbox_upload_the_creator_already_posted_does_not_wait_for_the_timeout(): void
+    {
+        // The creator posted from the app between two polls, so the inbox state was never seen.
+        $this->fakeTikTok(statuses: ['PROCESSING_DOWNLOAD', 'PUBLISH_COMPLETE']);
+
+        [$variant] = $this->variant(settings: ['delivery' => 'inbox']);
+
+        $result = app(TikTokPublisher::class)->publish($variant);
+
+        $this->assertTrue($result->handedToCreator);
+        $this->assertSame('publish-1', $result->externalId);
+        Http::assertSentCount(3); // inbox init and two polls — no timeout, no second upload
+    }
+
     public function test_a_failed_publish_reports_the_reason(): void
     {
         $this->fakeTikTok(statuses: ['FAILED'], failReason: 'video_pull_failed');

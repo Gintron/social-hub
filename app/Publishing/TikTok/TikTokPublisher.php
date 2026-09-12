@@ -22,9 +22,14 @@ use Illuminate\Support\Sleep;
  * levels differ per creator, and an app that has not passed TikTok's audit may only post privately.
  *
  * Variant settings: `privacy_level`, `disable_comment`, `disable_duet`, `disable_stitch`,
- * `cover_timestamp_ms`.
+ * `cover_timestamp_ms`, `delivery` (`direct` | `inbox`).
+ *
+ * `delivery = inbox` uploads the video as a draft into the creator's TikTok inbox instead. The API
+ * cannot attach a sound from TikTok's library; in the app a human can, then posts it and marks the
+ * variant done in the hub.
  *
  * @see https://developers.tiktok.com/doc/content-posting-api-reference-direct-post
+ * @see https://developers.tiktok.com/doc/content-posting-api-reference-upload-video
  */
 final class TikTokPublisher implements Publisher
 {
@@ -59,6 +64,10 @@ final class TikTokPublisher implements Publisher
         $client = $this->client->forVariant($variant);
         $token = (string) $account->access_token;
 
+        if ($variant->setting('delivery') === 'inbox') {
+            return $this->sendToInbox($client, $variant, $token);
+        }
+
         $asset = $this->video($variant);
         $creator = $client->post('post/publish/creator_info/query/', [], $token, 'tiktok.creator_info');
 
@@ -88,7 +97,7 @@ final class TikTokPublisher implements Publisher
             throw new TransientPublishException('TikTok nije vratio publish_id: '.json_encode($init), 'tiktok_no_publish_id');
         }
 
-        $status = $this->await($client, (string) $publishId, $token);
+        $status = $this->await($client, (string) $publishId, $token, ['PUBLISH_COMPLETE']);
 
         return new PublishResult(
             (string) $publishId,
@@ -98,10 +107,39 @@ final class TikTokPublisher implements Publisher
     }
 
     /**
-     * @param  array<string, mixed>  $creator
+     * Upload only: no post_info (the caption, privacy and sound are set in the app), and no
+     * creator_info — that belongs to Direct Post and a brand may have granted only `video.upload`.
+     */
+    private function sendToInbox(TikTokClient $client, PostVariant $variant, string $token): PublishResult
+    {
+        $asset = $this->video($variant);
+        $this->assertDuration($asset, []);
+
+        $init = $client->post('post/publish/inbox/video/init/', [
+            'source_info' => [
+                'source' => 'PULL_FROM_URL',
+                'video_url' => $asset->publicUrl(),
+            ],
+        ], $token, 'tiktok.inbox_init');
+
+        $publishId = $init['publish_id'] ?? null;
+
+        if (blank($publishId)) {
+            throw new TransientPublishException('TikTok nije vratio publish_id: '.json_encode($init), 'tiktok_no_publish_id');
+        }
+
+        // The creator may post from the app between two polls; PUBLISH_COMPLETE is then the first
+        // state we see. Waiting only for SEND_TO_USER_INBOX would time out and upload a second copy.
+        $status = $this->await($client, (string) $publishId, $token, ['SEND_TO_USER_INBOX', 'PUBLISH_COMPLETE']);
+
+        return new PublishResult((string) $publishId, null, ['status' => $status], handedToCreator: true);
+    }
+
+    /**
+     * @param  list<string>  $doneStates
      * @return array<string, mixed>
      */
-    private function await(TikTokClient $client, string $publishId, string $token): array
+    private function await(TikTokClient $client, string $publishId, string $token, array $doneStates): array
     {
         $deadline = microtime(true) + self::POLL_TIMEOUT_SECONDS;
 
@@ -109,7 +147,7 @@ final class TikTokPublisher implements Publisher
             $status = $client->post('post/publish/status/fetch/', ['publish_id' => $publishId], $token, 'tiktok.status');
             $state = (string) ($status['status'] ?? '');
 
-            if ($state === 'PUBLISH_COMPLETE') {
+            if (in_array($state, $doneStates, true)) {
                 return $status;
             }
 

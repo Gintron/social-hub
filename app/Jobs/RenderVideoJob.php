@@ -33,12 +33,15 @@ final class RenderVideoJob implements ShouldQueue
 
     /**
      * @param  list<int>  $variantIds
+     * @param  string  $audio  `auto`, `none`, or an index into the brand's library (Brand::audioTrackPath).
      */
     public function __construct(
         public readonly int $draftId,
         public readonly array $variantIds,
         public readonly float $secondsPerSlide = 3.0,
         public readonly ?string $templateKey = null,
+        public readonly string $audio = 'auto',
+        public readonly bool $motion = true,
     ) {
         $this->onQueue('render');
     }
@@ -64,7 +67,14 @@ final class RenderVideoJob implements ShouldQueue
             return $images->render($brand, $template, $data->forItem($item, $brand), $draft);
         });
 
-        $asset = $video->slideshow($brand, $slides, $draft, $this->secondsPerSlide);
+        $asset = $video->slideshow(
+            $brand,
+            $slides,
+            $draft,
+            $this->secondsPerSlide,
+            audioPath: $brand->audioTrackPath($this->audio, $draft->id),
+            motion: $this->motion,
+        );
 
         $variants = PostVariant::query()->whereIn('id', $this->variantIds)->where('post_draft_id', $draft->id)->get();
 

@@ -10,6 +10,7 @@ use App\Actions\DispatchDraftPublishing;
 use App\Actions\MarkManualPosted;
 use App\Actions\ScheduleDraft;
 use App\Enums\DraftStatus;
+use App\Enums\Platform;
 use App\Enums\VariantStatus;
 use App\Filament\Resources\PostDrafts\PostDraftResource;
 use App\Jobs\RenderMediaJob;
@@ -23,9 +24,11 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\HtmlString;
 use RuntimeException;
 use Throwable;
 
@@ -67,7 +70,7 @@ final class EditPostDraft extends EditRecord
                 ->icon(Heroicon::OutlinedPaperAirplane)
                 ->color('primary')
                 ->requiresConfirmation()
-                ->modalDescription('Varijante s API kanalima idu u red za objavu; varijante za Facebook grupe čekaju da ih ručno zalijepiš i označiš.')
+                ->modalDescription(fn (): HtmlString|string => $this->publishDescription())
                 ->visible(fn (): bool => ! in_array($this->draft()->status, [DraftStatus::Publishing, DraftStatus::Published, DraftStatus::Discarded], true))
                 ->action(function (): void {
                     $this->run(function (): string {
@@ -137,12 +140,30 @@ final class EditPostDraft extends EditRecord
                 ->modalDescription('Renderira uspravne slajdove (9:16) i spaja ih u MP4 za Reels i TikTok. Traje desetak sekundi po slajdu.')
                 ->schema([
                     TextInput::make('seconds')->label('Sekundi po slajdu')->numeric()->default(3)->minValue(2)->maxValue(10)->required(),
+                    Select::make('audio')->label('Zvuk')->required()->default('auto')
+                        ->options(fn (): array => [
+                            'auto' => 'Automatski iz knjižnice brenda',
+                            'none' => 'Bez zvuka',
+                            ...collect($this->draft()->brand->audioTracks())
+                                ->mapWithKeys(fn (array $track, int $index): array => [(string) $index => $track['title']])
+                                ->all(),
+                        ])
+                        ->helperText(fn (): ?string => $this->draft()->brand->audioTracks() === []
+                            ? 'Knjižnica brenda je prazna — dodaj podloge u postavkama brenda, inače video ostaje bez zvuka.'
+                            : null),
+                    Toggle::make('motion')->label('Pokret na slajdovima (lagani zoom)')->default(true),
                 ])
                 ->action(function (array $data): void {
                     $this->run(function () use ($data): string {
                         $draft = $this->draft();
 
-                        RenderVideoJob::dispatchSync($draft->id, $draft->variants()->pluck('id')->all(), (float) $data['seconds']);
+                        RenderVideoJob::dispatchSync(
+                            $draft->id,
+                            $draft->variants()->pluck('id')->all(),
+                            (float) $data['seconds'],
+                            audio: (string) ($data['audio'] ?? 'auto'),
+                            motion: (bool) ($data['motion'] ?? true),
+                        );
 
                         return 'Video renderiran i priložen svim kanalima ovog nacrta.';
                     });
@@ -193,12 +214,33 @@ final class EditPostDraft extends EditRecord
     }
 
     /**
+     * TikTok's Direct Post guidelines require this declaration before the user posts.
+     */
+    private function publishDescription(): HtmlString|string
+    {
+        $text = 'Varijante s API kanalima idu u red za objavu; varijante za Facebook grupe i TikTok inbox čekaju da ih ručno dovršiš i označiš.';
+
+        $directTikTok = $this->draft()->variants()->get()->contains(
+            fn (PostVariant $v): bool => $v->platform === Platform::TikTok && $v->enabled && $v->setting('delivery') !== 'inbox',
+        );
+
+        if (! $directTikTok) {
+            return $text;
+        }
+
+        return new HtmlString(e($text).'<br><br>Objavom na TikTok pristaješ na TikTokovu '
+            .'<a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener" class="underline">Music Usage Confirmation</a>.');
+    }
+
+    /**
      * @return \Illuminate\Database\Eloquent\Collection<int, PostVariant>
      */
     private function manualVariants(): \Illuminate\Database\Eloquent\Collection
     {
         return $this->draft()->variants()->with('account')->get()
-            ->filter(fn (PostVariant $v): bool => $v->platform->isManual() && ! in_array($v->status, [VariantStatus::ManualDone, VariantStatus::Disabled], true))
+            // Facebook groups, plus anything handed to a human mid-way (a TikTok inbox upload).
+            ->filter(fn (PostVariant $v): bool => $v->status === VariantStatus::ManualPending
+                || ($v->platform->isManual() && ! in_array($v->status, [VariantStatus::ManualDone, VariantStatus::Disabled], true)))
             ->values();
     }
 
