@@ -12,6 +12,7 @@ use App\Notifications\PublishFailed;
 use App\Publishing\Exceptions\PublishException;
 use App\Publishing\Exceptions\RateLimitedException;
 use App\Publishing\Exceptions\TokenInvalidException;
+use App\Publishing\FormatCheck;
 use App\Publishing\LinkPreflight;
 use App\Publishing\PublisherRegistry;
 use App\Support\AdminNotifier;
@@ -53,7 +54,7 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
         return [60, 300, 900];
     }
 
-    public function handle(PublisherRegistry $publishers, AdminNotifier $notifier, LinkPreflight $preflight): void
+    public function handle(PublisherRegistry $publishers, AdminNotifier $notifier, LinkPreflight $preflight, FormatCheck $formats): void
     {
         $variant = PostVariant::query()->with(['account', 'draft.contentItems', 'media'])->find($this->variantId);
 
@@ -121,6 +122,9 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
         }
 
         try {
+            // Still rendering: retried shortly. Wrong media for the format: fails with a reason.
+            $formats->assertReady($variant);
+
             $result = $publishers->for($variant->platform)->publish($variant);
 
             if ($result->handedToCreator) {

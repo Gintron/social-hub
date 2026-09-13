@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Publishing\Meta;
 
+use App\Enums\ContentFormat;
 use App\Enums\Platform;
 use App\Enums\VariantStatus;
 use App\Models\MediaAsset;
@@ -67,7 +68,7 @@ final class InstagramPublisher implements Publisher
         $media = $variant->media()->get();
 
         $caption = $this->preflight->caption($variant);
-        $isReel = $variant->setting('format') === 'reel';
+        $isReel = $variant->format() === ContentFormat::Video;
 
         if ($isReel) {
             $this->preflight->video($media);

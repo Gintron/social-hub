@@ -59,8 +59,15 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Video je isti sadržaj, druga visina.** `VideoRenderer` spaja postojeće predloške renderirane u
   1080×1920; nema zasebnog dizajna za video. Izlaz mora ostati H.264/yuv420p + AAC + `faststart`,
   inače ga uploaderi odbijaju.
-- **Reel je postavka varijante, ne novi kanal**: `settings.format = reel` na Instagramu,
-  `settings.mode = reel` na Facebook stranici. Račun ostaje isti račun.
+- **Format je postavka varijante, ne novi kanal**: `settings.format` = `image|carousel|video|link`
+  (`App\Enums\ContentFormat`), dopušteni po `Platform::formats()`. Reel je `video` na Metinim kanalima,
+  TikTok slika/carousel je foto objava. Uvijek čitaj `PostVariant::format()` — zna i stare
+  `format=post|reel` (IG) i `mode=photo|link|reel` (FB).
+- **Mediji su po varijanti, ne po nacrtu.** Nikad ne prikači render svim varijantama nacrta: medij
+  priprema `App\Actions\PrepareVariantMedia` (ponovno koristi postojeći asset, inače render u
+  pozadini; stanje u `settings.render`), a promjena formata ide kroz `ChangeVariantFormat`.
+  `App\Publishing\FormatCheck` provjerava da medij odgovara formatu — na ekranu i u
+  `PublishVariantJob` prije publishera (renderira se → retry, ne odgovara → `media_not_ready`).
 - **TikTok se pita prije objave.** `creator_info/query` daje dopuštene razine privatnosti i najdulje
   trajanje; hub se prilagođava odgovoru umjesto da pretpostavlja. Neauditirana aplikacija smije samo
   `SELF_ONLY` — to se ne zaobilazi.

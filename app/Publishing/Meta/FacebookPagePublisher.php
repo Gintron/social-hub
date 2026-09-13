@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Publishing\Meta;
 
+use App\Enums\ContentFormat;
 use App\Enums\Platform;
 use App\Models\MediaAsset;
 use App\Models\PostVariant;
@@ -14,11 +15,12 @@ use App\Publishing\PublishResult;
 /**
  * Facebook Page posts via Graph API.
  *
- * - no media            → POST /{page}/feed {message, link}
- * - one image           → POST /{page}/photos {url, caption}
- * - several images      → POST /{page}/photos {url, published=false} × n, then POST /{page}/feed {message, attached_media}
+ * - link                  → POST /{page}/feed {message, link}
+ * - image                 → POST /{page}/photos {url, caption}
+ * - carousel              → POST /{page}/photos {url, published=false} × n, then POST /{page}/feed {message, attached_media}
+ * - video                 → a Reel (FacebookReels)
  *
- * Variant settings: `mode` = photo|link (default: photo when media exists).
+ * The format is the variant's (`PostVariant::format()`).
  */
 final class FacebookPagePublisher implements Publisher
 {
@@ -46,9 +48,9 @@ final class FacebookPagePublisher implements Publisher
 
         $caption = $this->caption($variant);
         $media = $variant->media()->get();
-        $mode = (string) $variant->setting('mode', $media->isEmpty() ? 'link' : 'photo');
+        $format = $variant->format();
 
-        if ($mode === 'reel') {
+        if ($format === ContentFormat::Video) {
             if ($media->count() !== 1) {
                 throw new PermanentPublishException('Reel je jedan video; priloženo je '.$media->count().' datoteka.', 'reel_needs_one_video');
             }
@@ -56,7 +58,7 @@ final class FacebookPagePublisher implements Publisher
             return $this->reels->publish($variant, $pageId, $token, $media->first(), $caption);
         }
 
-        if ($mode === 'link' || $media->isEmpty()) {
+        if ($format === ContentFormat::Link || $media->isEmpty()) {
             $payload = array_filter(['message' => $caption, 'link' => $variant->link_url]);
             $response = $graph->post("{$pageId}/feed", $payload, $token, 'fb.feed');
 

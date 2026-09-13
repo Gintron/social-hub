@@ -10,6 +10,7 @@ use App\Actions\DispatchDraftPublishing;
 use App\Actions\MarkManualPosted;
 use App\Enums\AccountStatus;
 use App\Enums\ActorType;
+use App\Enums\ContentFormat;
 use App\Enums\DraftStatus;
 use App\Enums\Platform;
 use App\Enums\VariantStatus;
@@ -66,7 +67,7 @@ final class PublishFlowTest extends TestCase
         $fb = $draft->variants->firstWhere('platform', Platform::FacebookPage);
         $this->assertStringContainsString('Konobar/ica', $fb->caption);
         $this->assertSame('https://example.test/posao/1', $fb->link_url);
-        $this->assertSame('photo', $fb->setting('mode'));
+        $this->assertSame(ContentFormat::Image, $fb->format());
         $this->assertNotNull($fb->idempotency_key);
 
         Queue::assertPushed(RenderMediaJob::class, fn (RenderMediaJob $job): bool => $job->templateKey === 'kinds/job-square' && count($job->variantIds) === 2);
@@ -136,13 +137,19 @@ final class PublishFlowTest extends TestCase
         [$brand, $item] = $this->brandWithItem();
         $page = SocialAccount::factory()->for($brand)->create();
         $draft = app(CreateDraft::class)->execute($item, [$page], render: false);
+        $this->postAsLink($draft);
         $variant = $draft->variants->first();
 
         app(ApproveDraft::class)->execute($draft, null);
         app(DispatchDraftPublishing::class)->execute($draft->refresh());
         $this->assertSame(0, app(DispatchDraftPublishing::class)->execute($draft->refresh()));
 
-        (new PublishVariantJob($variant->id))->handle(app(\App\Publishing\PublisherRegistry::class), app(\App\Support\AdminNotifier::class), app(\App\Publishing\LinkPreflight::class));
+        (new PublishVariantJob($variant->id))->handle(
+            app(\App\Publishing\PublisherRegistry::class),
+            app(\App\Support\AdminNotifier::class),
+            app(\App\Publishing\LinkPreflight::class),
+            app(\App\Publishing\FormatCheck::class),
+        );
 
         // Idempotency claim is about the Graph call, not the total request count — the link
         // preflight hits the item's own URL once per publish attempt, which is unrelated.
@@ -163,6 +170,7 @@ final class PublishFlowTest extends TestCase
         [$brand, $item] = $this->brandWithItem();
         $page = SocialAccount::factory()->for($brand)->create();
         $draft = app(CreateDraft::class)->execute($item, [$page], render: false);
+        $this->postAsLink($draft);
 
         app(ApproveDraft::class)->execute($draft, null);
         app(DispatchDraftPublishing::class)->execute($draft->refresh());
@@ -221,6 +229,7 @@ final class PublishFlowTest extends TestCase
         [$brand, $item] = $this->brandWithItem(['url' => 'https://uselisto.test/katalozi/konzum/still-live']);
         $page = SocialAccount::factory()->for($brand)->create();
         $draft = app(CreateDraft::class)->execute($item, [$page], render: false);
+        $this->postAsLink($draft);
 
         app(ApproveDraft::class)->execute($draft, null);
         app(DispatchDraftPublishing::class)->execute($draft->refresh());
@@ -320,6 +329,14 @@ final class PublishFlowTest extends TestCase
         $item = ContentItem::factory()->for($source)->for($brand)->create(array_replace(['title' => 'Konobar/ica'], $itemOverrides));
 
         return [$brand, $item];
+    }
+
+    /**
+     * These drafts are built without rendering; as link posts they need no image to go out.
+     */
+    private function postAsLink(\App\Models\PostDraft $draft): void
+    {
+        $draft->variants()->get()->each(fn ($variant) => $variant->forceFill(['settings' => ['format' => ContentFormat::Link->value]])->save());
     }
 
     private function asset(Brand $brand, \App\Models\PostDraft $draft): MediaAsset

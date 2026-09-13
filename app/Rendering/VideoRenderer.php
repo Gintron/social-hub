@@ -30,6 +30,11 @@ final class VideoRenderer
 
     public const HEIGHT = 1920;
 
+    /**
+     * Stored as the asset's template_key, so a draft's video can be found and reused.
+     */
+    public const TEMPLATE_KEY = 'video/slideshow';
+
     private const FPS = 30;
 
     /**
@@ -97,7 +102,7 @@ final class VideoRenderer
             return MediaAsset::query()->create([
                 'brand_id' => $brand->id,
                 'post_draft_id' => $draft?->id,
-                'template_key' => 'video/slideshow',
+                'template_key' => self::TEMPLATE_KEY,
                 'params' => [
                     'slides' => $slides->pluck('id')->all(),
                     'seconds_per_slide' => $secondsPerSlide,

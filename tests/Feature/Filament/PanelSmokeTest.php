@@ -63,7 +63,11 @@ final class PanelSmokeTest extends TestCase
         Livewire::test(ListContentItems::class)->assertOk()->assertSee($item->title);
         Livewire::test(ViewContentItem::class, ['record' => $item->getRouteKey()])->assertOk()->assertSee($item->title);
         Livewire::test(ListPostDrafts::class)->assertOk()->assertSee($draft->title);
-        Livewire::test(EditPostDraft::class, ['record' => $draft->getRouteKey()])->assertOk()->assertSee('Varijante po kanalu');
+        Livewire::test(EditPostDraft::class, ['record' => $draft->getRouteKey()])
+            ->assertOk()
+            ->assertSee('Spremi i objavi')
+            ->assertSee('Objavi na ovaj kanal')
+            ->assertSee('Format');
     }
 
     public function test_calendar_shows_scheduled_and_published_drafts(): void

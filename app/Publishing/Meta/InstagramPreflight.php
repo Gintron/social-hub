@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Publishing\Meta;
 
+use App\Enums\ContentFormat;
 use App\Models\MediaAsset;
 use App\Models\PostVariant;
 use App\Publishing\Exceptions\PermanentPublishException;
@@ -140,7 +141,7 @@ final class InstagramPreflight
     public function warnings(PostVariant $variant, Collection $media): array
     {
         $warnings = [];
-        $isReel = $variant->setting('format') === 'reel';
+        $isReel = $variant->format() === ContentFormat::Video;
 
         foreach ([fn () => $this->caption($variant), fn () => $isReel ? $this->video($media) : $this->media($media)] as $check) {
             try {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\ContentFormat;
 use App\Models\ContentItem;
 use App\Models\MediaAsset;
 use App\Models\PostDraft;
@@ -15,6 +16,7 @@ use App\Rendering\VideoRenderer;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
+use Throwable;
 
 /**
  * Renders the draft's items as vertical slides and stitches them into one MP4, then attaches the
@@ -60,27 +62,44 @@ final class RenderVideoJob implements ShouldQueue
 
         $brand = $draft->brand;
 
-        /** @var Collection<int, MediaAsset> $slides */
-        $slides = $draft->contentItems->map(function (ContentItem $item) use ($images, $data, $templates, $brand, $draft): MediaAsset {
-            $template = $this->templateKey ?? $templates->storyFor($item->kind);
+        try {
+            /** @var Collection<int, MediaAsset> $slides */
+            $slides = $draft->contentItems->map(function (ContentItem $item) use ($images, $data, $templates, $brand, $draft): MediaAsset {
+                $template = $this->templateKey ?? $templates->storyFor($item->kind);
 
-            return $images->render($brand, $template, $data->forItem($item, $brand), $draft);
-        });
+                return $images->render($brand, $template, $data->forItem($item, $brand), $draft);
+            });
 
-        $asset = $video->slideshow(
-            $brand,
-            $slides,
-            $draft,
-            $this->secondsPerSlide,
-            audioPath: $brand->audioTrackPath($this->audio, $draft->id),
-            motion: $this->motion,
-        );
+            $asset = $video->slideshow(
+                $brand,
+                $slides,
+                $draft,
+                $this->secondsPerSlide,
+                audioPath: $brand->audioTrackPath($this->audio, $draft->id),
+                motion: $this->motion,
+            );
+        } catch (Throwable $e) {
+            $this->variants($draft)->each(fn (PostVariant $variant) => $variant->markRenderFailed($e->getMessage()));
 
-        $variants = PostVariant::query()->whereIn('id', $this->variantIds)->where('post_draft_id', $draft->id)->get();
-
-        foreach ($variants as $variant) {
-            $variant->media()->detach();
-            $variant->media()->attach($asset->id, ['position' => 0]);
+            throw $e;
         }
+
+        foreach ($this->variants($draft) as $variant) {
+            $variant->media()->sync([$asset->id => ['position' => 0]]);
+            $variant->markRendered();
+        }
+    }
+
+    /**
+     * The channels still waiting for a video — read after the render, not before. One switched to
+     * another format meanwhile has its own media coming, and this video must not replace it.
+     *
+     * @return Collection<int, PostVariant>
+     */
+    private function variants(PostDraft $draft): Collection
+    {
+        return PostVariant::query()->whereIn('id', $this->variantIds)->where('post_draft_id', $draft->id)->get()
+            ->filter(fn (PostVariant $variant): bool => $variant->format() === ContentFormat::Video)
+            ->values();
     }
 }

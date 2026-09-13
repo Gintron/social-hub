@@ -227,6 +227,99 @@ final class TikTokPublisherTest extends TestCase
         Http::assertSentCount(3); // inbox init and two polls — no timeout, no second upload
     }
 
+    public function test_a_carousel_goes_out_as_a_photo_post_with_tiktok_music(): void
+    {
+        $this->fakeTikTok();
+
+        [$variant, $first] = $this->variant(settings: ['format' => 'carousel'], format: 'jpg');
+        $second = MediaAsset::factory()->for($variant->draft->brand)->create(['width' => 1080, 'height' => 1920, 'format' => 'jpg', 'path' => 'media/slide-2.jpg']);
+        $variant->media()->attach($second->id, ['position' => 1]);
+        $variant->forceFill(['caption' => "Konobar/ica u Zagrebu 🍽️\n\nPrijavi se na studentski-poslovi.hr"])->save();
+
+        $result = app(TikTokPublisher::class)->publish($variant->fresh(['account', 'media', 'draft']));
+
+        $this->assertSame('https://www.tiktok.com/@studentskiposlovi/photo/7300', $result->permalink);
+        $this->assertFalse($result->handedToCreator);
+
+        Http::assertSent(function (Request $request) use ($first, $second): bool {
+            if (! str_contains($request->url(), '/content/init/')) {
+                return false;
+            }
+
+            $body = $request->data();
+
+            return $body['media_type'] === 'PHOTO'
+                && $body['post_mode'] === 'DIRECT_POST'
+                && $body['source_info']['photo_images'] === [$first->publicUrl(), $second->publicUrl()]
+                && $body['source_info']['photo_cover_index'] === 0
+                && $body['post_info']['title'] === 'Konobar/ica u Zagrebu 🍽️'
+                && str_contains($body['post_info']['description'], 'Prijavi se')
+                && $body['post_info']['privacy_level'] === 'SELF_ONLY'
+                && $body['post_info']['auto_add_music'] === true;
+        });
+
+        Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/video/init/'));
+    }
+
+    public function test_a_photo_post_can_go_to_the_inbox_too(): void
+    {
+        $this->fakeTikTok(statuses: ['SEND_TO_USER_INBOX']);
+
+        [$variant] = $this->variant(settings: ['format' => 'image', 'delivery' => 'inbox'], format: 'jpg');
+
+        $result = app(TikTokPublisher::class)->publish($variant);
+
+        $this->assertTrue($result->handedToCreator);
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/content/init/')
+            && $request->data()['post_mode'] === 'MEDIA_UPLOAD'
+            && ! array_key_exists('privacy_level', $request->data()['post_info']));
+        Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'creator_info'));
+    }
+
+    public function test_an_inbox_photo_without_text_sends_no_post_info(): void
+    {
+        $this->fakeTikTok(statuses: ['SEND_TO_USER_INBOX']);
+
+        [$variant] = $this->variant(settings: ['format' => 'image', 'delivery' => 'inbox'], format: 'jpg');
+        $variant->forceFill(['caption' => ''])->save();
+
+        app(TikTokPublisher::class)->publish($variant->fresh(['account', 'media', 'draft']));
+
+        // `post_info: []` would go out as a JSON array, which TikTok refuses.
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/content/init/')
+            && ! array_key_exists('post_info', $request->data()));
+    }
+
+    public function test_a_photo_title_is_cut_by_tiktoks_utf16_count(): void
+    {
+        $this->fakeTikTok();
+
+        [$variant] = $this->variant(settings: ['format' => 'image'], format: 'jpg');
+        // 50 emoji are 100 UTF-16 units; the title allows 90, so 45 survive.
+        $variant->forceFill(['caption' => str_repeat('😀', 50)])->save();
+
+        app(TikTokPublisher::class)->publish($variant->fresh(['account', 'media', 'draft']));
+
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/content/init/')
+            && $request->data()['post_info']['title'] === str_repeat('😀', 45));
+    }
+
+    public function test_a_photo_post_refuses_a_video(): void
+    {
+        Http::fake();
+
+        [$variant] = $this->variant(settings: ['format' => 'image'], format: 'mp4');
+
+        try {
+            app(TikTokPublisher::class)->publish($variant);
+            $this->fail('Expected a permanent failure');
+        } catch (PermanentPublishException $e) {
+            $this->assertSame('not_image', $e->errorCode);
+        }
+
+        Http::assertNothingSent();
+    }
+
     public function test_a_failed_publish_reports_the_reason(): void
     {
         $this->fakeTikTok(statuses: ['FAILED'], failReason: 'video_pull_failed');
@@ -271,7 +364,7 @@ final class TikTokPublisherTest extends TestCase
                 ]);
             }
 
-            if (str_contains($url, '/video/init/')) {
+            if (str_contains($url, '/init/')) {
                 return Http::response(['data' => ['publish_id' => 'publish-1'], 'error' => ['code' => 'ok']]);
             }
 

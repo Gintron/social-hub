@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Drafting;
 
+use App\Actions\PrepareVariantMedia;
 use App\Enums\ActorType;
+use App\Enums\ContentFormat;
 use App\Enums\ContentKind;
 use App\Enums\DraftStatus;
 use App\Enums\VariantStatus;
-use App\Jobs\RenderDigestJob;
 use App\Models\Brand;
 use App\Models\ContentItem;
 use App\Models\PostDraft;
@@ -88,7 +89,8 @@ final class DigestBuilder
                     'platform' => $account->platform,
                     'caption' => $this->captions->digest($account->platform, $items, $brand, $headline),
                     'link_url' => $brand->site_url,
-                    'settings' => $account->platform->value === 'fb_page' ? ['mode' => 'photo'] : null,
+                    // A digest is a carousel on every channel, TikTok included (a photo post).
+                    'settings' => ['format' => ContentFormat::Carousel->value],
                     'status' => VariantStatus::Pending,
                 ]);
             }
@@ -97,7 +99,8 @@ final class DigestBuilder
         });
 
         if ($render) {
-            RenderDigestJob::dispatch($draft->id, $headline, $kicker);
+            // Grouped by orientation: one square set for Facebook and Instagram, one vertical for TikTok.
+            app(PrepareVariantMedia::class)->execute($draft->variants()->get(), kicker: $kicker);
         }
 
         return $draft->load(['variants.account', 'contentItems']);

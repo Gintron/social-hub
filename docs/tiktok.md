@@ -86,6 +86,19 @@ U panelu je to akcija **Renderiraj video** na nacrtu.
 Slajdovi se po defaultu lagano zumiraju (Ken Burns, ≤5 %, centrirano da tekst predloška ostane u
 kadru); `--no-motion` ili prekidač u akciji vraća statične slajdove.
 
+## Foto objave
+
+Format TikTok varijante bira se na nacrtu: **Video**, **Slika** ili **Carousel**. Slika i carousel
+idu kao TikTok foto objava (`post/publish/content/init/`, `media_type = PHOTO`):
+
+- do 35 slika (JPEG/WEBP, ≤ 20 MB), prva je naslovnica; hub ih renderira uspravno (9:16),
+- tekst se dijeli: **prvi redak je naslov** (do 90 znakova), cijeli tekst ide u opis (do 4000);
+  TikTok broji UTF-16 jedinice, pa emoji troši dvije,
+- `auto_add_music` (uključeno po defaultu) — TikTok sam doda glazbu ispod fotografija; pjesmu
+  API ne može odabrati,
+- isti zidovi kao video: vidljivost iz `creator_info`, domena verificirana, a inbox način
+  (`MEDIA_UPLOAD`) radi i za fotografije.
+
 ## Zvuk
 
 Content Posting API **nema parametar za zvuk iz TikTokove knjižnice** — što god svira ispod videa,

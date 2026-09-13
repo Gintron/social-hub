@@ -9,70 +9,90 @@ use App\Actions\DiscardDraft;
 use App\Actions\DispatchDraftPublishing;
 use App\Actions\MarkManualPosted;
 use App\Actions\ScheduleDraft;
+use App\Actions\UpdateVariant;
 use App\Enums\DraftStatus;
 use App\Enums\Platform;
 use App\Enums\VariantStatus;
 use App\Filament\Resources\PostDrafts\PostDraftResource;
-use App\Jobs\RenderMediaJob;
-use App\Jobs\RenderVideoJob;
+use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
-use App\Rendering\TemplateRegistry;
+use App\Publishing\FormatCheck;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
-use RuntimeException;
 use Throwable;
 
 /**
- * Review screen: edit captions (form), then approve / schedule / publish / regenerate / discard (header actions).
+ * Review screen: a tab per channel (format, media, text) and one primary action.
+ *
+ * "Spremi i objavi", "Zakaži" and "Odobri" save the form first. They used to act on what was in
+ * the database, so a caption edited a moment earlier went out in its old wording.
  */
 final class EditPostDraft extends EditRecord
 {
     protected static string $resource = PostDraftResource::class;
 
+    public function getSubheading(): string|Htmlable|null
+    {
+        $draft = $this->draft();
+
+        $status = $draft->status->label().($draft->scheduled_at !== null
+            ? ' · zakazano za '.$draft->scheduled_at->timezone('Europe/Zagreb')->format('d.m.Y H:i')
+            : '');
+
+        $items = $draft->contentItems->map(fn (ContentItem $item): string => sprintf(
+            '<a href="%s" target="_blank" rel="noopener" class="underline">%s</a> (%s%s)',
+            e($item->url),
+            e($item->title),
+            e($item->kind->label()),
+            $item->expires_at ? ', istječe '.$item->expires_at->timezone('Europe/Zagreb')->format('d.m.Y') : '',
+        ))->implode(' · ');
+
+        return new HtmlString(e($status).($items !== '' ? ' — '.$items : ''));
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('approve')
-                ->label('Odobri')
-                ->icon(Heroicon::OutlinedCheck)
-                ->color('success')
-                ->visible(fn (): bool => in_array($this->draft()->status, [DraftStatus::Draft, DraftStatus::PendingApproval], true))
-                ->action(function (): void {
-                    $this->run(fn () => app(ApproveDraft::class)->execute($this->draft(), auth()->id()), 'Odobreno.');
-                }),
-
             Action::make('schedule')
                 ->label('Zakaži')
                 ->icon(Heroicon::OutlinedCalendar)
-                ->color('info')
+                ->color('gray')
                 ->visible(fn (): bool => ! $this->draft()->status->isTerminal() && $this->draft()->status !== DraftStatus::Publishing)
                 ->schema([
                     DateTimePicker::make('scheduled_at')->label('Objavi u')->timezone('Europe/Zagreb')->seconds(false)->required()
                         ->default(fn (): CarbonImmutable => ($this->draft()->scheduled_at ?? now()->addHour()->toImmutable())->timezone('Europe/Zagreb')),
                 ])
                 ->action(function (array $data): void {
+                    $this->save(shouldRedirect: false, shouldSendSavedNotification: false);
+
                     $at = CarbonImmutable::parse((string) $data['scheduled_at'], 'Europe/Zagreb')->utc();
-                    $this->run(fn () => app(ScheduleDraft::class)->execute($this->draft(), $at, auth()->id()), 'Zakazano za '.$at->timezone('Europe/Zagreb')->format('d.m.Y H:i').'.');
+                    $this->run(fn () => app(ScheduleDraft::class)->execute($this->draft(), $at, auth()->id()), 'Spremljeno i zakazano za '.$at->timezone('Europe/Zagreb')->format('d.m.Y H:i').'.');
                 }),
 
             Action::make('publish_now')
-                ->label('Objavi sada')
+                ->label('Spremi i objavi')
                 ->icon(Heroicon::OutlinedPaperAirplane)
                 ->color('primary')
                 ->requiresConfirmation()
-                ->modalDescription(fn (): HtmlString|string => $this->publishDescription())
+                ->modalHeading('Objaviti sada?')
+                ->modalDescription(fn (): HtmlString => $this->publishDescription())
+                ->modalSubmitActionLabel('Objavi')
                 ->visible(fn (): bool => ! in_array($this->draft()->status, [DraftStatus::Publishing, DraftStatus::Published, DraftStatus::Discarded], true))
                 ->action(function (): void {
+                    $this->save(shouldRedirect: false, shouldSendSavedNotification: false);
+
                     $this->run(function (): string {
                         $draft = $this->draft();
 
@@ -82,127 +102,107 @@ final class EditPostDraft extends EditRecord
 
                         $queued = app(DispatchDraftPublishing::class)->execute($draft->refresh());
 
-                        return "{$queued} varijant(a) poslano u red za objavu.";
+                        return "Spremljeno; {$queued} kanal(a) u redu za objavu.";
                     });
                 }),
 
-            Action::make('regenerate')
-                ->label('Renderiraj sliku ponovno')
-                ->icon(Heroicon::OutlinedPhoto)
-                ->color('gray')
-                ->visible(fn (): bool => ! $this->draft()->status->isTerminal())
-                ->schema([
-                    Select::make('template')->label('Predložak')->required()
-                        ->options(fn (): array => app(TemplateRegistry::class)->optionsFor($this->draft()->contentItems->first()?->kind))
-                        ->default(fn (): ?string => $this->draft()->mediaAssets()->latest('id')->value('template_key')
-                            ?? ($this->draft()->contentItems->first() ? app(TemplateRegistry::class)->defaultFor($this->draft()->contentItems->first()->kind) : null)),
-                    Select::make('mode')
-                        ->label('Način')
-                        ->options([
-                            'replace' => 'Zamijeni postojeću sliku',
-                            'append' => 'Dodaj kao sljedeći slajd (Instagram carousel)',
-                        ])
-                        ->default('replace')
-                        ->required()
-                        ->helperText('Carousel prima do 10 slajdova; svi moraju biti istog omjera.'),
-                    KeyValue::make('overrides')->label('Nadjačaj polja (opcionalno)')->keyLabel('Polje')->valueLabel('Vrijednost')
-                        ->helperText('npr. title, subtitle, excerpt — mijenja samo ovu sliku, ne stavku.'),
-                ])
-                ->action(function (array $data): void {
-                    $this->run(function () use ($data): string {
-                        $draft = $this->draft();
-                        $item = $draft->contentItems->first();
+            ActionGroup::make([
+                Action::make('approve')
+                    ->label('Odobri bez objave')
+                    ->icon(Heroicon::OutlinedCheck)
+                    ->visible(fn (): bool => in_array($this->draft()->status, [DraftStatus::Draft, DraftStatus::PendingApproval], true))
+                    ->action(function (): void {
+                        $this->save(shouldRedirect: false, shouldSendSavedNotification: false);
+                        $this->run(fn () => app(ApproveDraft::class)->execute($this->draft(), auth()->id()), 'Spremljeno i odobreno.');
+                    }),
 
-                        if ($item === null) {
-                            throw new RuntimeException('Nacrt nema stavku iz koje bi se renderirala slika.');
+                Action::make('mark_manual')
+                    ->label('Označi kao ručno objavljeno')
+                    ->icon(Heroicon::OutlinedClipboardDocument)
+                    ->visible(fn (): bool => $this->manualVariants()->isNotEmpty())
+                    ->schema([
+                        Select::make('variant_id')->label('Kanal')->required()
+                            ->options(fn (): array => $this->manualVariants()->mapWithKeys(fn (PostVariant $v): array => [$v->id => $v->account?->name ?? $v->platform->label()])->all()),
+                        TextInput::make('permalink')->label('Link na objavu (opcionalno)')->url(),
+                    ])
+                    ->action(function (array $data): void {
+                        $variant = PostVariant::query()->where('post_draft_id', $this->draft()->id)->findOrFail((int) $data['variant_id']);
+                        $this->run(fn () => app(MarkManualPosted::class)->execute($variant, auth()->id(), $data['permalink'] ?: null), 'Označeno kao objavljeno.');
+                    }),
+
+                Action::make('discard')
+                    ->label('Odbaci nacrt')
+                    ->icon(Heroicon::OutlinedTrash)
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn (): bool => ! in_array($this->draft()->status, [DraftStatus::Publishing, DraftStatus::Published, DraftStatus::Discarded], true))
+                    ->action(function (): void {
+                        try {
+                            app(DiscardDraft::class)->execute($this->draft());
+                        } catch (Throwable $e) {
+                            Notification::make()->title('Nije odbačeno')->body($e->getMessage())->danger()->send();
+
+                            return;
                         }
 
-                        $replace = ($data['mode'] ?? 'replace') === 'replace';
-
-                        RenderMediaJob::dispatchSync(
-                            $draft->id,
-                            $item->id,
-                            (string) $data['template'],
-                            $draft->variants()->pluck('id')->all(),
-                            array_filter($data['overrides'] ?? []),
-                            $replace,
-                        );
-
-                        return $replace ? 'Slika renderirana.' : 'Slajd dodan.';
-                    });
-                }),
-
-            Action::make('render_video')
-                ->label('Renderiraj video')
-                ->icon(Heroicon::OutlinedVideoCamera)
-                ->color('gray')
-                ->visible(fn (): bool => ! $this->draft()->status->isTerminal())
-                ->modalDescription('Renderira uspravne slajdove (9:16) i spaja ih u MP4 za Reels i TikTok. Traje desetak sekundi po slajdu.')
-                ->schema([
-                    TextInput::make('seconds')->label('Sekundi po slajdu')->numeric()->default(3)->minValue(2)->maxValue(10)->required(),
-                    Select::make('audio')->label('Zvuk')->required()->default('auto')
-                        ->options(fn (): array => [
-                            'auto' => 'Automatski iz knjižnice brenda',
-                            'none' => 'Bez zvuka',
-                            ...collect($this->draft()->brand->audioTracks())
-                                ->mapWithKeys(fn (array $track, int $index): array => [(string) $index => $track['title']])
-                                ->all(),
-                        ])
-                        ->helperText(fn (): ?string => $this->draft()->brand->audioTracks() === []
-                            ? 'Knjižnica brenda je prazna — dodaj podloge u postavkama brenda, inače video ostaje bez zvuka.'
-                            : null),
-                    Toggle::make('motion')->label('Pokret na slajdovima (lagani zoom)')->default(true),
-                ])
-                ->action(function (array $data): void {
-                    $this->run(function () use ($data): string {
-                        $draft = $this->draft();
-
-                        RenderVideoJob::dispatchSync(
-                            $draft->id,
-                            $draft->variants()->pluck('id')->all(),
-                            (float) $data['seconds'],
-                            audio: (string) ($data['audio'] ?? 'auto'),
-                            motion: (bool) ($data['motion'] ?? true),
-                        );
-
-                        return 'Video renderiran i priložen svim kanalima ovog nacrta.';
-                    });
-                }),
-
-            Action::make('mark_manual')
-                ->label('Označi kao ručno objavljeno')
-                ->icon(Heroicon::OutlinedClipboardDocument)
-                ->color('warning')
-                ->visible(fn (): bool => $this->manualVariants()->isNotEmpty())
-                ->schema([
-                    Select::make('variant_id')->label('Kanal')->required()
-                        ->options(fn (): array => $this->manualVariants()->mapWithKeys(fn (PostVariant $v): array => [$v->id => $v->account?->name ?? $v->platform->label()])->all()),
-                    TextInput::make('permalink')->label('Link na objavu (opcionalno)')->url(),
-                ])
-                ->action(function (array $data): void {
-                    $variant = PostVariant::query()->where('post_draft_id', $this->draft()->id)->findOrFail((int) $data['variant_id']);
-                    $this->run(fn () => app(MarkManualPosted::class)->execute($variant, auth()->id(), $data['permalink'] ?: null), 'Označeno kao objavljeno.');
-                }),
-
-            Action::make('discard')
-                ->label('Odbaci')
-                ->icon(Heroicon::OutlinedTrash)
-                ->color('danger')
-                ->requiresConfirmation()
-                ->visible(fn (): bool => ! in_array($this->draft()->status, [DraftStatus::Publishing, DraftStatus::Published, DraftStatus::Discarded], true))
-                ->action(function (): void {
-                    try {
-                        app(DiscardDraft::class)->execute($this->draft());
-                    } catch (Throwable $e) {
-                        Notification::make()->title('Nije odbačeno')->body($e->getMessage())->danger()->send();
-
-                        return;
-                    }
-
-                    Notification::make()->title('Nacrt odbačen')->success()->send();
-                    $this->redirect(PostDraftResource::getUrl('index'));
-                }),
+                        Notification::make()->title('Nacrt odbačen')->success()->send();
+                        $this->redirect(PostDraftResource::getUrl('index'));
+                    }),
+            ])
+                ->label('Više')
+                ->icon(Heroicon::OutlinedEllipsisVertical)
+                ->button()
+                ->color('gray'),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['channels'] = $this->draft()->variants()->with('media')->get()
+            ->mapWithKeys(fn (PostVariant $variant): array => ["v{$variant->id}" => [
+                'enabled' => $variant->enabled,
+                'format' => $variant->format()->value,
+                'caption' => $variant->caption,
+                'delivery' => (string) $variant->setting('delivery', 'direct'),
+                'privacy_level' => (string) $variant->setting('privacy_level', config('tiktok.default_privacy_level', 'SELF_ONLY')),
+                'auto_add_music' => (bool) $variant->setting('auto_add_music', true),
+            ]])
+            ->all();
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        /** @var PostDraft $record */
+        $channels = (array) Arr::pull($data, 'channels', []);
+
+        $record->update(Arr::only($data, ['title', 'notes']));
+
+        foreach ($record->variants()->get() as $variant) {
+            $state = $channels["v{$variant->id}"] ?? null;
+
+            // Locked channels render their fields disabled, so they never come back in the state.
+            if (! is_array($state) || $variant->isLocked()) {
+                continue;
+            }
+
+            app(UpdateVariant::class)->execute(
+                $variant,
+                caption: array_key_exists('caption', $state) ? (string) $state['caption'] : null,
+                enabled: array_key_exists('enabled', $state) ? (bool) $state['enabled'] : null,
+                settings: Arr::only($state, ['delivery', 'privacy_level', 'auto_add_music']),
+            );
+        }
+
+        return $record;
     }
 
     private function draft(): PostDraft
@@ -214,22 +214,33 @@ final class EditPostDraft extends EditRecord
     }
 
     /**
-     * TikTok's Direct Post guidelines require this declaration before the user posts.
+     * What will happen, what is not ready yet, and TikTok's music declaration (its Direct Post
+     * guidelines require it before the user posts).
      */
-    private function publishDescription(): HtmlString|string
+    private function publishDescription(): HtmlString
     {
-        $text = 'Varijante s API kanalima idu u red za objavu; varijante za Facebook grupe i TikTok inbox čekaju da ih ručno dovršiš i označiš.';
+        $variants = $this->draft()->variants()->with(['account', 'media'])->get()
+            ->filter(fn (PostVariant $variant): bool => $variant->enabled && ! $variant->isLocked());
 
-        $directTikTok = $this->draft()->variants()->get()->contains(
-            fn (PostVariant $v): bool => $v->platform === Platform::TikTok && $v->enabled && $v->setting('delivery') !== 'inbox',
-        );
+        $parts = [e('Promjene se prvo spremaju. Kanali preko API-ja idu u red za objavu; Facebook grupe i TikTok inbox čekaju da ih dovršiš i označiš.')];
 
-        if (! $directTikTok) {
-            return $text;
+        $checks = app(FormatCheck::class);
+        $problems = $variants
+            ->reject(fn (PostVariant $variant): bool => $variant->platform->isManual())
+            ->map(fn (PostVariant $variant): ?string => ($problem = $checks->problem($variant)) === null ? null : e($variant->platform->label().': '.$problem))
+            ->filter();
+
+        if ($problems->isNotEmpty()) {
+            $parts[] = '<strong>Nije spremno:</strong><br>'.$problems->implode('<br>')
+                .'<br>'.e('Kanal kojem se medij još renderira pričeka ga; ostali padnu s tim razlogom.');
         }
 
-        return new HtmlString(e($text).'<br><br>Objavom na TikTok pristaješ na TikTokovu '
-            .'<a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener" class="underline">Music Usage Confirmation</a>.');
+        if ($variants->contains(fn (PostVariant $variant): bool => $variant->platform === Platform::TikTok && $variant->setting('delivery') !== 'inbox')) {
+            $parts[] = 'Objavom na TikTok pristaješ na TikTokovu '
+                .'<a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener" class="underline">Music Usage Confirmation</a>.';
+        }
+
+        return new HtmlString(implode('<br><br>', $parts));
     }
 
     /**

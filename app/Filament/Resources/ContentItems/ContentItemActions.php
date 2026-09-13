@@ -49,8 +49,8 @@ final class ContentItemActions
                 Select::make('template')
                     ->label('Predložak slike')
                     ->options(fn (ContentItem $record): array => app(TemplateRegistry::class)->optionsFor($record->kind))
-                    ->default(fn (ContentItem $record): string => app(TemplateRegistry::class)->defaultFor($record->kind))
-                    ->required(),
+                    ->placeholder('Automatski po kanalu')
+                    ->helperText('Prazno: kvadrat za Facebook i Instagram, uspravno za TikTok. Format svakog kanala mijenjaš na nacrtu.'),
                 DateTimePicker::make('scheduled_at')
                     ->label('Zakaži za (opcionalno)')
                     ->timezone('Europe/Zagreb')
@@ -70,7 +70,7 @@ final class ContentItemActions
                         accounts: $accounts,
                         actor: ActorType::Human,
                         actorId: auth()->id(),
-                        templateKey: (string) $data['template'],
+                        templateKey: filled($data['template'] ?? null) ? (string) $data['template'] : null,
                         scheduledAt: $scheduledAt,
                         status: ($data['approve'] ?? false) ? DraftStatus::Approved : DraftStatus::PendingApproval,
                     );

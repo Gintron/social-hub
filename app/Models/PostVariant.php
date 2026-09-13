@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\ContentFormat;
 use App\Enums\Platform;
 use App\Enums\VariantStatus;
 use Carbon\CarbonImmutable;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -39,6 +41,11 @@ use Illuminate\Support\Str;
 final class PostVariant extends Model
 {
     use HasFactory;
+
+    /**
+     * A render that has not finished in this long is treated as dead (the worker was restarted).
+     */
+    private const RENDER_STALE_MINUTES = 15;
 
     protected $fillable = [
         'post_draft_id', 'social_account_id', 'platform', 'caption', 'link_url', 'settings', 'status', 'enabled',
@@ -76,6 +83,105 @@ final class PostVariant extends Model
     public function setting(string $key, mixed $default = null): mixed
     {
         return data_get($this->settings ?? [], $key, $default);
+    }
+
+    /**
+     * What this channel posts (`settings.format`), always one its platform supports.
+     */
+    public function format(): ContentFormat
+    {
+        $stored = $this->setting('format');
+        $format = is_string($stored) ? ContentFormat::tryFrom($stored) : null;
+
+        // Before formats were one setting, Instagram kept `format` = post|reel and Facebook `mode` = photo|link|reel.
+        $format ??= match (true) {
+            $stored === 'reel', $this->setting('mode') === 'reel' => ContentFormat::Video,
+            $this->setting('mode') === 'link' => ContentFormat::Link,
+            default => $this->legacyImageFormat(),
+        };
+
+        return $format !== null && in_array($format, $this->platform->formats(), true)
+            ? $format
+            : $this->platform->defaultFormat();
+    }
+
+    /**
+     * Published, being published, or handed to a human with an id: nothing about it changes any more.
+     */
+    public function isLocked(): bool
+    {
+        return in_array($this->status, [VariantStatus::Published, VariantStatus::Publishing, VariantStatus::ManualDone], true)
+            || filled($this->external_post_id);
+    }
+
+    public function isRendering(): bool
+    {
+        $render = (array) $this->setting('render', []);
+
+        return ($render['status'] ?? null) === 'rendering'
+            && CarbonImmutable::parse((string) ($render['at'] ?? 'now'))->isAfter(now()->subMinutes(self::RENDER_STALE_MINUTES));
+    }
+
+    /**
+     * Why the last render for this channel did not produce media; null when it did (or none ran).
+     */
+    public function renderError(): ?string
+    {
+        $render = (array) $this->setting('render', []);
+
+        return match ($render['status'] ?? null) {
+            'failed' => (string) ($render['error'] ?? 'nepoznata greška'),
+            // A worker that died mid-render never clears the mark; don't let the screen wait forever.
+            'rendering' => $this->isRendering() ? null : 'render nije završio u '.self::RENDER_STALE_MINUTES.' minuta',
+            default => null,
+        };
+    }
+
+    public function markRendering(): void
+    {
+        $this->putSettings(['render' => ['status' => 'rendering', 'at' => now()->toIso8601String()]]);
+    }
+
+    public function markRendered(): void
+    {
+        $this->forgetSetting('render');
+    }
+
+    public function markRenderFailed(string $error): void
+    {
+        $this->putSettings(['render' => ['status' => 'failed', 'error' => mb_substr($error, 0, 500), 'at' => now()->toIso8601String()]]);
+    }
+
+    /**
+     * Set these keys in `settings` and nothing else, in one UPDATE.
+     *
+     * A render job and the review screen write different keys of the same JSON at the same time.
+     * Saving the whole array from a model loaded a minute earlier undid the other's change — a
+     * finished video render put the format back to video after the user had switched to image.
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public function putSettings(array $values): void
+    {
+        if ($values === []) {
+            return;
+        }
+
+        $expression = 'COALESCE(settings, JSON_OBJECT())';
+        $bindings = [];
+
+        foreach ($values as $key => $value) {
+            $expression = "JSON_SET({$expression}, ?, CAST(? AS JSON))";
+            $bindings[] = self::settingPath((string) $key);
+            $bindings[] = json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        $this->writeSettings($expression, $bindings);
+    }
+
+    public function forgetSetting(string $key): void
+    {
+        $this->writeSettings('JSON_REMOVE(COALESCE(settings, JSON_OBJECT()), ?)', [self::settingPath($key)]);
     }
 
     /**
@@ -137,5 +243,46 @@ final class PostVariant extends Model
             'manual_posted_at' => 'immutable_datetime',
             'attempts' => 'integer',
         ];
+    }
+
+    private static function settingPath(string $key): string
+    {
+        return '$."'.str_replace('"', '\"', $key).'"';
+    }
+
+    /**
+     * Legacy variants carry no format: many images meant a carousel, one an image, none on a
+     * Facebook page a link post. TikTok had only video, so it keeps its default.
+     */
+    private function legacyImageFormat(): ?ContentFormat
+    {
+        if ($this->platform->defaultFormat() === ContentFormat::Video) {
+            return null;
+        }
+
+        $media = $this->relationLoaded('media') ? $this->media : $this->media()->get();
+
+        if ($this->platform === Platform::FacebookPage && $this->setting('mode') === null && $media->isEmpty()) {
+            return ContentFormat::Link;
+        }
+
+        $images = $media->reject(fn (MediaAsset $asset): bool => $asset->isVideo())->count();
+
+        return $images > 1 ? ContentFormat::Carousel : ContentFormat::Image;
+    }
+
+    /**
+     * @param  list<mixed>  $bindings
+     */
+    private function writeSettings(string $expression, array $bindings): void
+    {
+        DB::update(
+            "update {$this->getTable()} set settings = {$expression}, updated_at = ? where id = ?",
+            [...$bindings, now(), $this->getKey()],
+        );
+
+        // Take the row's settings, not a merge into the in-memory copy: that copy may be the stale one.
+        $this->settings = $this->newQuery()->whereKey($this->getKey())->first(['id', 'settings'])?->settings;
+        $this->syncOriginalAttribute('settings');
     }
 }

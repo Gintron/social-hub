@@ -7,7 +7,6 @@ namespace App\Actions;
 use App\Enums\ActorType;
 use App\Enums\DraftStatus;
 use App\Enums\VariantStatus;
-use App\Jobs\RenderMediaJob;
 use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
@@ -27,6 +26,7 @@ final class CreateDraft
     public function __construct(
         private readonly \App\Drafting\CaptionBuilder $captions,
         private readonly TemplateRegistry $templates,
+        private readonly PrepareVariantMedia $media,
     ) {}
 
     /**
@@ -61,8 +61,10 @@ final class CreateDraft
             }
         }
 
-        $templateKey ??= $this->templates->defaultFor($item->kind);
-        $this->templates->get($templateKey);
+        // No template means one per channel: square for Facebook and Instagram, vertical for TikTok.
+        if ($templateKey !== null) {
+            $this->templates->get($templateKey);
+        }
 
         $draft = DB::transaction(function () use ($item, $accounts, $actor, $actorId, $captionOverrides, $scheduledAt, $status, $agentRunId, $brand): PostDraft {
             $draft = PostDraft::query()->create([
@@ -85,7 +87,7 @@ final class CreateDraft
                     'platform' => $account->platform,
                     'caption' => $captionOverrides[$account->platform->value] ?? $this->captions->for($account->platform, $item, $brand),
                     'link_url' => $item->url,
-                    'settings' => $account->platform->value === 'fb_page' ? ['mode' => 'photo'] : null,
+                    'settings' => ['format' => $account->platform->defaultFormat()->value],
                     'status' => VariantStatus::Pending,
                 ]);
             }
@@ -94,7 +96,7 @@ final class CreateDraft
         });
 
         if ($render) {
-            RenderMediaJob::dispatch($draft->id, $item->id, $templateKey, $draft->variants()->pluck('id')->all(), $templateOverrides);
+            $this->media->execute($draft->variants()->get(), templateKey: $templateKey, overrides: $templateOverrides);
         }
 
         return $draft->load(['variants.account', 'contentItems']);
