@@ -32,8 +32,9 @@ return [
      */
     'insights' => [
         'instagram' => ['views' => 'views', 'reach' => 'reach', 'likes' => 'likes', 'comments' => 'comments', 'shares' => 'shares', 'saved' => 'saves'],
-        'facebook_post' => ['post_media_view' => 'views', 'post_impressions_unique' => 'reach'],
-        'facebook_reel' => ['blue_reels_play_count' => 'views', 'post_impressions_unique' => 'reach'],
+        // post_impressions_unique was retired on 15 June 2026; unique media views is Meta's reach now.
+        'facebook_post' => ['post_media_view' => 'views', 'post_total_media_view_unique' => 'reach'],
+        'facebook_reel' => ['blue_reels_play_count' => 'views', 'post_total_media_view_unique' => 'reach'],
     ],
 
     'http_timeout' => (int) env('META_HTTP_TIMEOUT', 30),

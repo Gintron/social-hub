@@ -75,7 +75,7 @@ final class CollectPostMetricsTest extends TestCase
         Http::fake([
             'graph.facebook.com/v23.0/555/video_insights*' => Http::response(['data' => [
                 ['name' => 'blue_reels_play_count', 'values' => [['value' => 4200]]],
-                ['name' => 'post_impressions_unique', 'values' => [['value' => 3100]]],
+                ['name' => 'post_total_media_view_unique', 'values' => [['value' => 3100]]],
             ]]),
             'graph.facebook.com/v23.0/555*' => Http::response(['likes' => ['summary' => ['total_count' => 88]], 'comments' => ['summary' => ['total_count' => 7]]]),
         ]);
