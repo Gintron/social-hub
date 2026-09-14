@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Actions\PrepareVariantMedia;
 use App\Enums\ContentFormat;
 use App\Models\ContentItem;
 use App\Models\MediaAsset;
@@ -63,12 +64,7 @@ final class RenderVideoJob implements ShouldQueue
         $brand = $draft->brand;
 
         try {
-            /** @var Collection<int, MediaAsset> $slides */
-            $slides = $draft->contentItems->map(function (ContentItem $item) use ($images, $data, $templates, $brand, $draft): MediaAsset {
-                $template = $this->templateKey ?? $templates->storyFor($item->kind);
-
-                return $images->render($brand, $template, $data->forItem($item, $brand), $draft);
-            });
+            $slides = $this->slides($draft, $images, $data, $templates);
 
             $asset = $video->slideshow(
                 $brand,
@@ -88,6 +84,47 @@ final class RenderVideoJob implements ShouldQueue
             $variant->media()->sync([$asset->id => ['position' => 0]]);
             $variant->markRendered();
         }
+    }
+
+    /**
+     * What the video shows, in order. One item is told as its slide set (hook, card, call to
+     * action) — a single three-second card is the shortest video a platform accepts and gives the
+     * viewer no reason to stay. A digest opens with its cover and closes with the brand's end card.
+     * An explicit template keeps the plain shape: one slide per item.
+     *
+     * @return Collection<int, MediaAsset>
+     */
+    private function slides(PostDraft $draft, ImageRenderer $images, TemplateData $data, TemplateRegistry $templates): Collection
+    {
+        $brand = $draft->brand;
+        $items = $draft->contentItems;
+
+        if ($this->templateKey !== null) {
+            return $items->map(fn (ContentItem $item): MediaAsset => $images->render($brand, $this->templateKey, $data->forItem($item, $brand), $draft));
+        }
+
+        if ($draft->kind !== PostDraft::KIND_DIGEST) {
+            $item = $items->first();
+            $params = $data->forItem($item, $brand);
+
+            return collect($templates->slidesFor($item->kind, 'story'))
+                ->map(fn (string $key): MediaAsset => $images->render($brand, $key, $params, $draft));
+        }
+
+        $cover = $data->forDigest($items, $brand, (string) $draft->title, $brand->name);
+        $slides = collect([$images->render($brand, PrepareVariantMedia::digestCover('story'), $cover, $draft)]);
+
+        foreach ($items as $item) {
+            $slides->push($images->render($brand, $templates->storyFor($item->kind), $data->forItem($item, $brand), $draft));
+        }
+
+        $closing = $templates->closingFor('story');
+
+        if ($closing !== null) {
+            $slides->push($images->render($brand, $closing, $cover, $draft));
+        }
+
+        return $slides;
     }
 
     /**

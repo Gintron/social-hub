@@ -23,6 +23,9 @@ final class CaptionSet implements StructuredOutputModel
     #[Constrained(description: 'Tekst za Instagram objavu. Hrvatski, bez poveznica (na Instagramu nisu klikabilne), najviše 2200 znakova.')]
     public string $instagram;
 
+    #[Constrained(description: 'Tekst za TikTok. Hrvatski, bez poveznica. Prvi red je naslov do 90 znakova: posao i najvažniji podatak (iznos, mjesto). Zatim kratak opis. Bez hashtagova.')]
+    public string $tiktok;
+
     #[Constrained(description: 'Hashtagovi odvojeni razmakom, s ljestvicom, mala slova, najviše 30. Bez dijakritike.')]
     public string $hashtags;
 

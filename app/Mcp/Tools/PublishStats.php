@@ -33,7 +33,7 @@ final class PublishStats extends Tool
         $since = now()->subDays($days);
 
         $variants = PostVariant::query()
-            ->with(['draft.brand', 'account'])
+            ->with(['draft.brand', 'account', 'latestMetric'])
             ->whereHas('draft', fn ($query) => $query
                 ->where('updated_at', '>=', $since)
                 ->when(filled($validated['brand'] ?? null), fn ($q) => $q->whereHas('brand', fn ($b) => $b->where('slug', $validated['brand']))))
@@ -47,11 +47,23 @@ final class PublishStats extends Tool
             ->map->count()
             ->all();
 
+        // Latest reading per channel, averaged per brand/platform/format: which format gets seen.
+        $performance = $variants
+            ->filter(fn (PostVariant $variant): bool => $variant->latestMetric !== null)
+            ->groupBy(fn (PostVariant $variant): string => ($variant->draft?->brand?->slug ?? '?').'/'.$variant->platform->value.'/'.$variant->format()->value)
+            ->map(fn ($group): array => [
+                'posts' => $group->count(),
+                'avg_views' => (int) round($group->avg(fn (PostVariant $variant): int => (int) $variant->latestMetric->views)),
+                'avg_interactions' => (int) round($group->avg(fn (PostVariant $variant): int => $variant->latestMetric->interactions())),
+            ])
+            ->all();
+
         return Response::structured([
             'window_days' => $days,
             'brands' => Brand::query()->pluck('slug')->all(),
             'variants_by_status' => $byStatus,
             'published_by_brand_and_platform' => $byBrandPlatform,
+            'performance_by_brand_platform_format' => $performance,
             'needs_attention' => [
                 'failed' => $variants->where('status', VariantStatus::Failed)->map(fn (PostVariant $v): array => [
                     'draft_id' => $v->post_draft_id,

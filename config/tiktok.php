@@ -14,7 +14,7 @@ return [
      * `video.publish` is Direct Post (the video appears on the account). `video.upload` only drops a
      * draft into the creator's inbox; keep both so a brand can choose.
      */
-    'scopes' => ['user.info.basic', 'video.publish', 'video.upload'],
+    'scopes' => ['user.info.basic', 'video.publish', 'video.upload', 'video.list'],
 
     'http_timeout' => (int) env('TIKTOK_HTTP_TIMEOUT', 30),
 

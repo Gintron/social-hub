@@ -7,6 +7,7 @@ namespace Tests\Feature\Filament;
 use App\Actions\ApproveDraft;
 use App\Actions\CreateDraft;
 use App\Actions\ScheduleDraft;
+use App\Enums\Platform;
 use App\Filament\Pages\PublishingCalendar;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Resources\ContentItems\Pages\ViewContentItem;
@@ -58,7 +59,14 @@ final class PanelSmokeTest extends TestCase
         $this->get('/admin')->assertOk();
         $this->get('/admin/brands')->assertOk();
         Livewire::test(ListSources::class)->assertOk()->assertSee($source->name);
-        Livewire::test(EditSource::class, ['record' => $source->getRouteKey()])->assertOk();
+        $source->autoPublishRules()->create(['platform' => Platform::TikTok, 'enabled' => true, 'format' => 'carousel', 'settings' => ['delivery' => 'inbox', 'auto_add_music' => true]]);
+        $source->autoPublishRules()->create(['platform' => Platform::InstagramBusiness, 'enabled' => true, 'format' => 'video', 'settings' => ['share_to_feed' => true]]);
+        Livewire::test(EditSource::class, ['record' => $source->getRouteKey()])
+            ->assertOk()
+            ->assertSee('Isporuka')
+            ->assertSee('Reel i u feed profila')
+            ->assertSee('Objavi i ono što je dnevni limit zadržao');
+        $this->get(\App\Filament\Pages\PostPerformance::getUrl())->assertOk()->assertSee('Još nema očitanja');
         Livewire::test(ListSocialAccounts::class)->assertOk()->assertSee($page->name);
         Livewire::test(ListContentItems::class)->assertOk()->assertSee($item->title);
         Livewire::test(ViewContentItem::class, ['record' => $item->getRouteKey()])->assertOk()->assertSee($item->title);

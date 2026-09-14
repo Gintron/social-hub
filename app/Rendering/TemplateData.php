@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Rendering;
 
+use App\Drafting\Highlights;
 use App\Enums\ContentKind;
 use App\Models\Brand;
 use App\Models\ContentItem;
@@ -82,6 +83,7 @@ final class TemplateData
         $raw = $item->raw ?? [];
         $facts = array_slice($item->facts ?? [], 0, 4);
         $expiresAt = $item->expires_at?->utc()->format('d.m.Y');
+        $figure = Highlights::figure($item);
 
         return array_replace([
             'kind' => $item->kind->value,
@@ -99,6 +101,14 @@ final class TemplateData
             // them onto the next day, so the card contradicted the source's own "vrijedi do".
             // Dropped entirely when a fact already states it, or the card prints the date twice.
             'expires_at' => self::expiryStatedInFacts($facts, $expiresAt) ? null : $expiresAt,
+            // What the hook slide leads with; the captions open with the same (CaptionBuilder::hook()).
+            'hook' => [
+                'figure' => $figure['value'] ?? null,
+                // A deal's discount often arrives as a badge too; the slide says it once.
+                'figure_label' => in_array($figure['label'] ?? null, $item->badges ?? [], true) ? null : ($figure['label'] ?? null),
+                'points' => Highlights::points($item, 2),
+            ],
+            'cta_label' => $item->cta['label'] ?? null,
         ], $overrides);
     }
 
@@ -149,6 +159,7 @@ final class TemplateData
             'muted' => $colors['muted'] ?? '#6b7280',
             'background' => $colors['background'] ?? '#ffffff',
             'surface' => $colors['surface'] ?? '#f3f4f6',
+            'cta' => filled(data_get($brand->voice, 'cta')) ? (string) data_get($brand->voice, 'cta') : null,
         ];
     }
 

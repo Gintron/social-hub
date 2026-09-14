@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -68,6 +69,16 @@ final class PostVariant extends Model
         return $this->belongsToMany(MediaAsset::class, 'post_variant_media')
             ->withPivot('position')
             ->orderByPivot('position');
+    }
+
+    public function metrics(): HasMany
+    {
+        return $this->hasMany(PostMetric::class);
+    }
+
+    public function latestMetric(): HasOne
+    {
+        return $this->hasOne(PostMetric::class)->latestOfMany('captured_at');
     }
 
     public function logs(): HasMany

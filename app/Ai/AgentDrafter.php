@@ -92,6 +92,7 @@ final class AgentDrafter
                 'notes' => $notes,
                 'facebook' => $captions[Platform::FacebookPage->value] ?? null,
                 'instagram' => $captions[Platform::InstagramBusiness->value] ?? null,
+                'tiktok' => $captions[Platform::TikTok->value] ?? null,
             ];
 
             if ($dryRun) {
@@ -105,7 +106,7 @@ final class AgentDrafter
                 item: $item,
                 accounts: $accounts,
                 actor: ActorType::Agent,
-                templateKey: $this->templates->defaultFor($item->kind),
+                // No template: each channel gets its own shape (4:5 feed image, 9:16 for TikTok).
                 captionOverrides: $captions,
                 status: DraftStatus::PendingApproval,
                 agentRunId: $run->id,
@@ -154,13 +155,15 @@ final class AgentDrafter
             }
 
             if ($violations === []) {
-                $hashtags = implode(' ', $result->captions->hashtagList());
+                $hashtags = $result->captions->hashtagList();
 
                 return [
                     [
                         Platform::FacebookPage->value => mb_trim($result->captions->facebook),
-                        Platform::InstagramBusiness->value => mb_trim($result->captions->instagram."\n\n".$hashtags),
+                        Platform::InstagramBusiness->value => mb_trim($result->captions->instagram."\n\n".implode(' ', $hashtags)),
                         Platform::FacebookGroup->value => mb_trim($result->captions->facebook),
+                        // TikTok ranks on the text itself; a handful of tags is enough.
+                        Platform::TikTok->value => mb_trim($result->captions->tiktok."\n\n".implode(' ', array_slice($hashtags, 0, 5))),
                     ],
                     false,
                     $notes,
@@ -182,9 +185,10 @@ final class AgentDrafter
     private function deterministic(ContentItem $item, Brand $brand): array
     {
         return [
-            Platform::FacebookPage->value => $this->fallback->facebook($item, $brand),
+            Platform::FacebookPage->value => $this->fallback->facebookPage($item, $brand),
             Platform::InstagramBusiness->value => $this->fallback->instagram($item, $brand),
             Platform::FacebookGroup->value => $this->fallback->facebook($item, $brand),
+            Platform::TikTok->value => $this->fallback->tiktok($item, $brand),
         ];
     }
 

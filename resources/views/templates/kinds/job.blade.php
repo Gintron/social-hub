@@ -1,5 +1,14 @@
 @extends('templates._layout')
 
+@section('styles')
+  @if(! $item['primary_image'])
+    /* Without a photo the hero is only an emoji on a gradient; it gives the facts the room instead. */
+    .hero { flex-basis: {{ (int) round($height * 0.26) }}px; }
+    .hero .placeholder { font-size: {{ $height > 1500 ? 200 : 140 }}px; }
+  @endif
+  .fact .value { font-size: 44px; }
+@endsection
+
 @section('card')
   @include('templates.partials.hero')
   <div class="body">

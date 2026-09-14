@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Sources\Schemas;
 
 use App\Enums\AuthType;
+use App\Enums\ContentFormat;
 use App\Enums\Platform;
 use App\Enums\SourceType;
 use App\Models\Source;
@@ -59,19 +60,42 @@ final class SourceForm
                             ->schema([
                                 Select::make('platform')->label('Platforma')
                                     ->options(collect(Platform::cases())
-                                        ->reject(fn (Platform $platform): bool => $platform->isManual() || $platform === Platform::TikTok)
                                         ->mapWithKeys(fn (Platform $platform): array => [$platform->value => $platform->label()])
                                         ->all())
                                     ->required()
-                                    ->distinct(),
+                                    ->distinct()
+                                    ->live()
+                                    ->helperText(fn (Get $get): ?string => match (self::platform($get)) {
+                                        Platform::FacebookGroup => 'Ručni kanal: hub pripremi objavu, čovjek je zalijepi u grupu.',
+                                        Platform::TikTok => 'Dok TikTok ne auditira aplikaciju, izravna objava je privatna — koristi inbox.',
+                                        default => null,
+                                    }),
+                                Select::make('format')->label('Format')
+                                    ->options(fn (Get $get): array => collect(self::platform($get)?->formats() ?? [])
+                                        ->mapWithKeys(fn (ContentFormat $format): array => [$format->value => $format->label()])
+                                        ->all())
+                                    ->placeholder('Zadano za platformu'),
                                 Toggle::make('enabled')->label('Uključeno')->default(false),
                                 TextInput::make('delay_minutes')->label('Odgoda (min)')->numeric()->default(0)->minValue(0)->maxValue(10080)
                                     ->helperText('Koliko čekati nakon što stavka stigne.'),
                                 TextInput::make('daily_cap')->label('Najviše dnevno')->numeric()->minValue(1)->maxValue(50)
                                     ->helperText('Prazno = bez ograničenja (do 25).'),
+                                Select::make('settings.delivery')->label('Isporuka')
+                                    ->options([
+                                        'direct' => 'Objavi izravno',
+                                        'inbox' => 'Pošalji u TikTok inbox (trending zvuk i objava u aplikaciji)',
+                                    ])
+                                    ->default('inbox')
+                                    ->visible(fn (Get $get): bool => self::platform($get) === Platform::TikTok),
+                                Toggle::make('settings.auto_add_music')->label('TikTok dodaje glazbu foto objavi')->default(true)
+                                    ->visible(fn (Get $get): bool => self::platform($get) === Platform::TikTok),
+                                Toggle::make('settings.share_to_feed')->label('Reel i u feed profila')->default(true)
+                                    ->visible(fn (Get $get): bool => self::platform($get) === Platform::InstagramBusiness),
                             ])
-                            ->columns(4)
+                            ->columns(3)
                             ->defaultItems(0),
+                        Toggle::make('auto_publish_backlog')->label('Objavi i ono što je dnevni limit zadržao')
+                            ->helperText('Svako jutro (06:30) rasporedi aktivne stavke koje još nisu objavljene, do dnevnog limita. Bez toga stavka koja stigne preko limita nikad ne ide van.'),
                     ])
                     ->collapsed()
                     ->visibleOn('edit'),
@@ -86,5 +110,12 @@ final class SourceForm
                             ->content(fn (?Source $record): string => $record?->last_error ?? '—')->columnSpanFull(),
                     ])->columns(2)->visibleOn('edit'),
             ]);
+    }
+
+    private static function platform(Get $get): ?Platform
+    {
+        $platform = $get('platform');
+
+        return $platform instanceof Platform ? $platform : Platform::tryFrom((string) $platform);
     }
 }

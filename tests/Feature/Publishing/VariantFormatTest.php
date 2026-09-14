@@ -16,6 +16,7 @@ use App\Enums\VariantStatus;
 use App\Jobs\PublishVariantJob;
 use App\Jobs\RenderDigestJob;
 use App\Jobs\RenderMediaJob;
+use App\Jobs\RenderSlidesJob;
 use App\Jobs\RenderVideoJob;
 use App\Models\Brand;
 use App\Models\ContentItem;
@@ -68,14 +69,55 @@ final class VariantFormatTest extends TestCase
         $this->assertSame(ContentFormat::Image, $page->format());
         $this->assertSame(ContentFormat::Video, $tiktok->format());
 
-        // Facebook and Instagram share one square render; TikTok gets a video of its own.
+        // Facebook and Instagram share one 4:5 render; TikTok gets a video of its own.
         Queue::assertPushed(RenderMediaJob::class, 1);
-        Queue::assertPushed(RenderMediaJob::class, fn (RenderMediaJob $job): bool => $job->templateKey === 'kinds/job-square'
+        Queue::assertPushed(RenderMediaJob::class, fn (RenderMediaJob $job): bool => $job->templateKey === 'kinds/job-portrait'
             && $job->variantIds === [$page->id, $instagram->id]);
         Queue::assertPushed(RenderVideoJob::class, fn (RenderVideoJob $job): bool => $job->variantIds === [$tiktok->id]);
 
         $this->assertTrue($tiktok->refresh()->isRendering());
         $this->assertSame('Video se još renderira.', app(FormatCheck::class)->problem($tiktok));
+    }
+
+    public function test_one_item_as_a_carousel_is_rendered_as_its_slide_set_per_orientation(): void
+    {
+        Queue::fake();
+
+        [$brand, $item] = $this->brandWithItem();
+        $draft = app(CreateDraft::class)->execute($item, [
+            SocialAccount::factory()->for($brand)->create(['platform' => Platform::InstagramBusiness]),
+            SocialAccount::factory()->for($brand)->create(['platform' => Platform::TikTok]),
+        ], channelOptions: [
+            'ig_business' => ['format' => ContentFormat::Carousel],
+            'tiktok' => ['format' => 'carousel', 'settings' => ['delivery' => 'inbox']],
+        ]);
+
+        $instagram = $this->variantFor($draft, Platform::InstagramBusiness);
+        $tiktok = $this->variantFor($draft, Platform::TikTok);
+
+        $this->assertSame('inbox', $tiktok->setting('delivery'));
+        Queue::assertPushed(RenderSlidesJob::class, 2);
+        Queue::assertPushed(RenderSlidesJob::class, fn (RenderSlidesJob $job): bool => $job->variantIds === [$instagram->id]
+            && $job->templateKeys === ['kinds/hook-portrait', 'kinds/job-portrait', 'kinds/cta-portrait']);
+        Queue::assertPushed(RenderSlidesJob::class, fn (RenderSlidesJob $job): bool => $job->variantIds === [$tiktok->id]
+            && $job->templateKeys === ['kinds/hook-story', 'kinds/job-story', 'kinds/cta-story']);
+        Queue::assertNotPushed(RenderMediaJob::class);
+    }
+
+    public function test_a_format_the_platform_cannot_post_is_refused_when_the_draft_is_created(): void
+    {
+        Queue::fake();
+
+        [$brand, $item] = $this->brandWithItem();
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('ne podržava');
+
+        app(CreateDraft::class)->execute(
+            $item,
+            [SocialAccount::factory()->for($brand)->create(['platform' => Platform::InstagramBusiness])],
+            channelOptions: ['ig_business' => ['format' => ContentFormat::Link]],
+        );
     }
 
     public function test_changing_one_channel_to_video_leaves_the_others_alone(): void
@@ -269,7 +311,7 @@ final class VariantFormatTest extends TestCase
         $tiktok = $this->variantFor($draft, Platform::TikTok);
 
         Queue::assertPushed(RenderDigestJob::class, 2);
-        Queue::assertPushed(RenderDigestJob::class, fn (RenderDigestJob $job): bool => $job->coverTemplate === 'kinds/digest-cover'
+        Queue::assertPushed(RenderDigestJob::class, fn (RenderDigestJob $job): bool => $job->coverTemplate === 'kinds/digest-cover-portrait'
             && $job->variantIds === [$page->id, $instagram->id] && ! $job->coverOnly);
         Queue::assertPushed(RenderDigestJob::class, fn (RenderDigestJob $job): bool => $job->coverTemplate === 'kinds/digest-cover-story'
             && $job->variantIds === [$tiktok->id]);

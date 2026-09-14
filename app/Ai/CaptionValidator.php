@@ -46,7 +46,11 @@ final class CaptionValidator
             $violations[] = 'Instagram tekst ima '.mb_strlen($captions->instagram)." znakova, dopušteno je {$igLimit}.";
         }
 
-        if (mb_trim($captions->facebook) === '' || mb_trim($captions->instagram) === '') {
+        if (mb_strlen($captions->tiktok) > $igLimit) {
+            $violations[] = 'TikTok tekst ima '.mb_strlen($captions->tiktok)." znakova, dopušteno je {$igLimit}.";
+        }
+
+        if (mb_trim($captions->facebook) === '' || mb_trim($captions->instagram) === '' || mb_trim($captions->tiktok) === '') {
             $violations[] = 'Tekst objave je prazan.';
         }
 
@@ -61,9 +65,13 @@ final class CaptionValidator
             $violations[] = 'Instagram tekst sadrži poveznicu; ondje nije klikabilna.';
         }
 
+        if (preg_match(self::URL_PATTERN, $captions->tiktok) === 1) {
+            $violations[] = 'TikTok tekst sadrži poveznicu; ondje nije klikabilna.';
+        }
+
         $allowedUrls = $this->allowedUrls($item);
 
-        foreach ($this->urlsIn($captions->facebook.' '.$captions->instagram) as $url) {
+        foreach ($this->urlsIn($captions->facebook.' '.$captions->instagram.' '.$captions->tiktok) as $url) {
             if (! in_array(mb_rtrim($url, '/.'), $allowedUrls, true)) {
                 $violations[] = "Poveznica {$url} ne postoji u podacima stavke.";
             }
@@ -71,7 +79,7 @@ final class CaptionValidator
 
         $allowedAmounts = $this->allowedAmounts($item);
 
-        foreach ($this->amountsIn($captions->facebook.' '.$captions->instagram.' '.$captions->alt_text) as $raw => $value) {
+        foreach ($this->amountsIn($captions->facebook.' '.$captions->instagram.' '.$captions->tiktok.' '.$captions->alt_text) as $raw => $value) {
             if (! $this->isKnown($value, $allowedAmounts)) {
                 $violations[] = "Iznos „{$raw}\" ne postoji u podacima stavke.";
             }

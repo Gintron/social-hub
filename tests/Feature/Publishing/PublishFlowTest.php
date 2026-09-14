@@ -70,7 +70,7 @@ final class PublishFlowTest extends TestCase
         $this->assertSame(ContentFormat::Image, $fb->format());
         $this->assertNotNull($fb->idempotency_key);
 
-        Queue::assertPushed(RenderMediaJob::class, fn (RenderMediaJob $job): bool => $job->templateKey === 'kinds/job-square' && count($job->variantIds) === 2);
+        Queue::assertPushed(RenderMediaJob::class, fn (RenderMediaJob $job): bool => $job->templateKey === 'kinds/job-portrait' && count($job->variantIds) === 2);
     }
 
     public function test_create_draft_rejects_accounts_of_another_brand(): void

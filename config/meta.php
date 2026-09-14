@@ -20,6 +20,20 @@ return [
         'pages_read_engagement',
         'instagram_basic',
         'instagram_content_publish',
+        // Views and reach of published posts (App\Metrics). Add them to the Login Configuration in
+        // the Meta dashboard too, then reconnect the accounts.
+        'instagram_manage_insights',
+        'read_insights',
+    ],
+
+    /*
+     * Insights metric names per kind of post, mapped onto post_metrics columns. Meta renames and
+     * retires metrics between Graph versions; when one stops answering, change it here.
+     */
+    'insights' => [
+        'instagram' => ['views' => 'views', 'reach' => 'reach', 'likes' => 'likes', 'comments' => 'comments', 'shares' => 'shares', 'saved' => 'saves'],
+        'facebook_post' => ['post_media_view' => 'views', 'post_impressions_unique' => 'reach'],
+        'facebook_reel' => ['blue_reels_play_count' => 'views', 'post_impressions_unique' => 'reach'],
     ],
 
     'http_timeout' => (int) env('META_HTTP_TIMEOUT', 30),

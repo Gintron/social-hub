@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $last_synced_at
  * @property string|null $last_error
  * @property bool $enabled
+ * @property bool $auto_publish_backlog
  */
 final class Source extends Model
 {
@@ -35,7 +36,7 @@ final class Source extends Model
 
     protected $fillable = [
         'brand_id', 'name', 'type', 'base_url', 'auth_type', 'secret', 'config',
-        'sync_since', 'last_synced_at', 'last_error', 'enabled',
+        'sync_since', 'last_synced_at', 'last_error', 'enabled', 'auto_publish_backlog',
     ];
 
     protected $hidden = ['secret'];
@@ -92,6 +93,7 @@ final class Source extends Model
             'sync_since' => 'immutable_datetime',
             'last_synced_at' => 'immutable_datetime',
             'enabled' => 'boolean',
+            'auto_publish_backlog' => 'boolean',
         ];
     }
 }

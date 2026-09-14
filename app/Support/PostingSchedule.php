@@ -17,6 +17,11 @@ use Carbon\CarbonImmutable;
 final class PostingSchedule
 {
     /**
+     * Minutes between two automated posts of one brand.
+     */
+    public const SPACING_MINUTES = 45;
+
+    /**
      * How far ahead to look before giving up and posting at the requested time anyway.
      */
     private const MAX_DAYS_AHEAD = 14;
@@ -60,7 +65,7 @@ final class PostingSchedule
      *
      * @return list<CarbonImmutable>
      */
-    public function slots(Brand $brand, CarbonImmutable $after, int $count, int $spacingMinutes = 45): array
+    public function slots(Brand $brand, CarbonImmutable $after, int $count, int $spacingMinutes = self::SPACING_MINUTES): array
     {
         $slots = [];
         $cursor = $after;

@@ -56,7 +56,11 @@ final class RenderVideo extends Command
         $started = microtime(true);
 
         try {
-            $slides = $items->map(fn (ContentItem $item) => $images->render($brand, $templates->storyFor($item->kind), $data->forItem($item, $brand)));
+            // One item is told as its slide set, the same video a Reel of that item gets (RenderVideoJob).
+            $slides = $items->count() === 1
+                ? collect($templates->slidesFor($items->first()->kind, 'story'))
+                    ->map(fn (string $key) => $images->render($brand, $key, $data->forItem($items->first(), $brand)))
+                : $items->map(fn (ContentItem $item) => $images->render($brand, $templates->storyFor($item->kind), $data->forItem($item, $brand)));
             $asset = $video->slideshow(
                 $brand,
                 $slides,

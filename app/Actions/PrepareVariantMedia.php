@@ -8,6 +8,7 @@ use App\Enums\ContentFormat;
 use App\Enums\Platform;
 use App\Jobs\RenderDigestJob;
 use App\Jobs\RenderMediaJob;
+use App\Jobs\RenderSlidesJob;
 use App\Jobs\RenderVideoJob;
 use App\Models\MediaAsset;
 use App\Models\PostDraft;
@@ -29,12 +30,12 @@ final class PrepareVariantMedia
     public function __construct(private readonly TemplateRegistry $templates) {}
 
     /**
-     * Vertical for TikTok, where a photo or video fills the screen; square elsewhere, where the
-     * same image has to sit in a feed next to text.
+     * Vertical for TikTok, where a photo or video fills the screen; 4:5 portrait elsewhere, the
+     * tallest image a Facebook or Instagram feed shows uncropped — more of the screen than a square.
      */
     public static function orientation(Platform $platform): string
     {
-        return $platform === Platform::TikTok ? 'story' : 'square';
+        return $platform === Platform::TikTok ? 'story' : 'portrait';
     }
 
     public static function digestCover(string $orientation): string
@@ -108,6 +109,14 @@ final class PrepareVariantMedia
                 continue;
             }
 
+            // One item as a carousel is told in slides (hook, card, call to action), not one image.
+            if ($format === ContentFormat::Carousel && $templateKey === null) {
+                $set = $fresh ? null : $this->siblingCarousel($variant, $orientation);
+                $set !== null ? $this->attach($variant, $set) : $groups["slides:{$orientation}"][] = $variant;
+
+                continue;
+            }
+
             $key = $templateKey ?? $this->templates->defaultFor($item->kind, $orientation);
             $asset = $fresh ? null : $this->latest($draft, $key);
             $asset !== null ? $this->attach($variant, [$asset]) : $groups["image:{$key}"][] = $variant;
@@ -165,6 +174,12 @@ final class PrepareVariantMedia
                 coverTemplate: self::digestCover($argument),
                 variantIds: $ids,
                 coverOnly: $type === 'digest-cover',
+            ),
+            'slides' => new RenderSlidesJob(
+                $draft->id,
+                $draft->contentItems->first()->id,
+                $this->templates->slidesFor($draft->contentItems->first()->kind, $argument),
+                $ids,
             ),
             default => new RenderMediaJob($draft->id, $draft->contentItems->first()->id, $argument, $ids, $overrides),
         };

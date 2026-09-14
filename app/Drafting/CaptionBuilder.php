@@ -12,11 +12,19 @@ use App\Rendering\TemplateData;
 use Illuminate\Support\Str;
 
 /**
- * Deterministic captions from generic item fields — the fallback when no agent is involved and the
- * baseline the agent is compared against. Mirrors the studentski-poslovi FacebookPostFormatter layout.
+ * Deterministic captions from generic item fields — what auto-publish posts, the fallback when the
+ * agent's text fails validation, and the baseline the agent is compared against.
+ *
+ * One shape per network: a Facebook group gets the full listing (the studentski-poslovi
+ * FacebookPostFormatter layout, contacts included); a Page, Instagram and TikTok open with the hook.
  */
 final class CaptionBuilder
 {
+    /**
+     * Hashtags per single post where a network rewards a few relevant ones over a wall of them.
+     */
+    private const FEW_HASHTAGS = 5;
+
     /**
      * Unicode Mathematical Sans-Serif Bold for A-Z, a-z, 0-9 (social networks have no markup).
      */
@@ -41,9 +49,102 @@ final class CaptionBuilder
     {
         return match ($platform) {
             Platform::InstagramBusiness => $this->instagram($item, $brand),
-            Platform::TikTok => $this->instagram($item, $brand),
+            Platform::TikTok => $this->tiktok($item, $brand),
+            Platform::FacebookPage => $this->facebookPage($item, $brand),
             default => $this->facebook($item, $brand),
         };
+    }
+
+    /**
+     * The line a scrolling reader decides on: the figure and the first fact beside it
+     * ("💰 7.50 €/H · Lovran"). The hook slide leads with the same (TemplateData::forItem()).
+     */
+    public function hook(ContentItem $item): string
+    {
+        $parts = [];
+        $figure = Highlights::figure($item);
+
+        if ($figure !== null) {
+            $parts[] = '💰 '.$figure['value'];
+        }
+
+        foreach (Highlights::points($item, 1) as $point) {
+            $parts[] = $point;
+        }
+
+        return implode(' · ', $parts);
+    }
+
+    /**
+     * A Page post: the hook up front, the facts, a short pitch and the link — no contact lines,
+     * those belong on the listing and in the group post.
+     */
+    public function facebookPage(ContentItem $item, Brand $brand): string
+    {
+        $sections = [$this->emoji($item).' '.$item->title];
+
+        if (($hook = $this->hook($item)) !== '') {
+            $sections[] = $hook;
+        }
+
+        if (filled($item->subtitle)) {
+            $sections[] = (string) $item->subtitle;
+        }
+
+        $facts = $this->factLines($item);
+        if ($facts !== []) {
+            $sections[] = implode("\n", $facts);
+        }
+
+        if (($item->badges ?? []) !== []) {
+            $sections[] = implode("\n", array_map(fn (string $badge): string => '✅ '.$badge, $item->badges));
+        }
+
+        $excerpt = TemplateData::excerpt($item->body_text, 400);
+        if (filled($excerpt)) {
+            $sections[] = (string) $excerpt;
+        }
+
+        $sections[] = '👉 '.self::bold($item->cta['label'] ?? $this->footerLabel($item->kind)).":\n".$item->url;
+
+        $fixed = array_slice($this->hashtags($item, $brand, fixedOnly: true), 0, 3);
+        if ($fixed !== []) {
+            $sections[] = implode(' ', $fixed);
+        }
+
+        return self::tidy(implode("\n\n", $sections));
+    }
+
+    /**
+     * TikTok reads the first line as a photo post's title (90 UTF-16 units), so it carries the
+     * whole pitch; the rest is a short description and a few hashtags.
+     */
+    public function tiktok(ContentItem $item, Brand $brand): string
+    {
+        $hook = Highlights::figure($item)['value'] ?? (Highlights::points($item, 1)[0] ?? null);
+        $sections = [$this->emoji($item).' '.$item->title.($hook !== null ? ' · '.$hook : '')];
+
+        $details = array_filter([
+            filled($item->subtitle) ? (string) $item->subtitle : null,
+            ...Highlights::points($item, 2),
+        ]);
+        if ($details !== []) {
+            $sections[] = implode(' · ', $details);
+        }
+
+        if (($item->badges ?? []) !== []) {
+            $sections[] = implode(' · ', array_map(fn (string $badge): string => '✅ '.$badge, $item->badges));
+        }
+
+        $host = TemplateData::displayUrl($item->url) ?? TemplateData::displayUrl($brand->site_url) ?? '';
+        $sections[] = '🔗 Link u biu → '.$host;
+
+        $hashtags = array_slice($this->hashtags($item, $brand), 0, self::FEW_HASHTAGS);
+        if ($hashtags !== []) {
+            $sections[] = implode(' ', $hashtags);
+        }
+
+        return self::tidy(implode("\n\n", $sections));
     }
 
     /**
@@ -112,33 +213,37 @@ final class CaptionBuilder
         return self::tidy(implode("\n\n", $sections));
     }
 
+    /**
+     * Instagram folds a caption after about 125 characters, so the title and the hook come first;
+     * then the details, where to apply (links are not clickable there) and a nudge to share.
+     */
     public function instagram(ContentItem $item, Brand $brand): string
     {
-        $sections = [];
-        $sections[] = $this->emoji($item).' '.$item->title;
+        $opening = $this->emoji($item).' '.$item->title;
+
+        if (($hook = $this->hook($item)) !== '') {
+            $opening .= "\n".$hook;
+        }
+
+        $sections = [$opening];
 
         if (filled($item->subtitle)) {
             $sections[] = (string) $item->subtitle;
-        }
-
-        $facts = $this->factLines($item, bold: false);
-        if ($facts !== []) {
-            $sections[] = implode("\n", $facts);
         }
 
         if (($item->badges ?? []) !== []) {
             $sections[] = implode(' · ', array_map(fn (string $badge): string => '✅ '.$badge, $item->badges));
         }
 
-        $excerpt = TemplateData::excerpt($item->body_text, 500);
+        $excerpt = TemplateData::excerpt($item->body_text, 400);
         if (filled($excerpt)) {
             $sections[] = (string) $excerpt;
         }
 
         $host = TemplateData::displayUrl($item->url) ?? TemplateData::displayUrl($brand->site_url) ?? '';
-        $sections[] = '🔗 Link u biu → '.$host;
+        $sections[] = '🔗 Link u biu → '.$host."\n📤 Pošalji prijatelju kojem ovo treba";
 
-        $hashtags = $this->hashtags($item, $brand);
+        $hashtags = array_slice($this->hashtags($item, $brand), 0, self::FEW_HASHTAGS);
         if ($hashtags !== []) {
             $sections[] = implode(' ', $hashtags);
         }
@@ -152,13 +257,14 @@ final class CaptionBuilder
     /**
      * @return list<string>
      */
-    public function hashtags(ContentItem $item, Brand $brand): array
+    public function hashtags(ContentItem $item, Brand $brand, bool $fixedOnly = false): array
     {
         $fixed = (array) data_get($brand->voice, 'hashtags', []);
-        $fromTags = array_map(fn (string $tag): string => Str::slug($tag, ''), $item->tags ?? []);
+        $fromTags = $fixedOnly ? [] : array_map(fn (string $tag): string => Str::slug($tag, ''), $item->tags ?? []);
+        $kindTag = ! $fixedOnly && $item->kind->value === 'job' ? 'posao' : null;
 
         $tags = [];
-        foreach ([...$fixed, ...$fromTags, $item->kind->value === 'job' ? 'posao' : null] as $tag) {
+        foreach ([...$fixed, ...$fromTags, $kindTag] as $tag) {
             $tag = mb_ltrim((string) $tag, '#');
             if ($tag === '' || ! preg_match('/^[\p{L}\p{N}_]+$/u', $tag)) {
                 continue;

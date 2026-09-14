@@ -123,6 +123,38 @@ final class AgentDrafterTest extends TestCase
         $this->assertTrue($output[0]['fallback']);
     }
 
+    public function test_tiktok_gets_its_own_caption_with_a_few_hashtags(): void
+    {
+        [$brand] = $this->brandWithItems(1);
+        SocialAccount::factory()->for($brand)->create(['platform' => Platform::TikTok]);
+
+        $this->writer->queue(FakeCaptionWriter::captions(tiktok: 'Oglas 1 · 7,00 €/H u Splitu', hashtags: '#a #b #c #d #e #f #g'));
+
+        app(AgentDrafter::class)->run($brand, limit: 1);
+
+        $this->assertSame(
+            "Oglas 1 · 7,00 €/H u Splitu\n\n#a #b #c #d #e",
+            PostDraft::query()->firstOrFail()->variants()->firstOrFail()->caption,
+        );
+    }
+
+    public function test_a_link_in_the_tiktok_text_is_rejected(): void
+    {
+        [$brand] = $this->brandWithItems(1);
+        SocialAccount::factory()->for($brand)->create(['platform' => Platform::TikTok]);
+
+        $this->writer->queue(
+            FakeCaptionWriter::captions(tiktok: 'Prijava: https://studentski-poslovi.test/posao/1'),
+            FakeCaptionWriter::captions(tiktok: 'Opet: https://studentski-poslovi.test/posao/1'),
+        );
+
+        $result = app(AgentDrafter::class)->run($brand, limit: 1);
+
+        $this->assertSame(1, $result['fallbacks']);
+        $this->assertStringContainsString('TikTok tekst sadrži poveznicu', implode(' ', $this->writer->calls[1]['violations']));
+        $this->assertStringNotContainsString('https://', PostDraft::query()->firstOrFail()->variants()->firstOrFail()->caption);
+    }
+
     public function test_a_failing_model_does_not_take_the_whole_run_down(): void
     {
         [$brand] = $this->brandWithItems(2);

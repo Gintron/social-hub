@@ -29,10 +29,12 @@ final class FakeCaptionWriter implements CaptionWriter
         string $hashtags = '#posao #zagreb',
         string $altText = 'Slika oglasa.',
         ?string $note = null,
+        string $tiktok = 'Objava za TikTok.',
     ): CaptionSet {
         $set = new CaptionSet;
         $set->facebook = $facebook;
         $set->instagram = $instagram;
+        $set->tiktok = $tiktok;
         $set->hashtags = $hashtags;
         $set->alt_text = $altText;
         $set->note = $note;

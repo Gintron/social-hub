@@ -33,6 +33,7 @@ final class CreateDraft extends Tool
             'content_item_id' => ['required', 'integer'],
             'facebook_caption' => ['nullable', 'string'],
             'instagram_caption' => ['nullable', 'string'],
+            'tiktok_caption' => ['nullable', 'string'],
             'template' => ['nullable', 'string'],
             'platforms' => ['nullable', 'array'],
             'platforms.*' => ['string'],
@@ -58,6 +59,7 @@ final class CreateDraft extends Tool
             'fb_page' => $validated['facebook_caption'] ?? null,
             'fb_group' => $validated['facebook_caption'] ?? null,
             'ig_business' => $validated['instagram_caption'] ?? null,
+            'tiktok' => $validated['tiktok_caption'] ?? null,
         ], fn (?string $caption): bool => filled($caption));
 
         try {
@@ -90,8 +92,9 @@ final class CreateDraft extends Tool
             'content_item_id' => $schema->integer()->description('Candidate id from hub.list_candidates.')->required(),
             'facebook_caption' => $schema->string()->description('Facebook text. Leave out to use the hub\'s deterministic caption.'),
             'instagram_caption' => $schema->string()->description('Instagram text, max 2200 characters, no links (they are not clickable there).'),
-            'template' => $schema->string()->description('Image template key, e.g. kinds/job-square. Defaults to the one matching the kind.'),
-            'platforms' => $schema->array()->description('Restrict to these platforms: fb_page, ig_business, fb_group.'),
+            'tiktok_caption' => $schema->string()->description('TikTok text, no links. The first line is the photo post title (max 90 characters): lead with the job and the pay or place.'),
+            'template' => $schema->string()->description('Image template key, e.g. kinds/job-portrait. Leave out to get one per channel (4:5 on Facebook and Instagram, 9:16 on TikTok).'),
+            'platforms' => $schema->array()->description('Restrict to these platforms: fb_page, ig_business, fb_group, tiktok.'),
         ];
     }
 }

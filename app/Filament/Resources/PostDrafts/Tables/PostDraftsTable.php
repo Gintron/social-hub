@@ -25,7 +25,7 @@ final class PostDraftsTable
     {
         return $table
             ->defaultSort('updated_at', 'desc')
-            ->modifyQueryUsing(fn ($query) => $query->with(['brand', 'variants.media', 'mediaAssets', 'contentItems']))
+            ->modifyQueryUsing(fn ($query) => $query->with(['brand', 'variants.media', 'variants.latestMetric', 'mediaAssets', 'contentItems']))
             ->columns([
                 ImageColumn::make('preview')->label('')
                     ->state(fn (PostDraft $record): ?string => $record->mediaAssets->first()?->publicUrl())
@@ -35,6 +35,14 @@ final class PostDraftsTable
                     ->description(fn (PostDraft $record): ?string => $record->staleItems()->isNotEmpty() ? '⚠ izvor je izmijenjen' : null),
                 TextColumn::make('status')->label('Status')->badge()->sortable(),
                 TextColumn::make('variants.platform')->label('Kanali')->badge(),
+                TextColumn::make('views')->label('Pregledi')
+                    ->state(fn (PostDraft $record): ?int => ($views = $record->variants->sum(fn ($variant): int => (int) $variant->latestMetric?->views)) > 0 ? $views : null)
+                    ->tooltip(fn (PostDraft $record): ?string => $record->variants
+                        ->filter(fn ($variant): bool => $variant->latestMetric !== null)
+                        ->map(fn ($variant): string => $variant->platform->label().': '.number_format((int) $variant->latestMetric->views, 0, ',', '.'))
+                        ->implode(' · ') ?: null)
+                    ->numeric(decimalPlaces: 0, locale: 'hr')
+                    ->placeholder('—'),
                 TextColumn::make('scheduled_at')->label('Zakazano')->dateTime('d.m.Y H:i', 'Europe/Zagreb')->sortable()->placeholder('—'),
                 TextColumn::make('created_by_type')->label('Autor')->badge()->color('gray'),
                 TextColumn::make('updated_at')->label('Ažurirano')->since()->sortable(),

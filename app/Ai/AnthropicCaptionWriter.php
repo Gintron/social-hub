@@ -98,6 +98,12 @@ final class AnthropicCaptionWriter implements CaptionWriter
             '5. Najviše 30 hashtagova, sve malim slovima i bez dijakritike.',
             '6. Instagram tekst ne smije sadržavati poveznicu; umjesto nje uputi na poveznicu u opisu profila.',
             '7. Ne obećavaj ništa što u podacima ne piše (ne izmišljaj rokove, uvjete ni pogodnosti).',
+            '8. TikTok tekst ne smije sadržavati poveznicu; prvi red mu je naslov do 90 znakova.',
+            '',
+            'KAKO DOBITI PREGLEDE',
+            '- Prvi red svakog teksta je udica: što je posao/ponuda i najvažniji podatak iz podataka (iznos, mjesto). Ljudi odluče u prvih 125 znakova.',
+            '- Kratke rečenice, obraćanje s „ti“, bez uvoda tipa „Tražimo…“ ili „Pozivamo…“.',
+            '- Instagram i TikTok završavaju pozivom da se objava pošalje prijatelju kojem treba.',
         ]];
 
         return implode("\n", $lines);

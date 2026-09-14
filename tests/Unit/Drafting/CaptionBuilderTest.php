@@ -6,6 +6,7 @@ namespace Tests\Unit\Drafting;
 
 use App\Drafting\CaptionBuilder;
 use App\Enums\ContentKind;
+use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\ContentItem;
 use Tests\TestCase;
@@ -41,6 +42,45 @@ final class CaptionBuilderTest extends TestCase
         $this->assertStringContainsString('#split', $caption);
         $this->assertStringContainsString('#posao', $caption);
         $this->assertLessThanOrEqual(2200, mb_strlen($caption));
+    }
+
+    public function test_instagram_opens_with_the_title_and_the_hook(): void
+    {
+        $item = $this->item(['price' => ['current_cents' => 700, 'unit_label' => '€/H']]);
+        $brand = new Brand(['name' => 'Studentski poslovi', 'site_url' => 'https://studentski-poslovi.hr']);
+
+        $lines = explode("\n", (new CaptionBuilder)->instagram($item, $brand));
+
+        $this->assertSame('🍽️ Konobar/ica', $lines[0]);
+        $this->assertSame('💰 7.00 €/H · Split', $lines[1]);
+        $this->assertStringContainsString('📤 Pošalji prijatelju', implode("\n", $lines));
+    }
+
+    public function test_tiktok_puts_the_pitch_in_the_title_line_and_keeps_links_out(): void
+    {
+        $item = $this->item(['price' => ['current_cents' => 700, 'unit_label' => '€/H'], 'tags' => ['a', 'b', 'c', 'd', 'e', 'f']]);
+        $brand = new Brand(['name' => 'Studentski poslovi', 'site_url' => 'https://studentski-poslovi.hr', 'voice' => ['hashtags' => ['studentskiposao']]]);
+
+        $caption = (new CaptionBuilder)->for(Platform::TikTok, $item, $brand);
+
+        $this->assertStringStartsWith("🍽️ Konobar/ica · 7.00 €/H\n", $caption);
+        $this->assertStringNotContainsString('https://', $caption);
+        $this->assertSame(5, preg_match_all('/#\w+/u', $caption));
+    }
+
+    public function test_the_page_caption_links_the_listing_and_leaves_contacts_to_the_group_post(): void
+    {
+        $item = $this->item(['price' => ['current_cents' => 700, 'unit_label' => '€/H'], 'cta' => ['label' => 'Prijavi se', 'url' => 'https://example.test/posao/1']]);
+        $brand = new Brand(['name' => 'Studentski poslovi', 'voice' => ['hashtags' => ['studentskiposao']]]);
+
+        $page = (new CaptionBuilder)->for(Platform::FacebookPage, $item, $brand);
+        $group = (new CaptionBuilder)->for(Platform::FacebookGroup, $item, $brand);
+
+        $this->assertStringContainsString('💰 7.00 €/H · Split', $page);
+        $this->assertStringContainsString(CaptionBuilder::bold('Prijavi se').":\nhttps://example.test/posao/1", $page);
+        $this->assertStringEndsWith('#studentskiposao', $page);
+        $this->assertStringNotContainsString('posao@example.test', $page);
+        $this->assertStringContainsString('posao@example.test', $group);
     }
 
     public function test_hashtags_are_unique_lowercase_and_capped(): void

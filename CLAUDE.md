@@ -41,6 +41,16 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   (lokalno vrijeme brenda), a batch se razmiče da ne padne sve u istu minutu.
 - **Auto-publish je opt-in po izvoru × platformi** (`auto_publish_rules`) i pokreće se samo kad je
   sinkronizacija stvarno donijela nove stavke. Bez toga bi svaki prolaz preispitivao cijeli katalog.
+  Iznimka je `sources.auto_publish_backlog` (opt-in): `hub:auto-publish-backlog` u 06:30 rasporedi ono
+  što je `daily_cap` zadržao — bez toga stavka koja stigne preko limita nikad ne ide van. Pravilo nosi i
+  **format i postavke kanala** (`format`, `settings`); kampanja se slaže u panelu, ne u kodu.
+- **Pregledi se mjere, ne pretpostavljaju**: `hub:collect-metrics` (satno) čita objave koje su na redu
+  (`CollectPostMetrics::due()`: svakih 6 h prvih 7 dana, zatim dnevno do 30) u `post_metrics`, redak
+  po očitanju. Imena Metinih metrika su u `config/meta.php` (`insights`) jer ih Meta mijenja; neuspjeh
+  jednog očitanja samo se logira. TikTok video id se dohvaća jednom (`settings.tiktok_video_id`).
+- **Jedna stavka kao carousel ili video = set slajdova** (`config/template_sets.php`: udica → kartica →
+  poziv na akciju), isti set u 4:5 i 9:16. FB/IG slike su 4:5 (`PrepareVariantMedia::orientation()`),
+  TikTok 9:16. Udica i prvi red teksta čitaju isto (`App\Drafting\Highlights`).
 - **`ContentItem::imageUrl()` ne vraća zamjenu za tuđu ulogu**: traženje `logo` bez logotipa vraća
   `null`, ne prvu sliku — inače proizvod završi u logo pločici svakog predloška.
 - **Chromium u Sailu** je Playwrightov arm64 build na `/usr/local/bin/hub-chrome` (Chrome for Testing nema
