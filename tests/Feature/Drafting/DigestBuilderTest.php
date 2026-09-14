@@ -156,6 +156,30 @@ final class DigestBuilderTest extends TestCase
             ->assertFailed();
     }
 
+    public function test_a_roundup_takes_at_most_two_of_one_brand_and_fills_up_only_when_it_must(): void
+    {
+        $brand = $this->brand();
+        $deals = $this->deals($brand, [
+            ['Gorenje robot', 90], ['Gorenje blender', 89], ['Gorenje mikser', 88], ['Gorenje toster', 87],
+            ['K-Classic pizza', 60], ['K-Classic juha', 59], ['K-Classic tjestenina', 58],
+            ['Vanish', 40],
+        ]);
+        $deals->each(fn (ContentItem $item) => $item->forceFill(['tags' => ['kaufland', mb_strtolower(explode(' ', $item->title)[0])]])->save());
+
+        $this->assertSame(
+            ['Gorenje robot', 'Gorenje blender', 'K-Classic pizza', 'K-Classic juha', 'Vanish'],
+            app(DigestBuilder::class)->pick($brand, ContentKind::Deal, 5, tag: 'kaufland')->pluck('title')->all(),
+            'oznaka serije se ne broji, marka najviše dvaput',
+        );
+
+        // Seven: diversity gives five, the next best by priority fill up (Gorenje before the third
+        // K-Classic), and the roundup still reads from the best deal down.
+        $this->assertSame(
+            ['Gorenje robot', 'Gorenje blender', 'Gorenje mikser', 'Gorenje toster', 'K-Classic pizza', 'K-Classic juha', 'Vanish'],
+            app(DigestBuilder::class)->pick($brand, ContentKind::Deal, 7, tag: 'kaufland')->pluck('title')->all(),
+        );
+    }
+
     private function brand(): Brand
     {
         return Brand::factory()->create(['slug' => 'uselisto', 'name' => 'Listo', 'site_url' => 'https://uselisto.com']);

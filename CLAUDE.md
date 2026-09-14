@@ -51,8 +51,10 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   unaprijed) kroz `App\Actions\ScheduleDigest` — svaku seriju jednom na dan (`post_drafts.digest_series`),
   samo na kanale s uključenim pravilom, bez ručnih, s postavkama pravila. „Top akcije u Kauflandu“ je
   serija s oznakom `kaufland` (opće polje `tags` iz feeda), nikad grana u kodu. Pregled je uvijek set
-  slajdova: carousel ili Reel od njih, nikad jedna slika. Uzima i stavke koje su već imale svoju objavu,
-  ali ne dvaput u 7 dana (`DigestBuilder::REPEAT_AFTER_DAYS`).
+  slajdova: carousel ili Reel od njih, nikad jedna slika. Najviše 2 stavke dijele istu oznaku osim
+  oznake serije (`DigestBuilder::MAX_PER_TAG` — marka, u miješanom pregledu i lanac); ostatak se tek
+  onda puni po prioritetu. Uzima i stavke koje su već imale svoju objavu, ali ne dvaput u 7 dana
+  (`DigestBuilder::REPEAT_AFTER_DAYS`).
 - **Pregledi se mjere, ne pretpostavljaju**: `hub:collect-metrics` (satno) čita objave koje su na redu
   (`CollectPostMetrics::due()`: svakih 6 h prvih 7 dana, zatim dnevno do 30) u `post_metrics`, redak
   po očitanju. Imena Metinih metrika su u `config/meta.php` (`insights`) jer ih Meta mijenja; neuspjeh

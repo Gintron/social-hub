@@ -41,6 +41,16 @@ final class DigestBuilder
      */
     public const REPEAT_AFTER_DAYS = 7;
 
+    /**
+     * At most this many items of one roundup may share a tag (a brand, a chain in a mixed roundup).
+     */
+    public const MAX_PER_TAG = 2;
+
+    /**
+     * How many of the best candidates the roundup chooses from.
+     */
+    private const CANDIDATE_POOL = 100;
+
     public function __construct(private readonly CaptionBuilder $captions) {}
 
     /**
@@ -137,13 +147,17 @@ final class DigestBuilder
      * Freshest, highest-priority items that no draft has used yet — or, with $includePosted, that
      * no digest has used in the last REPEAT_AFTER_DAYS days.
      *
+     * No more than MAX_PER_TAG items share a tag other than $tag: seven blenders of one brand from
+     * the same catalog page is one post, not a roundup. When that leaves too few, the rest is filled
+     * by priority, so a roundup never comes out shorter than it could.
+     *
      * @return Collection<int, ContentItem>
      */
     public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false, ?string $tag = null): Collection
     {
         $since = CarbonImmutable::now()->subDays(self::REPEAT_AFTER_DAYS);
 
-        return ContentItem::query()
+        $candidates = ContentItem::query()
             ->where('brand_id', $brand->id)
             ->where('kind', $kind->value)
             ->live()
@@ -154,8 +168,40 @@ final class DigestBuilder
                 ->where('post_drafts.created_at', '>=', $since)))
             ->orderByDesc('priority')
             ->orderByDesc('published_at')
-            ->limit($count)
+            ->limit(min(self::CANDIDATE_POOL, $count * 8))
             ->get();
+
+        $picked = [];
+        $perTag = [];
+
+        foreach ($candidates as $item) {
+            $tags = array_values(array_diff(array_map('strval', $item->tags ?? []), [(string) $tag]));
+
+            if (array_any($tags, fn (string $other): bool => ($perTag[$other] ?? 0) >= self::MAX_PER_TAG)) {
+                continue;
+            }
+
+            $picked[$item->id] = $item;
+
+            foreach ($tags as $other) {
+                $perTag[$other] = ($perTag[$other] ?? 0) + 1;
+            }
+
+            if (count($picked) === $count) {
+                break;
+            }
+        }
+
+        foreach ($candidates as $item) {
+            if (count($picked) >= $count) {
+                break;
+            }
+
+            $picked[$item->id] ??= $item;
+        }
+
+        // Back into priority order: the roundup still reads from the best deal down.
+        return $candidates->filter(fn (ContentItem $item): bool => isset($picked[$item->id]))->values();
     }
 
     /**
