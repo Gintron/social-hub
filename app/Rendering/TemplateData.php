@@ -122,6 +122,9 @@ final class TemplateData
      */
     public function forDigest(\Illuminate\Support\Collection $items, Brand $brand, string $headline, ?string $kicker = null, array $overrides = []): array
     {
+        // The deepest cut in the roundup, from the generic price field: "do −60 %" sells the swipe.
+        $deepest = (int) $items->map(fn (ContentItem $item): int => (int) (($item->price ?? [])['discount_pct'] ?? 0))->max();
+
         return array_replace([
             'kind' => 'digest',
             'emoji' => '📌',
@@ -136,8 +139,12 @@ final class TemplateData
             'primary_image' => null,
             'logo_image' => $this->brandLogo($brand),
             'expires_at' => null,
-            'thumbnails' => $items->take(4)
+            'badge' => $deepest > 0 ? "do −{$deepest} %" : null,
+            // Items without a picture are left out rather than shown as empty tiles.
+            'thumbnails' => $items
                 ->map(fn (ContentItem $item): ?string => $this->images->dataUri($item->imageUrl('primary')))
+                ->filter()
+                ->take(4)
                 ->values()
                 ->all(),
         ], $overrides);

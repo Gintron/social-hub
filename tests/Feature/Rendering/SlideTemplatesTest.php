@@ -112,4 +112,25 @@ final class SlideTemplatesTest extends TestCase
         $brand->forceFill(['colors' => ['primary' => '#2F6B45']])->save();
         $this->assertStringContainsString('invert(1)', $renderer->html($brand->refresh(), 'kinds/hook-portrait', $params));
     }
+
+    public function test_a_roundup_cover_leads_with_its_deepest_discount_and_skips_empty_tiles(): void
+    {
+        Http::fake();
+
+        $brand = Brand::factory()->create(['slug' => 'uselisto', 'name' => 'Listo', 'site_url' => 'https://uselisto.com']);
+        $source = Source::factory()->for($brand)->create();
+        $items = collect([40, 60])->map(fn (int $discount): ContentItem => ContentItem::factory()->for($source)->for($brand)->create([
+            'kind' => ContentKind::Deal,
+            'price' => ['current_cents' => 199, 'old_cents' => 499, 'discount_pct' => $discount, 'currency' => 'EUR', 'unit_label' => null],
+            'images' => [],
+        ]));
+
+        $params = app(TemplateData::class)->forDigest($items, $brand, 'Top 2 akcija u Kauflandu', 'Listo');
+        $cover = app(ImageRenderer::class)->html($brand, 'kinds/digest-cover-story', $params);
+
+        $this->assertStringContainsString('Top 2 akcija u Kauflandu', $cover);
+        $this->assertStringContainsString('do −60 %', $cover);
+        $this->assertSame([], $params['thumbnails'], 'stavke bez slike ne ostavljaju prazne pločice');
+        $this->assertStringNotContainsString('<div class="thumbs">', $cover);
+    }
 }
