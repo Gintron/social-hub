@@ -40,7 +40,7 @@ final class ScheduleDigestTest extends TestCase
             'slug' => 'studentski-poslovi',
             'timezone' => 'Europe/Zagreb',
             'posting_windows' => [['from' => '07:30', 'to' => '09:00'], ['from' => '19:00', 'to' => '22:00']],
-            'digest' => ['enabled' => true, 'days' => ['1', '4'], 'time' => '19:00', 'count' => 3, 'kind' => 'job'],
+            'digests' => [$this->series('weekly', ['days' => ['1', '4']])],
         ]);
         $this->source = Source::factory()->for($this->brand)->create();
 
@@ -70,10 +70,12 @@ final class ScheduleDigestTest extends TestCase
         // A already had its own post; a weekly roundup still takes it.
         PostDraft::factory()->create(['brand_id' => $this->brand->id])->contentItems()->attach(ContentItem::query()->where('title', 'A')->value('id'), ['position' => 0]);
 
-        $draft = app(ScheduleDigest::class)->execute($this->brand);
+        $drafts = app(ScheduleDigest::class)->execute($this->brand);
 
-        $this->assertNotNull($draft);
+        $this->assertCount(1, $drafts);
+        $draft = $drafts[0];
         $this->assertSame(PostDraft::KIND_DIGEST, $draft->kind);
+        $this->assertSame('weekly', $draft->digest_series);
         $this->assertSame(DraftStatus::Scheduled, $draft->status);
         $this->assertSame('2026-09-14 19:00', $draft->scheduled_at->setTimezone('Europe/Zagreb')->format('Y-m-d H:i'));
         $this->assertSame(['A', 'B', 'C'], $draft->contentItems->pluck('title')->all());
@@ -89,40 +91,101 @@ final class ScheduleDigestTest extends TestCase
     public function test_it_waits_for_its_day_and_hour_and_runs_once(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-14 17:30', 'Europe/Zagreb'));
-        $this->assertNull(app(ScheduleDigest::class)->execute($this->brand), 'prerano');
+        $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand), 'prerano');
 
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-15 18:30', 'Europe/Zagreb'));
-        $this->assertNull(app(ScheduleDigest::class)->execute($this->brand), 'utorak nije dan pregleda');
+        $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand), 'utorak nije dan pregleda');
 
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-14 18:05', 'Europe/Zagreb'));
-        $this->assertNotNull(app(ScheduleDigest::class)->execute($this->brand));
-        $this->assertNull(app(ScheduleDigest::class)->execute($this->brand), 'isti dan samo jednom');
+        $this->assertCount(1, app(ScheduleDigest::class)->execute($this->brand));
+        $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand), 'isti dan samo jednom');
 
-        $this->brand->forceFill(['digest' => ['enabled' => false, 'days' => [1, 2, 3, 4, 5, 6, 7]]])->save();
+        $this->brand->forceFill(['digests' => [$this->series('weekly', ['enabled' => false, 'days' => [1, 2, 3, 4, 5, 6, 7]])]])->save();
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-17 18:30', 'Europe/Zagreb'));
-        $this->assertNull(app(ScheduleDigest::class)->execute($this->brand->refresh()), 'isključeno');
+        $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand->refresh()), 'isključeno');
     }
 
     public function test_items_from_this_weeks_digest_wait_a_week(): void
     {
-        $monday = app(ScheduleDigest::class)->execute($this->brand);
+        $monday = app(ScheduleDigest::class)->execute($this->brand)[0];
         $this->assertSame(['A', 'B', 'C'], $monday->contentItems->pluck('title')->all());
 
         $this->item('E', 0);
         $this->item('F', 0);
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-17 18:30', 'Europe/Zagreb'));
 
-        $thursday = app(ScheduleDigest::class)->execute($this->brand);
+        $thursday = app(ScheduleDigest::class)->execute($this->brand)[0];
 
         $this->assertEqualsCanonicalizing(['D', 'E', 'F'], $thursday->contentItems->pluck('title')->all());
     }
 
-    private function item(string $title, int $priority): ContentItem
+    public function test_each_series_takes_its_own_tag_and_format_and_queues_behind_the_other(): void
+    {
+        $this->item('E', 0, ['split']);
+        $this->item('F', 0, ['split']);
+
+        $this->brand->forceFill(['digests' => [
+            $this->series('weekly'),
+            $this->series('split', [
+                'name' => 'Split',
+                'tag' => 'Split',
+                'count' => 2,
+                'headline' => 'Top {count} posla u Splitu',
+                'formats' => ['meta' => 'video', 'tiktok' => 'carousel'],
+            ]),
+        ]])->save();
+
+        $drafts = app(ScheduleDigest::class)->execute($this->brand->refresh());
+
+        $this->assertCount(2, $drafts);
+        [$weekly, $split] = $drafts;
+
+        $this->assertSame(['A', 'B', 'C'], $weekly->contentItems->pluck('title')->all());
+        $this->assertEqualsCanonicalizing(['E', 'F'], $split->contentItems->pluck('title')->all(), 'samo stavke s oznakom serije');
+        $this->assertSame('Top 2 posla u Splitu', $split->title);
+
+        $this->assertSame(ContentFormat::Carousel, $weekly->variants->firstWhere('platform', Platform::InstagramBusiness)->format());
+        $this->assertSame(ContentFormat::Video, $split->variants->firstWhere('platform', Platform::InstagramBusiness)->format(), 'Reel');
+        $this->assertSame(ContentFormat::Carousel, $split->variants->firstWhere('platform', Platform::TikTok)->format());
+
+        $this->assertSame(
+            ['19:00', '19:45'],
+            array_map(fn (PostDraft $draft): string => $draft->scheduled_at->setTimezone('Europe/Zagreb')->format('H:i'), $drafts),
+        );
+
+        $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand), 'svaka serija jednom na dan');
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function series(string $key, array $overrides = []): array
+    {
+        return array_replace([
+            'key' => $key,
+            'enabled' => true,
+            'name' => $key,
+            'headline' => null,
+            'days' => [1, 4],
+            'time' => '19:00',
+            'count' => 3,
+            'kind' => 'job',
+            'tag' => null,
+            'formats' => ['meta' => 'carousel', 'tiktok' => 'carousel'],
+        ], $overrides);
+    }
+
+    /**
+     * @param  list<string>  $tags
+     */
+    private function item(string $title, int $priority, array $tags = []): ContentItem
     {
         return ContentItem::factory()->for($this->source)->for($this->brand)->create([
             'kind' => ContentKind::Job,
             'title' => $title,
             'priority' => $priority,
+            'tags' => $tags,
             'expires_at' => CarbonImmutable::now()->addDays(20),
             'images' => [],
         ]);

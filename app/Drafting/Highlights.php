@@ -19,37 +19,40 @@ final class Highlights
      * The headline number, taken from the item's own wording where the site already wrote it
      * ("7.00 - 8.00 €/H" carries a range the price field cannot), otherwise formatted from `price`.
      *
-     * @return array{value: string, label: string|null, fact: string|null}|null
+     * `old` is the price before the discount, when the item has one — struck through next to the
+     * figure, it is what makes "84,99 €" read as a bargain.
+     *
+     * @return array{value: string, label: string|null, fact: string|null, old: string|null}|null
      */
     public static function figure(ContentItem $item): ?array
     {
         $price = $item->price ?? [];
+        $amount = self::currentAmount($item);
 
-        if (! filled($price['current_cents'] ?? null)) {
+        if ($amount === null) {
             return null;
         }
-
-        $amount = ((int) $price['current_cents']) / 100;
 
         foreach ($item->facts ?? [] as $fact) {
             $value = (string) ($fact['value'] ?? '');
 
-            if (self::mentions($value, $amount)) {
-                return ['value' => $value, 'label' => (string) $fact['label'], 'fact' => (string) $fact['label']];
+            // The site's wording wins only when it says more than the number. A fact that merely
+            // repeats it ("NAJNIŽA U 30 DANA: 1,89 €") is a different claim, not a label for it.
+            if (self::mentions($value, $amount) && ! self::isBareAmount($value)) {
+                return ['value' => $value, 'label' => (string) $fact['label'], 'fact' => (string) $fact['label'], 'old' => null];
             }
         }
 
-        $formatted = number_format($amount, 2, ',', '.');
         $unit = (string) ($price['unit_label'] ?? '');
-        $value = match (true) {
-            str_contains($unit, '€') => "{$formatted} {$unit}",
-            $unit !== '' => "{$formatted} € / {$unit}",
-            default => "{$formatted} €",
-        };
-
+        $old = (int) ($price['old_cents'] ?? 0);
         $discount = $price['discount_pct'] ?? null;
 
-        return ['value' => $value, 'label' => filled($discount) ? "−{$discount} %" : null, 'fact' => null];
+        return [
+            'value' => self::amount($amount, $unit),
+            'label' => filled($discount) ? "−{$discount} %" : null,
+            'fact' => null,
+            'old' => $old > (int) $price['current_cents'] ? self::amount($old / 100, $unit) : null,
+        ];
     }
 
     /**
@@ -69,9 +72,13 @@ final class Highlights
 
             $value = self::tidy((string) ($fact['value'] ?? ''));
 
-            if ($value !== '') {
-                $points[] = $value;
+            // A point is shown without its label, and "1,89 €" without "najniža u 30 dana" says
+            // nothing — or worse, reads as a second price.
+            if ($value === '' || self::isBareAmount($value)) {
+                continue;
             }
+
+            $points[] = $value;
 
             if (count($points) >= $limit) {
                 break;
@@ -100,6 +107,24 @@ final class Highlights
         return mb_convert_case(mb_strtolower($value), MB_CASE_TITLE);
     }
 
+    private static function currentAmount(ContentItem $item): ?float
+    {
+        $cents = ($item->price ?? [])['current_cents'] ?? null;
+
+        return filled($cents) ? ((int) $cents) / 100 : null;
+    }
+
+    private static function amount(float $amount, string $unit): string
+    {
+        $formatted = number_format($amount, 2, ',', '.');
+
+        return match (true) {
+            str_contains($unit, '€') => "{$formatted} {$unit}",
+            $unit !== '' => "{$formatted} € / {$unit}",
+            default => "{$formatted} €",
+        };
+    }
+
     private static function mentions(string $value, float $amount): bool
     {
         $variants = [
@@ -112,11 +137,20 @@ final class Highlights
         }
 
         foreach ($variants as $variant) {
-            if (preg_match('/(?<![\d.,])'.preg_quote($variant, '/').'(?![\d])/u', $value) === 1) {
+            // Whole euros ("1") must not be found at the start of another amount ("1,89 €").
+            if (preg_match('/(?<![\d.,])'.preg_quote($variant, '/').'(?![.,]?\d)/u', $value) === 1) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Just a sum of money, with no unit or range to it: "1,89 €", "1.200 €".
+     */
+    private static function isBareAmount(string $value): bool
+    {
+        return preg_match('/^\s*\d+(?:[.,]\d+)*\s*€\s*$/u', $value) === 1;
     }
 }

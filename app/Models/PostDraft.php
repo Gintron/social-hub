@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
  * @property int $id
  * @property int $brand_id
  * @property string $kind
+ * @property string|null $digest_series
  * @property string|null $title
  * @property DraftStatus $status
  * @property CarbonImmutable|null $scheduled_at
@@ -40,7 +41,7 @@ final class PostDraft extends Model
     public const KIND_DIGEST = 'digest';
 
     protected $fillable = [
-        'brand_id', 'kind', 'title', 'status', 'scheduled_at', 'approved_by', 'approved_at',
+        'brand_id', 'kind', 'digest_series', 'title', 'status', 'scheduled_at', 'approved_by', 'approved_at',
         'created_by_type', 'created_by_id', 'agent_run_id', 'notes',
     ];
 

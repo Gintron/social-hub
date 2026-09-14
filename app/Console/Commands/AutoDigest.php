@@ -9,21 +9,19 @@ use App\Models\Brand;
 use Illuminate\Console\Command;
 
 /**
- * Hourly: build the recurring digest of every brand whose digest day and time have come.
+ * Hourly: build every digest series whose day and time have come.
  */
 final class AutoDigest extends Command
 {
     protected $signature = 'hub:auto-digest';
 
-    protected $description = 'Build and schedule the recurring digest of brands that have one due';
+    protected $description = 'Build and schedule the recurring digests that are due';
 
     public function handle(ScheduleDigest $digests): int
     {
-        foreach (Brand::query()->whereNotNull('digest')->get() as $brand) {
-            $draft = $digests->execute($brand);
-
-            if ($draft !== null) {
-                $this->line("{$brand->name}: pregled #{$draft->id} zakazan za ".$draft->scheduled_at?->setTimezone($brand->timezone ?: 'Europe/Zagreb')->format('d.m.Y H:i'));
+        foreach (Brand::query()->whereNotNull('digests')->get() as $brand) {
+            foreach ($digests->execute($brand) as $draft) {
+                $this->line("{$brand->name}: „{$draft->title}“ #{$draft->id} zakazan za ".$draft->scheduled_at?->setTimezone($brand->timezone ?: 'Europe/Zagreb')->format('d.m.Y H:i'));
             }
         }
 

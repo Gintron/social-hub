@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Drafting;
 
 use App\Drafting\DigestBuilder;
+use App\Enums\ContentFormat;
 use App\Enums\ContentKind;
 use App\Enums\Platform;
 use App\Jobs\RenderDigestJob;
+use App\Jobs\RenderVideoJob;
 use App\Models\Brand;
 use App\Models\ContentItem;
 use App\Models\PostDraft;
@@ -65,6 +67,35 @@ final class DigestBuilderTest extends TestCase
         $this->assertLessThanOrEqual(2200, mb_strlen($instagramCaption));
     }
 
+    public function test_a_digest_can_narrow_to_one_tag_and_go_out_as_a_reel(): void
+    {
+        Queue::fake();
+
+        $brand = $this->brand();
+        $items = $this->deals($brand, [['Jaja', 60], ['Kava', 45], ['Mlijeko', 20]]);
+        $items->firstWhere('title', 'Jaja')->forceFill(['tags' => ['lidl']])->save();
+        $items->whereIn('title', ['Kava', 'Mlijeko'])->each(fn (ContentItem $item) => $item->forceFill(['tags' => ['kaufland', 'dukat']])->save());
+        $page = SocialAccount::factory()->for($brand)->create();
+        $tiktok = SocialAccount::factory()->for($brand)->create(['platform' => Platform::TikTok]);
+
+        $draft = app(DigestBuilder::class)->build(
+            $brand,
+            ContentKind::Deal,
+            [$page, $tiktok],
+            headline: 'Top {count} akcija u Kauflandu',
+            tag: 'kaufland',
+            formats: [Platform::FacebookPage->value => ContentFormat::Video],
+        );
+
+        $this->assertSame('Top 2 akcija u Kauflandu', $draft->title);
+        $this->assertSame(['Kava', 'Mlijeko'], $draft->contentItems->pluck('title')->all());
+        $this->assertSame(ContentFormat::Video, $draft->variants->firstWhere('platform', Platform::FacebookPage)->format());
+        $this->assertSame(ContentFormat::Carousel, $draft->variants->firstWhere('platform', Platform::TikTok)->format());
+
+        Queue::assertPushed(RenderVideoJob::class, fn (RenderVideoJob $job): bool => $job->draftId === $draft->id);
+        Queue::assertPushed(RenderDigestJob::class, fn (RenderDigestJob $job): bool => $job->draftId === $draft->id);
+    }
+
     public function test_it_refuses_to_build_a_carousel_out_of_one_item(): void
     {
         Queue::fake();
@@ -103,11 +134,16 @@ final class DigestBuilderTest extends TestCase
         $this->deals($brand, [['Jaja', 60], ['Kava', 45], ['Mlijeko', 20]]);
         SocialAccount::factory()->for($brand)->create();
 
-        $this->artisan('hub:draft-digest', ['brand' => $brand->slug, '--kind' => 'deal', '--count' => 3])
+        $this->artisan('hub:draft-digest', ['brand' => $brand->slug, '--kind' => 'deal', '--count' => 3, '--format' => 'video'])
             ->expectsOutputToContain('Top 3 akcija ovog tjedna')
+            ->expectsOutputToContain('(video)')
             ->assertSuccessful();
 
         $this->assertSame(1, PostDraft::query()->where('kind', PostDraft::KIND_DIGEST)->count());
+
+        $this->artisan('hub:draft-digest', ['brand' => $brand->slug, '--format' => 'image'])
+            ->expectsOutputToContain('carousel or video')
+            ->assertFailed();
     }
 
     public function test_the_command_explains_itself_when_a_brand_has_no_channels(): void

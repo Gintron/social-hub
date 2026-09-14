@@ -18,8 +18,33 @@ final class HighlightsTest extends TestCase
             'price' => ['current_cents' => 700, 'unit_label' => '€/H'],
         ]);
 
-        $this->assertSame(['value' => '7.00 - 8.00 €/H', 'label' => 'SATNICA', 'fact' => 'SATNICA'], Highlights::figure($item));
+        $this->assertSame(['value' => '7.00 - 8.00 €/H', 'label' => 'SATNICA', 'fact' => 'SATNICA', 'old' => null], Highlights::figure($item));
         $this->assertSame(['Lovran'], Highlights::points($item));
+    }
+
+    public function test_a_fact_that_only_repeats_the_price_neither_labels_it_nor_repeats_it(): void
+    {
+        $deal = $this->item([
+            'kind' => ContentKind::Deal,
+            'facts' => [['label' => 'NAJNIŽA U 30 DANA', 'value' => '1,89 €'], ['label' => 'VRIJEDI DO', 'value' => '8.9.2026.']],
+            'price' => ['current_cents' => 189, 'old_cents' => 359, 'discount_pct' => 47],
+        ]);
+
+        $this->assertSame(['value' => '1,89 €', 'label' => '−47 %', 'fact' => null, 'old' => '3,59 €'], Highlights::figure($deal));
+        $this->assertSame(['8.9.2026.'], Highlights::points($deal));
+    }
+
+    public function test_a_whole_euro_price_is_not_found_inside_another_amount(): void
+    {
+        $deal = $this->item([
+            'kind' => ContentKind::Deal,
+            'facts' => [['label' => 'JEDINIČNA CIJENA', 'value' => '6,25 €/kg'], ['label' => 'NAJNIŽA U 30 DANA', 'value' => '1,89 €']],
+            'price' => ['current_cents' => 100, 'old_cents' => 189, 'discount_pct' => 47],
+        ]);
+
+        // "1,89 €" starts with a 1, but it is not the 1,00 € the deal costs.
+        $this->assertSame(['value' => '1,00 €', 'label' => '−47 %', 'fact' => null, 'old' => '1,89 €'], Highlights::figure($deal));
+        $this->assertSame(['6,25 €/kg'], Highlights::points($deal), 'goli iznos bez oznake ne znači ništa');
     }
 
     public function test_the_figure_is_formatted_from_the_price_when_no_fact_states_it(): void
@@ -30,8 +55,8 @@ final class HighlightsTest extends TestCase
             'price' => ['current_cents' => 199, 'old_cents' => 349, 'discount_pct' => 43],
         ]);
 
-        // 17,00 must not be read as 7,00 or 1,99.
-        $this->assertSame(['value' => '1,99 €', 'label' => '−43 %', 'fact' => null], Highlights::figure($deal));
+        // 17,00 must not be read as 7,00 or 1,99; the old price comes along to be struck through.
+        $this->assertSame(['value' => '1,99 €', 'label' => '−43 %', 'fact' => null, 'old' => '3,49 €'], Highlights::figure($deal));
         $this->assertSame(['17,00 €/kg'], Highlights::points($deal));
     }
 

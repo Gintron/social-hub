@@ -46,10 +46,13 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   **format i postavke kanala** (`format`, `settings`); kampanja se slaže u panelu, ne u kodu.
   `daily_cap` je **po kanalu**: stavke idu po prioritetu, pa kanal s malim limitom (2 Reela) dobije
   najbolje, a kanal bez limita (grupe) sve. Nove objave se slažu iza već zakazanih (`PostingSchedule::queueAfter`).
-- **Pregled tjedna je automatika, ne novi kanal**: `brands.digest` (dani, vrijeme, broj, vrsta), gradi ga
-  `hub:auto-digest` (satno, sat unaprijed) kroz `App\Actions\ScheduleDigest` — samo na kanale s uključenim
-  pravilom, bez ručnih, s postavkama pravila. Uzima i stavke koje su već imale svoju objavu, ali ne
-  dvaput u 7 dana (`DigestBuilder::REPEAT_AFTER_DAYS`).
+- **Pregledi su automatika, ne novi kanal**: `brands.digests` je lista serija (`App\Drafting\DigestSeries`:
+  dani, vrijeme, broj, vrsta, **oznaka**, format FB/IG i TikTok). Gradi ih `hub:auto-digest` (satno, sat
+  unaprijed) kroz `App\Actions\ScheduleDigest` — svaku seriju jednom na dan (`post_drafts.digest_series`),
+  samo na kanale s uključenim pravilom, bez ručnih, s postavkama pravila. „Top akcije u Kauflandu“ je
+  serija s oznakom `kaufland` (opće polje `tags` iz feeda), nikad grana u kodu. Pregled je uvijek set
+  slajdova: carousel ili Reel od njih, nikad jedna slika. Uzima i stavke koje su već imale svoju objavu,
+  ali ne dvaput u 7 dana (`DigestBuilder::REPEAT_AFTER_DAYS`).
 - **Pregledi se mjere, ne pretpostavljaju**: `hub:collect-metrics` (satno) čita objave koje su na redu
   (`CollectPostMetrics::due()`: svakih 6 h prvih 7 dana, zatim dnevno do 30) u `post_metrics`, redak
   po očitanju. Imena Metinih metrika su u `config/meta.php` (`insights`) jer ih Meta mijenja; neuspjeh

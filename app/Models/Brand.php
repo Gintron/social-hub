@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Drafting\DigestSeries;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Storage;
  * @property array<string, mixed>|null $voice
  * @property array<int, array{day?: string, from: string, to: string}>|null $posting_windows
  * @property array<array-key, array{path?: string|null, title?: string|null, license?: string|null}>|null $audio_tracks
- * @property array{enabled?: bool, days?: list<int|string>, time?: string, count?: int|string, kind?: string}|null $digest
+ * @property array<array-key, array<string, mixed>>|null $digests
  * @property string $timezone
  */
 final class Brand extends Model
@@ -34,7 +35,7 @@ final class Brand extends Model
     public const AUDIO_DISK = 'public';
 
     protected $fillable = [
-        'slug', 'name', 'site_url', 'logo_path', 'colors', 'voice', 'posting_windows', 'audio_tracks', 'digest', 'timezone',
+        'slug', 'name', 'site_url', 'logo_path', 'colors', 'voice', 'posting_windows', 'audio_tracks', 'digests', 'timezone',
     ];
 
     public function sources(): HasMany
@@ -60,6 +61,24 @@ final class Brand extends Model
     public function mediaAssets(): HasMany
     {
         return $this->hasMany(MediaAsset::class);
+    }
+
+    /**
+     * The brand's recurring roundups, in the order the panel shows them.
+     *
+     * @return list<DigestSeries>
+     */
+    public function digestSeries(): array
+    {
+        $series = [];
+
+        foreach (array_values($this->digests ?? []) as $position => $data) {
+            if (is_array($data)) {
+                $series[] = DigestSeries::fromArray($data, $position);
+            }
+        }
+
+        return $series;
     }
 
     /**
@@ -123,7 +142,7 @@ final class Brand extends Model
             'voice' => 'array',
             'posting_windows' => 'array',
             'audio_tracks' => 'array',
-            'digest' => 'array',
+            'digests' => 'array',
         ];
     }
 }

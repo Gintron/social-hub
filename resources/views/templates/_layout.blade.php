@@ -29,8 +29,9 @@
   .footer .brand { display: flex; align-items: center; gap: 20px; min-width: 0; }
   .footer .site { font-size: 34px; font-weight: 800; letter-spacing: 0.5px; }
   .footer .cta { font-size: 30px; font-weight: 600; opacity: 0.95; }
-  /* The footer sits on the primary colour, so the logo goes white here; the logo chip keeps it in colour. */
-  .footer img { height: 64px; width: auto; max-width: 320px; object-fit: contain; filter: brightness(0) invert(1); }
+  /* The footer sits on the primary colour, so the logo goes white here — unless the mark is a filled
+     shape, which white would turn into a blank block; the logo chip keeps it in colour either way. */
+  .footer img { height: 64px; width: auto; max-width: 320px; object-fit: contain; {!! $brand['logo_filter'] ?? '' !!} }
   .logo-chip { position: absolute; right: 40px; bottom: 24px; width: 140px; height: 140px; border-radius: 28px; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.18); display: flex; align-items: center; justify-content: center; overflow: hidden; }
   .logo-chip img { width: 100%; height: 100%; object-fit: contain; padding: 14px; }
   .price { display: flex; align-items: baseline; gap: 26px; margin-top: 6px; }

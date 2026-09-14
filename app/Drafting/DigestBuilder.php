@@ -10,6 +10,7 @@ use App\Enums\ActorType;
 use App\Enums\ContentFormat;
 use App\Enums\ContentKind;
 use App\Enums\DraftStatus;
+use App\Enums\Platform;
 use App\Enums\VariantStatus;
 use App\Models\Brand;
 use App\Models\ContentItem;
@@ -44,9 +45,13 @@ final class DigestBuilder
 
     /**
      * @param  Collection<int, SocialAccount>|list<SocialAccount>  $accounts
+     * @param  string|null  $headline  `{count}` becomes the number of items picked.
      * @param  bool  $includePosted  Also take items that already had a post of their own (a recurring
      *                               digest is a roundup of the week, not of what nobody posted).
      * @param  array<string, array<string, mixed>>  $channelSettings  platform value => variant settings
+     * @param  string|null  $tag  Only items carrying this feed tag (a chain, a city).
+     * @param  array<string, ContentFormat>  $formats  platform value => carousel or video; carousel by default.
+     * @param  string|null  $series  The digest series building this draft (DigestSeries::$key).
      */
     public function build(
         Brand $brand,
@@ -62,6 +67,9 @@ final class DigestBuilder
         bool $render = true,
         bool $includePosted = false,
         array $channelSettings = [],
+        ?string $tag = null,
+        array $formats = [],
+        ?string $series = null,
     ): PostDraft {
         $accounts = collect($accounts);
 
@@ -70,19 +78,22 @@ final class DigestBuilder
         }
 
         $count = max(2, min($count, self::MAX_ITEMS));
-        $items = $this->pick($brand, $kind, $count, $includePosted);
+        $items = $this->pick($brand, $kind, $count, $includePosted, $tag);
 
         if ($items->count() < 2) {
-            throw new InvalidArgumentException("Nema dovoljno svježih stavki vrste {$kind->value} za brend {$brand->name} (pronađeno {$items->count()}, treba barem 2).");
+            $scope = $tag !== null ? " s oznakom {$tag}" : '';
+
+            throw new InvalidArgumentException("Nema dovoljno svježih stavki vrste {$kind->value}{$scope} za brend {$brand->name} (pronađeno {$items->count()}, treba barem 2).");
         }
 
-        $headline ??= $this->defaultHeadline($kind, $items->count());
+        $headline = str_replace('{count}', (string) $items->count(), $headline ?? $this->defaultHeadline($kind, $items->count()));
         $kicker ??= $brand->name;
 
-        $draft = DB::transaction(function () use ($brand, $items, $accounts, $headline, $actor, $actorId, $scheduledAt, $status, $channelSettings): PostDraft {
+        $draft = DB::transaction(function () use ($brand, $items, $accounts, $headline, $actor, $actorId, $scheduledAt, $status, $channelSettings, $formats, $series): PostDraft {
             $draft = PostDraft::query()->create([
                 'brand_id' => $brand->id,
                 'kind' => PostDraft::KIND_DIGEST,
+                'digest_series' => $series,
                 'title' => mb_substr($headline, 0, 300),
                 'status' => $scheduledAt !== null && $status === DraftStatus::Approved ? DraftStatus::Scheduled : $status,
                 'scheduled_at' => $scheduledAt,
@@ -101,10 +112,10 @@ final class DigestBuilder
                     'platform' => $account->platform,
                     'caption' => $this->captions->digest($account->platform, $items, $brand, $headline),
                     'link_url' => $brand->site_url,
-                    // A digest is a carousel on every channel, TikTok included (a photo post).
+                    // The same slides either way: a carousel (a photo post on TikTok), or a Reel of them.
                     'settings' => [
                         ...Arr::only($channelSettings[$account->platform->value] ?? [], UpdateVariant::EDITABLE_SETTINGS),
-                        'format' => ContentFormat::Carousel->value,
+                        'format' => self::formatFor($account->platform, $formats)->value,
                     ],
                     'status' => VariantStatus::Pending,
                 ]);
@@ -114,7 +125,8 @@ final class DigestBuilder
         });
 
         if ($render) {
-            // Grouped by orientation: one square set for Facebook and Instagram, one vertical for TikTok.
+            // Grouped by format and orientation: one 4:5 set for Facebook and Instagram, one vertical
+            // for TikTok, one video for every channel that posts it as a Reel.
             app(PrepareVariantMedia::class)->execute($draft->variants()->get(), kicker: $kicker);
         }
 
@@ -127,7 +139,7 @@ final class DigestBuilder
      *
      * @return Collection<int, ContentItem>
      */
-    public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false): Collection
+    public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false, ?string $tag = null): Collection
     {
         $since = CarbonImmutable::now()->subDays(self::REPEAT_AFTER_DAYS);
 
@@ -135,6 +147,7 @@ final class DigestBuilder
             ->where('brand_id', $brand->id)
             ->where('kind', $kind->value)
             ->live()
+            ->when($tag !== null, fn ($query) => $query->whereJsonContains('tags', $tag))
             ->when(! $includePosted, fn ($query) => $query->notDrafted())
             ->when($includePosted, fn ($query) => $query->whereDoesntHave('postDrafts', fn ($drafts) => $drafts
                 ->where('kind', PostDraft::KIND_DIGEST)
@@ -143,6 +156,21 @@ final class DigestBuilder
             ->orderByDesc('published_at')
             ->limit($count)
             ->get();
+    }
+
+    /**
+     * A digest is always slides: a carousel, or a video made of them. Anything the channel cannot
+     * take — or a single image, which would drop every item but the cover — is a carousel.
+     *
+     * @param  array<string, ContentFormat>  $formats
+     */
+    private static function formatFor(Platform $platform, array $formats): ContentFormat
+    {
+        $format = $formats[$platform->value] ?? ContentFormat::Carousel;
+
+        return $format === ContentFormat::Video && in_array($format, $platform->formats(), true)
+            ? ContentFormat::Video
+            : ContentFormat::Carousel;
     }
 
     private function defaultHeadline(ContentKind $kind, int $count): string

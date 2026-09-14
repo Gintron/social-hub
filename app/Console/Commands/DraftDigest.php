@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Drafting\DigestBuilder;
+use App\Enums\ContentFormat;
 use App\Enums\ContentKind;
+use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\SocialAccount;
 use Illuminate\Console\Command;
@@ -17,9 +19,11 @@ final class DraftDigest extends Command
         {brand : Brand slug}
         {--kind=deal : Content kind to collect (job, deal, article, event, generic)}
         {--count=5 : How many items to include}
-        {--headline= : Override the headline}';
+        {--headline= : Override the headline; {count} becomes the number of items}
+        {--tag= : Only items with this feed tag, e.g. kaufland}
+        {--format=carousel : carousel, or video for a Reel on Facebook and Instagram}';
 
-    protected $description = 'Build one carousel draft out of the brand\'s top items of a kind';
+    protected $description = 'Build one digest draft (for approval) out of the brand\'s top items of a kind';
 
     public function handle(DigestBuilder $builder): int
     {
@@ -39,6 +43,14 @@ final class DraftDigest extends Command
             return self::FAILURE;
         }
 
+        $format = ContentFormat::tryFrom((string) $this->option('format'));
+
+        if (! in_array($format, [ContentFormat::Carousel, ContentFormat::Video], true)) {
+            $this->error("Format must be carousel or video, not '{$this->option('format')}'.");
+
+            return self::FAILURE;
+        }
+
         $accounts = SocialAccount::query()->where('brand_id', $brand->id)->active()->get();
 
         if ($accounts->isEmpty()) {
@@ -54,6 +66,9 @@ final class DraftDigest extends Command
                 accounts: $accounts,
                 count: (int) $this->option('count'),
                 headline: $this->option('headline') ? (string) $this->option('headline') : null,
+                tag: filled($this->option('tag')) ? mb_strtolower((string) $this->option('tag')) : null,
+                // TikTok keeps its photo carousel; the format picks what Meta's channels post.
+                formats: [Platform::FacebookPage->value => $format, Platform::InstagramBusiness->value => $format],
             );
         } catch (Throwable $e) {
             $this->error($e->getMessage());
@@ -63,8 +78,8 @@ final class DraftDigest extends Command
 
         $this->info("Draft #{$draft->id}: {$draft->title}");
         $this->line('Stavke: '.$draft->contentItems->pluck('title')->implode(' · '));
-        $this->line('Kanali: '.$draft->variants->map(fn ($variant): string => $variant->platform->label())->implode(', '));
-        $this->line('Slike se renderiraju u pozadini (queue "render").');
+        $this->line('Kanali: '.$draft->variants->map(fn ($variant): string => $variant->platform->label().' ('.$variant->format()->value.')')->implode(', '));
+        $this->line('Mediji se renderiraju u pozadini (queue "render").');
 
         return self::SUCCESS;
     }

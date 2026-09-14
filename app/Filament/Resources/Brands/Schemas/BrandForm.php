@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Brands\Schemas;
 
-use App\Actions\ScheduleDigest;
 use App\Drafting\DigestBuilder;
+use App\Drafting\DigestSeries;
 use App\Enums\ContentKind;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -19,6 +20,7 @@ use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 final class BrandForm
 {
@@ -49,6 +51,10 @@ final class BrandForm
                         ColorPicker::make('colors.muted')->label('Prigušeni tekst')->default('#6b7280'),
                         ColorPicker::make('colors.background')->label('Pozadina')->default('#ffffff'),
                         ColorPicker::make('colors.surface')->label('Površina')->default('#f3f4f6'),
+                        Select::make('colors.logo_footer')->label('Logo na traci primarne boje')
+                            ->options(['white' => 'Bijeli obris', 'original' => 'Originalne boje'])
+                            ->default('white')->selectablePlaceholder(false)
+                            ->helperText('Originalne boje za logo koji je ispunjen lik (npr. kvadrat) — bijeli obris bi ga pretvorio u bijelu mrlju.'),
                     ])->columns(3),
 
                 Section::make('Glas brenda')
@@ -85,19 +91,42 @@ final class BrandForm
                     ])
                     ->collapsible(),
 
-                Section::make('Pregled tjedna')
-                    ->description('Carousel s najboljim aktivnim stavkama u odabrane dane. Ide na kanale kojima je uključena automatska objava (bez ručnih FB grupa), s njihovim postavkama. Stavka smije u pregled i kad je već imala svoju objavu, ali ne dvaput u 7 dana.')
+                Section::make('Pregledi')
+                    ->description('Serije preglednih objava s najboljim aktivnim stavkama (npr. „Top 7 akcija u Kauflandu“ svake srijede). Idu na kanale kojima je uključena automatska objava (bez ručnih FB grupa), s njihovim postavkama. Stavka smije u pregled i kad je već imala svoju objavu, ali ne dvaput u 7 dana.')
                     ->schema([
-                        Toggle::make('digest.enabled')->label('Uključeno')->default(false)->columnSpanFull(),
-                        CheckboxList::make('digest.days')->label('Dani')
-                            ->options([1 => 'pon', 2 => 'uto', 3 => 'sri', 4 => 'čet', 5 => 'pet', 6 => 'sub', 7 => 'ned'])
-                            ->default([1, 4])->columns(7)->columnSpanFull(),
-                        TimePicker::make('digest.time')->label('Vrijeme objave')->seconds(false)->default(ScheduleDigest::DEFAULT_TIME),
-                        TextInput::make('digest.count')->label('Broj stavki')->numeric()->minValue(2)->maxValue(DigestBuilder::MAX_ITEMS)
-                            ->default(ScheduleDigest::DEFAULT_COUNT),
-                        Select::make('digest.kind')->label('Vrsta stavki')->options(ContentKind::class)->default(ContentKind::Job->value),
+                        Repeater::make('digests')->label('')
+                            ->schema([
+                                // Which series built a draft, so each is built once a day; not shown.
+                                Hidden::make('key')->default(fn (): string => (string) Str::uuid()),
+                                TextInput::make('name')->label('Naziv (interno)')->required()->maxLength(80)
+                                    ->placeholder('Kaufland srijedom'),
+                                Toggle::make('enabled')->label('Uključeno')->default(true)->inline(false),
+                                TextInput::make('tag')->label('Samo stavke s oznakom')->maxLength(64)->placeholder('kaufland')
+                                    ->helperText('Oznaka iz feeda (lanac, grad…). Prazno = sve stavke.'),
+                                TextInput::make('headline')->label('Naslov')->maxLength(120)
+                                    ->placeholder('Top {count} akcija u Kauflandu')
+                                    ->helperText('{count} = broj stavki. Prazno = „Top N … ovog tjedna“.')
+                                    ->columnSpanFull(),
+                                CheckboxList::make('days')->label('Dani')
+                                    ->options([1 => 'pon', 2 => 'uto', 3 => 'sri', 4 => 'čet', 5 => 'pet', 6 => 'sub', 7 => 'ned'])
+                                    ->default([1, 4])->columns(7)->columnSpanFull(),
+                                TimePicker::make('time')->label('Vrijeme objave')->seconds(false)->default(DigestSeries::DEFAULT_TIME),
+                                TextInput::make('count')->label('Broj stavki')->numeric()->minValue(2)->maxValue(DigestBuilder::MAX_ITEMS)
+                                    ->default(DigestSeries::DEFAULT_COUNT),
+                                Select::make('kind')->label('Vrsta stavki')->options(ContentKind::class)->default(ContentKind::Job->value),
+                                Select::make('formats.meta')->label('Facebook i Instagram')
+                                    ->options(['carousel' => 'Carousel', 'video' => 'Reel'])
+                                    ->default('carousel')->selectablePlaceholder(false),
+                                Select::make('formats.tiktok')->label('TikTok')
+                                    ->options(['carousel' => 'Foto carousel', 'video' => 'Video'])
+                                    ->default('carousel')->selectablePlaceholder(false),
+                            ])
+                            ->columns(3)
+                            ->default([])
+                            ->addActionLabel('Dodaj seriju')
+                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                            ->collapsible(),
                     ])
-                    ->columns(3)
                     ->collapsible(),
 
                 Section::make('Termini objave')

@@ -106,6 +106,7 @@ final class TemplateData
                 'figure' => $figure['value'] ?? null,
                 // A deal's discount often arrives as a badge too; the slide says it once.
                 'figure_label' => in_array($figure['label'] ?? null, $item->badges ?? [], true) ? null : ($figure['label'] ?? null),
+                'figure_old' => $figure['old'] ?? null,
                 'points' => Highlights::points($item, 2),
             ],
             'cta_label' => $item->cta['label'] ?? null,
@@ -160,6 +161,9 @@ final class TemplateData
             'background' => $colors['background'] ?? '#ffffff',
             'surface' => $colors['surface'] ?? '#f3f4f6',
             'cta' => filled(data_get($brand->voice, 'cta')) ? (string) data_get($brand->voice, 'cta') : null,
+            // A mark on a transparent background goes white on the primary colour; a filled one
+            // (a square with a tick) would become a blank block, so it keeps its colours.
+            'logo_filter' => ($colors['logo_footer'] ?? 'white') === 'original' ? 'border-radius: 14px;' : 'filter: brightness(0) invert(1);',
         ];
     }
 

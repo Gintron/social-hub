@@ -80,4 +80,36 @@ final class SlideTemplatesTest extends TestCase
         $this->assertStringContainsString('Prijavi se na studentski-poslovi.hr', $end);
         $this->assertStringContainsString('studentski-poslovi.hr', $end);
     }
+
+    public function test_a_deal_hook_strikes_the_old_price_and_a_filled_logo_keeps_its_colours(): void
+    {
+        Http::fake();
+
+        $brand = Brand::factory()->create([
+            'slug' => 'uselisto',
+            'name' => 'Listo',
+            'site_url' => 'https://uselisto.com',
+            'colors' => ['primary' => '#2F6B45', 'logo_footer' => 'original'],
+        ]);
+        $item = ContentItem::factory()->for(Source::factory()->for($brand))->for($brand)->create([
+            'kind' => ContentKind::Deal,
+            'title' => 'Gorenje Kuhinjski robot',
+            'subtitle' => 'Kaufland',
+            'facts' => [['label' => 'VRIJEDI DO', 'value' => '26.9.2026.']],
+            'price' => ['current_cents' => 8499, 'old_cents' => 16999, 'discount_pct' => 50, 'currency' => 'EUR', 'unit_label' => null],
+            'badges' => ['−50 %'],
+            'images' => [],
+        ]);
+
+        $renderer = app(ImageRenderer::class);
+        $params = app(TemplateData::class)->forItem($item, $brand);
+
+        $hook = $renderer->html($brand, 'kinds/hook-portrait', $params);
+        $this->assertStringContainsString('84,99 €', $hook);
+        $this->assertStringContainsString('<div class="figure-old">169,99 €</div>', $hook);
+        $this->assertStringNotContainsString('invert(1)', $hook, 'ispunjen logo ne smije postati bijela mrlja');
+
+        $brand->forceFill(['colors' => ['primary' => '#2F6B45']])->save();
+        $this->assertStringContainsString('invert(1)', $renderer->html($brand->refresh(), 'kinds/hook-portrait', $params));
+    }
 }
