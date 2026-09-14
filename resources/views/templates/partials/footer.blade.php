@@ -11,3 +11,7 @@
     <div class="cta">{{ $footerCta }}</div>
   @endif
 </div>
+@if($height > 1500)
+  {{-- On 9:16 the app's caption and buttons cover the bottom; the brand colour runs on under them instead of content. --}}
+  <div style="flex: 0 0 420px; background: {{ $brand['primary'] }};"></div>
+@endif

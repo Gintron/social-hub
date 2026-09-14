@@ -18,7 +18,7 @@
   .hero .placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 220px; background: linear-gradient(135deg, {{ $brand['primary'] }} 0%, {{ $brand['accent'] }} 100%); }
   .badges { position: absolute; left: 48px; top: 40px; display: flex; gap: 14px; flex-wrap: wrap; max-width: 80%; }
   .badge { background: {{ $brand['accent'] }}; color: #111; font-weight: 700; font-size: 28px; padding: 10px 22px; border-radius: 999px; line-height: 1.1; }
-  .body { flex: 1; padding: 52px 64px 0 64px; display: flex; flex-direction: column; gap: 22px; }
+  .body { flex: 1; min-height: 0; overflow: hidden; padding: 52px 64px 0 64px; display: flex; flex-direction: column; gap: 22px; }
   .title { font-size: 66px; font-weight: 800; line-height: 1.08; letter-spacing: -0.5px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
   .subtitle { font-size: 36px; color: {{ $brand['muted'] }}; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; margin-top: 8px; }

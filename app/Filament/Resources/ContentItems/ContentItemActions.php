@@ -50,7 +50,7 @@ final class ContentItemActions
                     ->label('Predložak slike')
                     ->options(fn (ContentItem $record): array => app(TemplateRegistry::class)->optionsFor($record->kind))
                     ->placeholder('Automatski po kanalu')
-                    ->helperText('Prazno: kvadrat za Facebook i Instagram, uspravno za TikTok. Format svakog kanala mijenjaš na nacrtu.'),
+                    ->helperText('Prazno: 4:5 za Facebook i Instagram, uspravno za TikTok. Format svakog kanala mijenjaš na nacrtu.'),
                 DateTimePicker::make('scheduled_at')
                     ->label('Zakaži za (opcionalno)')
                     ->timezone('Europe/Zagreb')
