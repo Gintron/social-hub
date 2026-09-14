@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Drafting;
 
 use App\Actions\PrepareVariantMedia;
+use App\Actions\UpdateVariant;
 use App\Enums\ActorType;
 use App\Enums\ContentFormat;
 use App\Enums\ContentKind;
@@ -17,6 +18,7 @@ use App\Models\PostVariant;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -33,10 +35,18 @@ final class DigestBuilder
      */
     public const MAX_ITEMS = 9;
 
+    /**
+     * An item may appear in the next digest only once this many days have passed since the last.
+     */
+    public const REPEAT_AFTER_DAYS = 7;
+
     public function __construct(private readonly CaptionBuilder $captions) {}
 
     /**
      * @param  Collection<int, SocialAccount>|list<SocialAccount>  $accounts
+     * @param  bool  $includePosted  Also take items that already had a post of their own (a recurring
+     *                               digest is a roundup of the week, not of what nobody posted).
+     * @param  array<string, array<string, mixed>>  $channelSettings  platform value => variant settings
      */
     public function build(
         Brand $brand,
@@ -50,6 +60,8 @@ final class DigestBuilder
         ?CarbonImmutable $scheduledAt = null,
         DraftStatus $status = DraftStatus::PendingApproval,
         bool $render = true,
+        bool $includePosted = false,
+        array $channelSettings = [],
     ): PostDraft {
         $accounts = collect($accounts);
 
@@ -58,7 +70,7 @@ final class DigestBuilder
         }
 
         $count = max(2, min($count, self::MAX_ITEMS));
-        $items = $this->pick($brand, $kind, $count);
+        $items = $this->pick($brand, $kind, $count, $includePosted);
 
         if ($items->count() < 2) {
             throw new InvalidArgumentException("Nema dovoljno svježih stavki vrste {$kind->value} za brend {$brand->name} (pronađeno {$items->count()}, treba barem 2).");
@@ -67,7 +79,7 @@ final class DigestBuilder
         $headline ??= $this->defaultHeadline($kind, $items->count());
         $kicker ??= $brand->name;
 
-        $draft = DB::transaction(function () use ($brand, $items, $accounts, $headline, $actor, $actorId, $scheduledAt, $status): PostDraft {
+        $draft = DB::transaction(function () use ($brand, $items, $accounts, $headline, $actor, $actorId, $scheduledAt, $status, $channelSettings): PostDraft {
             $draft = PostDraft::query()->create([
                 'brand_id' => $brand->id,
                 'kind' => PostDraft::KIND_DIGEST,
@@ -90,7 +102,10 @@ final class DigestBuilder
                     'caption' => $this->captions->digest($account->platform, $items, $brand, $headline),
                     'link_url' => $brand->site_url,
                     // A digest is a carousel on every channel, TikTok included (a photo post).
-                    'settings' => ['format' => ContentFormat::Carousel->value],
+                    'settings' => [
+                        ...Arr::only($channelSettings[$account->platform->value] ?? [], UpdateVariant::EDITABLE_SETTINGS),
+                        'format' => ContentFormat::Carousel->value,
+                    ],
                     'status' => VariantStatus::Pending,
                 ]);
             }
@@ -107,17 +122,23 @@ final class DigestBuilder
     }
 
     /**
-     * Freshest, highest-priority items that no draft has used yet.
+     * Freshest, highest-priority items that no draft has used yet — or, with $includePosted, that
+     * no digest has used in the last REPEAT_AFTER_DAYS days.
      *
      * @return Collection<int, ContentItem>
      */
-    public function pick(Brand $brand, ContentKind $kind, int $count): Collection
+    public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false): Collection
     {
+        $since = CarbonImmutable::now()->subDays(self::REPEAT_AFTER_DAYS);
+
         return ContentItem::query()
             ->where('brand_id', $brand->id)
             ->where('kind', $kind->value)
             ->live()
-            ->notDrafted()
+            ->when(! $includePosted, fn ($query) => $query->notDrafted())
+            ->when($includePosted, fn ($query) => $query->whereDoesntHave('postDrafts', fn ($drafts) => $drafts
+                ->where('kind', PostDraft::KIND_DIGEST)
+                ->where('post_drafts.created_at', '>=', $since)))
             ->orderByDesc('priority')
             ->orderByDesc('published_at')
             ->limit($count)

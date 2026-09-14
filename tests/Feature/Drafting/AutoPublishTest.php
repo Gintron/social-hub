@@ -185,6 +185,25 @@ final class AutoPublishTest extends TestCase
         $this->assertNull($tiktok->setting('unknown'), 'pravilo smije postaviti samo ono što smije i pregled objave');
     }
 
+    public function test_a_small_cap_gets_the_best_items_and_a_channel_without_one_gets_them_all(): void
+    {
+        $this->fakeFeed(3);
+        $source = $this->source();
+        SocialAccount::factory()->for($source->brand)->instagram()->create();
+        SocialAccount::factory()->for($source->brand)->create();
+        $this->rule($source, Platform::InstagramBusiness, dailyCap: 1);
+        $this->rule($source, Platform::FacebookPage);
+
+        $this->sync($source);
+
+        $drafts = PostDraft::query()->with(['variants', 'contentItems'])->get();
+        $withInstagram = $drafts->filter(fn (PostDraft $draft): bool => $draft->variants->contains('platform', Platform::InstagramBusiness));
+
+        $this->assertCount(3, $drafts);
+        $this->assertSame(['Oglas 1'], $withInstagram->map(fn (PostDraft $draft): string => $draft->contentItems->first()->title)->values()->all(), 'Reel dobiva stavka najvišeg prioriteta');
+        $this->assertTrue($drafts->every(fn (PostDraft $draft): bool => $draft->variants->contains('platform', Platform::FacebookPage)));
+    }
+
     public function test_a_second_batch_queues_behind_the_posts_already_scheduled(): void
     {
         $this->fakeFeed(2);

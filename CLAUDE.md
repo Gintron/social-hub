@@ -44,6 +44,12 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   Iznimka je `sources.auto_publish_backlog` (opt-in): `hub:auto-publish-backlog` u 06:30 rasporedi ono
   što je `daily_cap` zadržao — bez toga stavka koja stigne preko limita nikad ne ide van. Pravilo nosi i
   **format i postavke kanala** (`format`, `settings`); kampanja se slaže u panelu, ne u kodu.
+  `daily_cap` je **po kanalu**: stavke idu po prioritetu, pa kanal s malim limitom (2 Reela) dobije
+  najbolje, a kanal bez limita (grupe) sve. Nove objave se slažu iza već zakazanih (`PostingSchedule::queueAfter`).
+- **Pregled tjedna je automatika, ne novi kanal**: `brands.digest` (dani, vrijeme, broj, vrsta), gradi ga
+  `hub:auto-digest` (satno, sat unaprijed) kroz `App\Actions\ScheduleDigest` — samo na kanale s uključenim
+  pravilom, bez ručnih, s postavkama pravila. Uzima i stavke koje su već imale svoju objavu, ali ne
+  dvaput u 7 dana (`DigestBuilder::REPEAT_AFTER_DAYS`).
 - **Pregledi se mjere, ne pretpostavljaju**: `hub:collect-metrics` (satno) čita objave koje su na redu
   (`CollectPostMetrics::due()`: svakih 6 h prvih 7 dana, zatim dnevno do 30) u `post_metrics`, redak
   po očitanju. Imena Metinih metrika su u `config/meta.php` (`insights`) jer ih Meta mijenja; neuspjeh

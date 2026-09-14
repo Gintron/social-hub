@@ -58,6 +58,11 @@ final class PanelSmokeTest extends TestCase
 
         $this->get('/admin')->assertOk();
         $this->get('/admin/brands')->assertOk();
+        $brand->forceFill(['digest' => ['enabled' => true, 'days' => [1, 4], 'time' => '19:00', 'count' => 5, 'kind' => 'job']])->save();
+        Livewire::test(\App\Filament\Resources\Brands\Pages\EditBrand::class, ['record' => $brand->getRouteKey()])
+            ->assertOk()
+            ->assertSee('Pregled tjedna')
+            ->assertSee('Broj stavki');
         Livewire::test(ListSources::class)->assertOk()->assertSee($source->name);
         $source->autoPublishRules()->create(['platform' => Platform::TikTok, 'enabled' => true, 'format' => 'carousel', 'settings' => ['delivery' => 'inbox', 'auto_add_music' => true]]);
         $source->autoPublishRules()->create(['platform' => Platform::InstagramBusiness, 'enabled' => true, 'format' => 'video', 'settings' => ['share_to_feed' => true]]);

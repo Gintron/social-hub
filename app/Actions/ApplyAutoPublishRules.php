@@ -7,7 +7,6 @@ namespace App\Actions;
 use App\Enums\ActorType;
 use App\Enums\DraftStatus;
 use App\Models\AutoPublishRule;
-use App\Models\Brand;
 use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\SocialAccount;
@@ -24,10 +23,17 @@ use Throwable;
  *
  * Off by default and per source × platform: a brand can let its deals post themselves while its
  * job listings still go through review. Each rule also says how its channel posts (format and
- * variant settings), so the same item goes out as a Reel on Instagram and a photo post on TikTok.
+ * variant settings) and how many posts a day the channel takes. Items go out highest priority
+ * first, so a channel with a small cap (two Reels a day) gets the best items while a channel with
+ * a large one (the Facebook groups) gets all of them.
  */
 final class ApplyAutoPublishRules
 {
+    /**
+     * A rule without a cap still stops somewhere; one sync must not schedule a whole catalogue.
+     */
+    public const DEFAULT_DAILY_CAP = 25;
+
     public function __construct(
         private readonly CreateDraft $createDraft,
         private readonly PostingSchedule $schedule,
@@ -56,9 +62,11 @@ final class ApplyAutoPublishRules
             return 0;
         }
 
-        $capacity = $this->capacity($source, $rules);
+        $connected = $accounts->map(fn (SocialAccount $account): string => $account->platform->value)->unique()->all();
+        $remaining = array_intersect_key($this->remaining($source, $rules), array_flip($connected));
+        $most = $remaining === [] ? 0 : max($remaining);
 
-        if ($capacity <= 0) {
+        if ($most <= 0) {
             return 0;
         }
 
@@ -68,7 +76,7 @@ final class ApplyAutoPublishRules
             ->notDrafted()
             ->orderByDesc('priority')
             ->orderByDesc('published_at')
-            ->limit($capacity)
+            ->limit($most)
             ->get();
 
         if ($items->isEmpty()) {
@@ -76,22 +84,33 @@ final class ApplyAutoPublishRules
         }
 
         $delay = (int) $rules->max('delay_minutes');
-        $after = $this->startAfter($source->brand, CarbonImmutable::now()->addMinutes($delay));
+        $after = $this->schedule->queueAfter($source->brand, CarbonImmutable::now()->addMinutes($delay));
         $slots = $this->schedule->slots($source->brand, $after, $items->count());
         $options = $rules->mapWithKeys(fn (AutoPublishRule $rule): array => [$rule->platform->value => $rule->channelOptions()])->all();
 
         $created = 0;
 
-        foreach ($items as $index => $item) {
+        foreach ($items as $item) {
+            $open = array_keys(array_filter($remaining, fn (int $left): bool => $left > 0));
+
+            if ($open === []) {
+                break;
+            }
+
             try {
                 $this->createDraft->execute(
                     item: $item,
-                    accounts: $accounts,
+                    accounts: $accounts->filter(fn (SocialAccount $account): bool => in_array($account->platform->value, $open, true))->values(),
                     actor: ActorType::System,
-                    scheduledAt: $slots[$index],
+                    scheduledAt: $slots[$created],
                     status: DraftStatus::Approved,
                     channelOptions: $options,
                 );
+
+                foreach ($open as $platform) {
+                    $remaining[$platform]--;
+                }
+
                 $created++;
             } catch (Throwable $e) {
                 Log::warning('hub.autopublish.draft_failed', ['item' => $item->id, 'error' => $e->getMessage()]);
@@ -104,8 +123,8 @@ final class ApplyAutoPublishRules
     }
 
     /**
-     * The daily pass for sources that asked for it: schedule the live items the daily cap held
-     * back on earlier days. Without it an item that arrived over the cap would never be posted,
+     * The daily pass for sources that asked for it: schedule the live items the daily caps held
+     * back on earlier days. Without it an item that arrived over a cap would never be posted,
      * because the rules otherwise only run when a sync brings something new.
      *
      * @return int How many drafts were created
@@ -120,45 +139,29 @@ final class ApplyAutoPublishRules
     }
 
     /**
-     * How many more posts this source may schedule today, honouring the strictest cap among its
-     * enabled rules. A rule without a cap does not limit anything.
+     * How many more single-item posts each channel of this source may take today. Digests do not
+     * count: they collect items that already had their own post.
      *
      * @param  Collection<int, AutoPublishRule>  $rules
+     * @return array<string, int> platform value => posts left today
      */
-    private function capacity(Source $source, Collection $rules): int
+    private function remaining(Source $source, Collection $rules): array
     {
-        $caps = $rules->pluck('daily_cap')->filter()->all();
+        $today = CarbonImmutable::now()->startOfDay();
+        $remaining = [];
 
-        if ($caps === []) {
-            return 25;
+        foreach ($rules as $rule) {
+            $used = PostDraft::query()
+                ->where('created_by_type', ActorType::System->value)
+                ->where('kind', PostDraft::KIND_SINGLE)
+                ->where('created_at', '>=', $today)
+                ->whereHas('contentItems', fn ($query) => $query->where('source_id', $source->id))
+                ->whereHas('variants', fn ($query) => $query->where('platform', $rule->platform->value))
+                ->count();
+
+            $remaining[$rule->platform->value] = max(0, ($rule->daily_cap ?? self::DEFAULT_DAILY_CAP) - $used);
         }
 
-        $cap = (int) min($caps);
-
-        $usedToday = PostDraft::query()
-            ->where('created_by_type', ActorType::System->value)
-            ->whereHas('contentItems', fn ($query) => $query->where('source_id', $source->id))
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfDay())
-            ->count();
-
-        return max(0, $cap - $usedToday);
-    }
-
-    /**
-     * Behind the posts automation has already lined up for this brand, so a second batch — the
-     * morning backlog, then a sync at noon — queues after the first instead of taking its slots.
-     */
-    private function startAfter(Brand $brand, CarbonImmutable $earliest): CarbonImmutable
-    {
-        $last = PostDraft::query()
-            ->where('brand_id', $brand->id)
-            ->where('created_by_type', ActorType::System->value)
-            ->where('status', DraftStatus::Scheduled->value)
-            ->where('scheduled_at', '>=', $earliest)
-            ->max('scheduled_at');
-
-        return $last === null
-            ? $earliest
-            : CarbonImmutable::parse((string) $last, 'UTC')->addMinutes(PostingSchedule::SPACING_MINUTES);
+        return $remaining;
     }
 }

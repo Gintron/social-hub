@@ -79,7 +79,7 @@ final class SourceForm
                                 TextInput::make('delay_minutes')->label('Odgoda (min)')->numeric()->default(0)->minValue(0)->maxValue(10080)
                                     ->helperText('Koliko čekati nakon što stavka stigne.'),
                                 TextInput::make('daily_cap')->label('Najviše dnevno')->numeric()->minValue(1)->maxValue(50)
-                                    ->helperText('Prazno = bez ograničenja (do 25).'),
+                                    ->helperText('Za ovaj kanal; najviši prioritet ide prvi. Prazno = do 25.'),
                                 Select::make('settings.delivery')->label('Isporuka')
                                     ->options([
                                         'direct' => 'Objavi izravno',

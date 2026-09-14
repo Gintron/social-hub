@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Brands\Schemas;
 
+use App\Actions\ScheduleDigest;
+use App\Drafting\DigestBuilder;
+use App\Enums\ContentKind;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -79,6 +83,21 @@ final class BrandForm
                             ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
                             ->collapsible(),
                     ])
+                    ->collapsible(),
+
+                Section::make('Pregled tjedna')
+                    ->description('Carousel s najboljim aktivnim stavkama u odabrane dane. Ide na kanale kojima je uključena automatska objava (bez ručnih FB grupa), s njihovim postavkama. Stavka smije u pregled i kad je već imala svoju objavu, ali ne dvaput u 7 dana.')
+                    ->schema([
+                        Toggle::make('digest.enabled')->label('Uključeno')->default(false)->columnSpanFull(),
+                        CheckboxList::make('digest.days')->label('Dani')
+                            ->options([1 => 'pon', 2 => 'uto', 3 => 'sri', 4 => 'čet', 5 => 'pet', 6 => 'sub', 7 => 'ned'])
+                            ->default([1, 4])->columns(7)->columnSpanFull(),
+                        TimePicker::make('digest.time')->label('Vrijeme objave')->seconds(false)->default(ScheduleDigest::DEFAULT_TIME),
+                        TextInput::make('digest.count')->label('Broj stavki')->numeric()->minValue(2)->maxValue(DigestBuilder::MAX_ITEMS)
+                            ->default(ScheduleDigest::DEFAULT_COUNT),
+                        Select::make('digest.kind')->label('Vrsta stavki')->options(ContentKind::class)->default(ContentKind::Job->value),
+                    ])
+                    ->columns(3)
                     ->collapsible(),
 
                 Section::make('Termini objave')

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\ActorType;
+use App\Enums\DraftStatus;
 use App\Models\Brand;
+use App\Models\PostDraft;
 use Carbon\CarbonImmutable;
 
 /**
@@ -58,6 +61,29 @@ final class PostingSchedule
         }
 
         return $after;
+    }
+
+    /**
+     * Behind the posts automation has already lined up for this brand, so a second batch — the
+     * morning backlog, a sync at noon, the weekly digest — queues after the first instead of
+     * taking its slots.
+     */
+    public function queueAfter(Brand $brand, CarbonImmutable $earliest): CarbonImmutable
+    {
+        $last = PostDraft::query()
+            ->where('brand_id', $brand->id)
+            ->where('created_by_type', ActorType::System->value)
+            ->where('status', DraftStatus::Scheduled->value)
+            ->where('scheduled_at', '>=', $earliest->subMinutes(self::SPACING_MINUTES - 1))
+            ->max('scheduled_at');
+
+        if ($last === null) {
+            return $earliest;
+        }
+
+        $after = CarbonImmutable::parse((string) $last, 'UTC')->addMinutes(self::SPACING_MINUTES);
+
+        return $after->greaterThan($earliest) ? $after : $earliest;
     }
 
     /**
