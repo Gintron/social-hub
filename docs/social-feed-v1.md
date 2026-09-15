@@ -96,9 +96,16 @@ kriva ovlast → `403`.
 Sve vremenske oznake su UTC ISO 8601 (`2026-09-05T07:10:00Z`).
 
 **`role: logo` je znak onoga čija je ponuda** (lanac, poslodavac, izdavač), ne logotip stranice koja
-šalje feed. Hub ga stavlja na pločicu visoku 84 px (110 px na naslovnici i 9:16) i pušta je da se
-raširi koliko logotip traži, pa pošalji **cijeli potpis u punoj rezoluciji** — ne favicon, ne kvadrat
-s obrezanim rubovima. Prozirni PNG ili SVG je najbolji; bez te slike hub ispiše `subtitle` kao ime.
+šalje feed. Hub izmjeri oblik znaka i posloži ga sam:
+
+- **širok potpis** (SPAR, Konzum, ~5:1) ide na pločicu visoku 84 px (110 px na velikim slajdovima) i
+  širi se koliko treba — sam je sebi ime, pa se ime ne ispisuje uz njega;
+- **kvadratni ili visoki znak** (Lidl, Tommy) dobije više visine (116 px, 132 px na velikim
+  slajdovima) i **ime uz sebe**, jer bi na visini potpisa pokrio petinu površine.
+
+Zato pošalji znak **u punoj rezoluciji i bez praznog ruba oko njega** — obrezani rub hub čita kao
+dio oblika i znak ispadne manji. Prozirni PNG je najbolji; SVG se mjeri po `viewBox`-u. Bez te slike
+hub ispiše `subtitle` kao ime.
 
 ## Kako stranica prevodi svoj domen
 

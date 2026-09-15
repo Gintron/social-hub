@@ -100,10 +100,7 @@ final class TemplateData
             // the same way for every kind (`subtitle` + `images[role=logo]`), so no template has to
             // know what a retailer is. Deliberately without a fallback to the brand's own logo: the
             // hub passes the offer on, it does not sell it, and its mark belongs in the footer.
-            'provider' => [
-                'name' => filled($item->subtitle) ? (string) $item->subtitle : null,
-                'logo' => $this->images->dataUri($item->imageUrl('logo')),
-            ],
+            'provider' => $this->provider($item),
             // End-of-day expiries arrive as 23:59:59Z; rendering them in the brand's timezone moves
             // them onto the next day, so the card contradicted the source's own "vrijedi do".
             // Dropped entirely when a fact already states it, or the card prints the date twice.
@@ -211,24 +208,45 @@ final class TemplateData
     }
 
     /**
+     * Whose offer this is, and in what shape its mark comes.
+     *
+     * @return array{name: string|null, logo: string|null, logo_ratio: float|null}
+     */
+    private function provider(ContentItem $item): array
+    {
+        $logo = $item->imageUrl('logo');
+
+        return [
+            'name' => filled($item->subtitle) ? (string) $item->subtitle : null,
+            'logo' => $this->images->dataUri($logo),
+            // Wordmark or badge: the plaque gives a badge the height it cannot get in width.
+            'logo_ratio' => $this->images->aspectRatio($logo),
+        ];
+    }
+
+    /**
      * The provider every item in the set shares, or nothing when they come from more than one.
      * A mixed roundup must not be badged with one chain's logo — that would claim the others' deals
      * for it.
      *
      * @param  \Illuminate\Support\Collection<int, ContentItem>  $items
-     * @return array{name: string|null, logo: string|null}
+     * @return array{name: string|null, logo: string|null, logo_ratio: float|null}
      */
     private function sharedProvider(\Illuminate\Support\Collection $items): array
     {
         $names = $items->map(fn (ContentItem $item): string => mb_trim((string) $item->subtitle))->unique();
 
         if ($names->count() !== 1 || blank($names->first())) {
-            return ['name' => null, 'logo' => null];
+            return ['name' => null, 'logo' => null, 'logo_ratio' => null];
         }
 
         $logo = $items->map(fn (ContentItem $item): ?string => $item->imageUrl('logo'))->filter()->first();
 
-        return ['name' => (string) $names->first(), 'logo' => $this->images->dataUri($logo)];
+        return [
+            'name' => (string) $names->first(),
+            'logo' => $this->images->dataUri($logo),
+            'logo_ratio' => $this->images->aspectRatio($logo),
+        ];
     }
 
     private function brandLogo(Brand $brand): ?string

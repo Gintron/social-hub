@@ -16,8 +16,10 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   Brend daje boje i logo. Brend-specifični predložak je iznimka s vlastitim ključem.
 - **Čija je ponuda, mora se vidjeti.** Izvor ponude (trgovački lanac, poslodavac, izdavač) dolazi kroz
   opća polja `subtitle` + `images[role=logo]` i ide na pločicu (`templates.partials.provider`) koja se
-  mjeri **po visini logotipa, a širinu uzme koliko joj treba**. Stari kvadratić je široki logotip (SPAR i
-  Konzum su ~5:1) sveo na dvadesetak piksela slova — zato je akcija izgledala kao naša roba. Brendov
+  mjeri **po obliku samog znaka** (`RemoteImageCache::aspectRatio`, za SVG po `viewBox`-u): široki potpis
+  stoji sam i raširi se, kvadratni znak (Lidl) dobije visinu umjesto širine i ime uz sebe. Stari kvadratić
+  je široki logotip (SPAR i Konzum su ~5:1) sveo na dvadesetak piksela slova — zato je akcija izgledala
+  kao naša roba. Brendov
   logotip **nikad** ne uskače umjesto tuđeg (`provider.logo` nema fallback): hub prenosi ponudu, ne
   prodaje je, i svoj znak nosi u podnožju. Pregled dobije logo lanca samo ako su **sve** stavke istog
   lanca (`TemplateData::sharedProvider`) — inače je to naš izbor, ne njihova kampanja.

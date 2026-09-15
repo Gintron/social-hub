@@ -9,14 +9,21 @@
     // and the hero gives up the height for it.
     $provider = $item['provider'] ?? [];
     $hasProvider = ! empty($provider['logo']) || ! empty($provider['name']);
+    // A square card has the least room under the picture, so the band there is the tight one.
+    $square = $height <= 1080;
 @endphp
 
 @section('styles')
   /* Product crops are the subject, not a backdrop: fit the whole thing rather than cropping it. */
   .hero { flex-basis: {{ (int) round($height * ($hasProvider ? 0.36 : 0.42)) }}px; background: #fff; }
   .hero img { object-fit: contain; padding: 18px; }
-  .chain { flex: 0 0 auto; display: flex; align-items: center; gap: 30px; padding: 24px 64px; background: {{ $brand['surface'] }}; }
+  .chain { flex: 0 0 auto; display: flex; align-items: center; gap: 30px; padding: {{ $square ? 18 : 24 }}px 64px; background: {{ $brand['surface'] }}; }
   .chain .label { font-size: 26px; font-weight: 800; letter-spacing: 3px; line-height: 1.25; max-width: 200px; color: {{ $brand['muted'] }}; }
+@if($square)
+  .chain .provider img { height: 92px; }
+  .chain .provider--compact img { height: 108px; }
+  .chain .provider .name { font-size: 52px; }
+@endif
   .body { padding-top: 36px; gap: 16px; }
   .title { font-size: 58px; -webkit-line-clamp: 2; }
   .price .now { font-size: 92px; }

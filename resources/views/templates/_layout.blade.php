@@ -40,10 +40,14 @@
   .provider { display: inline-flex; align-items: center; gap: 20px; background: #fff; border-radius: 24px; padding: 18px 28px; box-shadow: 0 10px 30px rgba(0,0,0,.18); max-width: 78%; }
   .provider img { height: 84px; width: auto; max-width: 460px; object-fit: contain; display: block; }
   .provider .name { font-size: 48px; font-weight: 800; color: {{ $brand['text'] }}; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* A badge is as tall as it is wide: at a wordmark's height it would read half the logo, so it
+     trades the width it does not use for height, and the name stands next to it. */
+  .provider--compact img { height: 116px; max-width: 160px; }
   /* Over a photo, where it sits in the corner the square chip used to. */
   .provider--hero { position: absolute; right: 40px; bottom: 28px; max-width: 62%; }
   .provider--lg img { height: 110px; max-width: 560px; }
   .provider--lg .name { font-size: 60px; }
+  .provider--lg.provider--compact img { height: 132px; max-width: 180px; }
   .price { display: flex; align-items: baseline; gap: 26px; margin-top: 6px; }
   .price .now { font-size: 110px; font-weight: 900; color: {{ $brand['primary'] }}; letter-spacing: -2px; line-height: 1; }
   .price .old { font-size: 44px; color: {{ $brand['muted'] }}; text-decoration: line-through; font-weight: 600; }

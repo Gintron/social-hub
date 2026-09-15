@@ -20,16 +20,10 @@ final class RemoteImageCache
 
     public function dataUri(?string $url): ?string
     {
-        if (blank($url)) {
+        $file = $this->localFile($url);
+
+        if ($file === null) {
             return null;
-        }
-
-        $file = $this->cachePath((string) $url);
-
-        if (! is_file($file) || filemtime($file) < time() - self::TTL_SECONDS) {
-            if (! $this->download((string) $url, $file)) {
-                return null;
-            }
         }
 
         $binary = file_get_contents($file);
@@ -40,6 +34,28 @@ final class RemoteImageCache
         }
 
         return 'data:'.$mime.';base64,'.base64_encode($binary);
+    }
+
+    /**
+     * Width ÷ height of a source image, so a template can lay a logo out by its own shape: a
+     * wordmark is about 5:1, a badge about 1:1, and at one height the badge reads half the mark.
+     * Null when the shape cannot be read — the caller then treats it as it treats a wordmark.
+     */
+    public function aspectRatio(?string $url): ?float
+    {
+        $file = $this->localFile($url);
+
+        if ($file === null) {
+            return null;
+        }
+
+        $size = @getimagesize($file);
+
+        if (is_array($size) && $size[0] > 0 && $size[1] > 0) {
+            return $size[0] / $size[1];
+        }
+
+        return $this->svgRatio($file);
     }
 
     /**
@@ -55,6 +71,48 @@ final class RemoteImageCache
         $mime = $this->mime((string) $path);
 
         return $binary !== false && $mime !== null ? 'data:'.$mime.';base64,'.base64_encode($binary) : null;
+    }
+
+    /**
+     * The cached copy of a remote asset, downloaded on the first ask and kept for the TTL.
+     */
+    private function localFile(?string $url): ?string
+    {
+        if (blank($url)) {
+            return null;
+        }
+
+        $file = $this->cachePath((string) $url);
+
+        if (! is_file($file) || filemtime($file) < time() - self::TTL_SECONDS) {
+            if (! $this->download((string) $url, $file)) {
+                return null;
+            }
+        }
+
+        return $file;
+    }
+
+    /**
+     * getimagesize() cannot measure an SVG, so its own header is read: the viewBox first (it is
+     * what the mark is drawn in), then width and height when they carry plain numbers.
+     */
+    private function svgRatio(string $file): ?float
+    {
+        $head = file_get_contents($file, false, null, 0, 2048);
+
+        if ($head === false || ! str_contains($head, '<svg')) {
+            return null;
+        }
+
+        if (preg_match('/viewBox\s*=\s*["\']\s*[-\d.]+[,\s]+[-\d.]+[,\s]+([\d.]+)[,\s]+([\d.]+)/i', $head, $box) === 1) {
+            return (float) $box[2] > 0 ? (float) $box[1] / (float) $box[2] : null;
+        }
+
+        $width = preg_match('/\bwidth\s*=\s*["\']([\d.]+)(?:px)?["\']/i', $head, $w) === 1 ? (float) $w[1] : 0.0;
+        $height = preg_match('/\bheight\s*=\s*["\']([\d.]+)(?:px)?["\']/i', $head, $h) === 1 ? (float) $h[1] : 0.0;
+
+        return $width > 0 && $height > 0 ? $width / $height : null;
     }
 
     private function download(string $url, string $file): bool
