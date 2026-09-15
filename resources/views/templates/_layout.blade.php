@@ -30,10 +30,20 @@
   .footer .site { font-size: 34px; font-weight: 800; letter-spacing: 0.5px; }
   .footer .cta { font-size: 30px; font-weight: 600; opacity: 0.95; }
   /* The footer sits on the primary colour, so the logo goes white here — unless the mark is a filled
-     shape, which white would turn into a blank block; the logo chip keeps it in colour either way. */
+     shape, which white would turn into a blank block; the provider plaque keeps its logo in colour
+     either way, it is white underneath. */
   .footer img { height: 64px; width: auto; max-width: 320px; object-fit: contain; {!! $brand['logo_filter'] ?? '' !!} }
-  .logo-chip { position: absolute; right: 40px; bottom: 24px; width: 140px; height: 140px; border-radius: 28px; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.18); display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  .logo-chip img { width: 100%; height: 100%; object-fit: contain; padding: 14px; }
+  /* Who the offer belongs to (the chain, the employer, the publisher). Wordmarks are wide — SPAR
+     and Konzum are about 5:1 — so the plaque is sized by the logo's own proportions: a fixed height
+     and whatever width that needs. The square chip this replaced fitted a wordmark by its width and
+     left ~24px of type on a 1080px card, which is how the shop disappeared from its own offer. */
+  .provider { display: inline-flex; align-items: center; gap: 20px; background: #fff; border-radius: 24px; padding: 18px 28px; box-shadow: 0 10px 30px rgba(0,0,0,.18); max-width: 78%; }
+  .provider img { height: 84px; width: auto; max-width: 460px; object-fit: contain; display: block; }
+  .provider .name { font-size: 48px; font-weight: 800; color: {{ $brand['text'] }}; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Over a photo, where it sits in the corner the square chip used to. */
+  .provider--hero { position: absolute; right: 40px; bottom: 28px; max-width: 62%; }
+  .provider--lg img { height: 110px; max-width: 560px; }
+  .provider--lg .name { font-size: 60px; }
   .price { display: flex; align-items: baseline; gap: 26px; margin-top: 6px; }
   .price .now { font-size: 110px; font-weight: 900; color: {{ $brand['primary'] }}; letter-spacing: -2px; line-height: 1; }
   .price .old { font-size: 44px; color: {{ $brand['muted'] }}; text-decoration: line-through; font-weight: 600; }

@@ -115,16 +115,20 @@ final class ImageRenderer
 
     /**
      * Keep params reproducible but small: data URIs are dropped (they can be rebuilt from the item).
+     * Nested too — a provider's logo and a roundup's thumbnails sit inside arrays, and a few
+     * megabytes of base64 per render have no business in the media_assets row.
      *
-     * @param  array<string, mixed>  $item
-     * @return array<string, mixed>
+     * @param  array<array-key, mixed>  $item
+     * @return array<array-key, mixed>
      */
     private function storableParams(array $item): array
     {
         foreach ($item as $key => $value) {
-            if (is_string($value) && str_starts_with($value, 'data:')) {
-                $item[$key] = '[inline]';
-            }
+            $item[$key] = match (true) {
+                is_array($value) => $this->storableParams($value),
+                is_string($value) && str_starts_with($value, 'data:') => '[inline]',
+                default => $value,
+            };
         }
 
         return $item;

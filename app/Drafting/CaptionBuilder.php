@@ -225,11 +225,13 @@ final class CaptionBuilder
             $opening .= "\n".$hook;
         }
 
-        $sections = [$opening];
-
+        // Whose offer it is goes above the fold, next to the figure — a price with no shop beside it
+        // reads as the brand's own. Three paragraphs down it is behind "… više".
         if (filled($item->subtitle)) {
-            $sections[] = (string) $item->subtitle;
+            $opening .= "\n".$item->subtitle;
         }
+
+        $sections = [$opening];
 
         if (($item->badges ?? []) !== []) {
             $sections[] = implode(' · ', array_map(fn (string $badge): string => '✅ '.$badge, $item->badges));

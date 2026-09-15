@@ -22,6 +22,7 @@
   .cover .badge-deal { align-self: flex-start; background: #dc2626; color: #fff; font-size: {{ $square ? 44 : 54 }}px; font-weight: 900;
                        padding: 10px 30px; border-radius: 999px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
   .cover .sub { font-size: 38px; font-weight: 700; opacity: .92; }
+  .cover .provider { align-self: flex-start; }
   .thumbs { display: grid; gap: {{ $square ? 16 : 22 }}px; margin-top: 6px;
             grid-template-columns: repeat({{ $square ? 4 : 2 }}, 1fr); }
   .thumbs div { height: {{ $story ? 300 : ($square ? 200 : 250) }}px; border-radius: 28px; overflow: hidden; background: #fff;
@@ -38,6 +39,8 @@
     @if(!empty($item['badge']))
       <div class="badge-deal">{{ $item['badge'] }}</div>
     @endif
+    {{-- Only when the whole roundup is one chain's; a mixed one stays the brand's own selection. --}}
+    @include('templates.partials.provider', ['name' => true])
     @if(!empty($item['subtitle']))
       <div class="sub">{{ $item['subtitle'] }}</div>
     @endif

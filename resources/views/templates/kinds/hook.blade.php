@@ -34,7 +34,7 @@
   .hook .figure-old { margin-top: 14px; font-size: {{ $story ? 64 : 52 }}px; font-weight: 700; text-decoration: line-through; opacity: .8; }
   .hook .points { display: flex; flex-direction: column; gap: 12px; font-size: {{ $story ? 50 : 40 }}px; font-weight: 800; }
   .hook .title { font-size: {{ $story ? 76 : 62 }}px; -webkit-line-clamp: {{ $product ? 2 : 4 }}; }
-  .hook .subtitle { color: rgba(255,255,255,.88); font-size: {{ $story ? 40 : 34 }}px; }
+  .hook .provider { align-self: flex-start; }
 @endsection
 
 @section('card')
@@ -55,6 +55,8 @@
       @if($product)
         <div class="product"><img src="{{ $item['primary_image'] }}" alt=""></div>
       @endif
+      {{-- Whose offer it is, before the number: a price with no shop behind it reads as ours. --}}
+      @include('templates.partials.provider', ['name' => true, 'class' => $story ? 'provider--lg' : ''])
       @if(!empty($item['badges']))
         <div class="badges">
           @foreach(array_slice($item['badges'], 0, 3) as $badge)
@@ -81,9 +83,7 @@
         </div>
       @endif
       <div class="title"><span class="emoji">{{ $item['emoji'] }}</span> {{ $item['title'] }}</div>
-      @if($item['subtitle'])
-        <div class="subtitle">{{ $item['subtitle'] }}</div>
-      @endif
+      {{-- No subtitle line: it is the provider's name, and the plaque above already says it. --}}
     </div>
   </div>
   @unless($story)

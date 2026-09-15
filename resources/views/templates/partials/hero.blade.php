@@ -11,7 +11,6 @@
       @endforeach
     </div>
   @endif
-  @if($item['logo_image'])
-    <div class="logo-chip"><img src="{{ $item['logo_image'] }}" alt=""></div>
-  @endif
+  {{-- Logo only: these cards print the provider's name under the title, so the plaque would say it twice. --}}
+  @include('templates.partials.provider', ['class' => 'provider--hero'])
 </div>

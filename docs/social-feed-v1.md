@@ -95,6 +95,11 @@ kriva ovlast → `403`.
 
 Sve vremenske oznake su UTC ISO 8601 (`2026-09-05T07:10:00Z`).
 
+**`role: logo` je znak onoga čija je ponuda** (lanac, poslodavac, izdavač), ne logotip stranice koja
+šalje feed. Hub ga stavlja na pločicu visoku 84 px (110 px na naslovnici i 9:16) i pušta je da se
+raširi koliko logotip traži, pa pošalji **cijeli potpis u punoj rezoluciji** — ne favicon, ne kvadrat
+s obrezanim rubovima. Prozirni PNG ili SVG je najbolji; bez te slike hub ispiše `subtitle` kao ime.
+
 ## Kako stranica prevodi svoj domen
 
 Stranica zna što je njezin sadržaj, hub ne mora. Nekoliko primjera preslikavanja:
