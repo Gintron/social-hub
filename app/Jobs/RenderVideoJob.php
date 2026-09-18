@@ -41,7 +41,7 @@ final class RenderVideoJob implements ShouldQueue
     public function __construct(
         public readonly int $draftId,
         public readonly array $variantIds,
-        public readonly float $secondsPerSlide = 3.0,
+        public readonly float $secondsPerSlide = VideoRenderer::DEFAULT_SECONDS_PER_SLIDE,
         public readonly ?string $templateKey = null,
         public readonly string $audio = 'auto',
         public readonly bool $motion = true,

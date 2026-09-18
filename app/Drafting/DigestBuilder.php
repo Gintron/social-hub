@@ -61,6 +61,7 @@ final class DigestBuilder
      * @param  array<string, array<string, mixed>>  $channelSettings  platform value => variant settings
      * @param  string|null  $tag  Only items carrying this feed tag (a chain, a city).
      * @param  array<string, ContentFormat>  $formats  platform value => carousel or video; carousel by default.
+     * @param  array{seconds?: float|int|string, audio?: string, motion?: bool}  $video
      * @param  string|null  $series  The digest series building this draft (DigestSeries::$key).
      */
     public function build(
@@ -79,6 +80,7 @@ final class DigestBuilder
         array $channelSettings = [],
         ?string $tag = null,
         array $formats = [],
+        array $video = [],
         ?string $series = null,
     ): PostDraft {
         $accounts = collect($accounts);
@@ -137,7 +139,7 @@ final class DigestBuilder
         if ($render) {
             // Grouped by format and orientation: one 4:5 set for Facebook and Instagram, one vertical
             // for TikTok, one video for every channel that posts it as a Reel.
-            app(PrepareVariantMedia::class)->execute($draft->variants()->get(), kicker: $kicker);
+            app(PrepareVariantMedia::class)->execute($draft->variants()->get(), video: $video, kicker: $kicker);
         }
 
         return $draft->load(['variants.account', 'contentItems']);

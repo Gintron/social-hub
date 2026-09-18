@@ -163,7 +163,7 @@ final class PrepareVariantMedia
             'video' => new RenderVideoJob(
                 $draft->id,
                 $ids,
-                (float) ($video['seconds'] ?? 3.0),
+                (float) ($video['seconds'] ?? VideoRenderer::DEFAULT_SECONDS_PER_SLIDE),
                 audio: (string) ($video['audio'] ?? 'auto'),
                 motion: (bool) ($video['motion'] ?? true),
             ),

@@ -19,7 +19,7 @@ final class RenderVideo extends Command
         {--brand= : Brand slug (default: the brand of the first item)}
         {--kind=deal : Content kind to build slides from}
         {--count=3 : How many items}
-        {--seconds=3 : Seconds per slide}
+        {--seconds=2 : Seconds per slide}
         {--audio=auto : auto (first track of the brand library), none, or a track index}
         {--no-motion : Keep slides still instead of a slow zoom}';
 

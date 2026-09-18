@@ -26,6 +26,7 @@ final class DigestSeriesTest extends TestCase
             'kind' => 'deal',
             'tag' => ' Kaufland ',
             'formats' => ['meta' => 'video', 'tiktok' => 'image'],
+            'seconds_per_slide' => '1.75',
         ]);
 
         $this->assertTrue($series->enabled);
@@ -37,6 +38,7 @@ final class DigestSeriesTest extends TestCase
         $this->assertSame('kaufland', $series->tag);
         $this->assertSame(ContentFormat::Video, $series->metaFormat);
         $this->assertSame(ContentFormat::Carousel, $series->tiktokFormat, 'jedna slika izgubila bi sve stavke osim naslovnice');
+        $this->assertSame(1.75, $series->secondsPerSlide);
     }
 
     public function test_a_reel_goes_only_where_the_channel_takes_one(): void

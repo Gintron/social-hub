@@ -100,6 +100,18 @@ final class CaptionBuilderTest extends TestCase
         $this->assertSame('𝗔𝗕𝗖 čšž 𝟭𝟮', CaptionBuilder::bold('ABC čšž 12'));
     }
 
+    public function test_digest_shortens_catalogue_titles_and_asks_for_a_save_or_share(): void
+    {
+        $item = $this->item(['title' => str_repeat('Vrlo dugačak naziv proizvoda ', 5)]);
+        $brand = new Brand(['site_url' => 'https://uselisto.com']);
+
+        $caption = (new CaptionBuilder)->digest(Platform::InstagramBusiness, collect([$item]), $brand, 'Top ponude');
+
+        $this->assertStringContainsString('💾 Spremi popis', $caption);
+        $this->assertStringContainsString('Link u biu → uselisto.com', $caption);
+        $this->assertLessThan(260, mb_strlen($caption));
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

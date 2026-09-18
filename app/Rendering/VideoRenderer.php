@@ -31,6 +31,14 @@ final class VideoRenderer
     public const HEIGHT = 1920;
 
     /**
+     * Reels made from cards need a quicker rhythm than a presentation. Two seconds leaves enough
+     * time to read the price and product, while a five-slide Top 3 stays under ten seconds.
+     */
+    public const DEFAULT_SECONDS_PER_SLIDE = 2.0;
+
+    public const DEFAULT_TRANSITION_SECONDS = 0.35;
+
+    /**
      * Stored as the asset's template_key, so a draft's video can be found and reused.
      */
     public const TEMPLATE_KEY = 'video/slideshow';
@@ -58,8 +66,8 @@ final class VideoRenderer
         Brand $brand,
         Collection $slides,
         ?PostDraft $draft = null,
-        float $secondsPerSlide = 3.0,
-        float $transitionSeconds = 0.6,
+        float $secondsPerSlide = self::DEFAULT_SECONDS_PER_SLIDE,
+        float $transitionSeconds = self::DEFAULT_TRANSITION_SECONDS,
         ?string $audioPath = null,
         bool $motion = true,
     ): MediaAsset {

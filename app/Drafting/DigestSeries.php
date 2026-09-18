@@ -7,6 +7,7 @@ namespace App\Drafting;
 use App\Enums\ContentFormat;
 use App\Enums\ContentKind;
 use App\Enums\Platform;
+use App\Rendering\VideoRenderer;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 
@@ -38,6 +39,7 @@ final readonly class DigestSeries
         public ?string $tag,
         public ContentFormat $metaFormat,
         public ContentFormat $tiktokFormat,
+        public float $secondsPerSlide,
     ) {}
 
     /**
@@ -59,6 +61,7 @@ final readonly class DigestSeries
             tag: filled($data['tag'] ?? null) ? mb_strtolower(mb_trim((string) $data['tag'])) : null,
             metaFormat: self::format($formats['meta'] ?? null),
             tiktokFormat: self::format($formats['tiktok'] ?? null),
+            secondsPerSlide: max(1.5, min(5.0, (float) ($data['seconds_per_slide'] ?? VideoRenderer::DEFAULT_SECONDS_PER_SLIDE))),
         );
     }
 
@@ -87,6 +90,7 @@ final readonly class DigestSeries
             'tag' => null,
             // It went out as a carousel, and keeps doing so.
             'formats' => ['meta' => ContentFormat::Carousel->value, 'tiktok' => ContentFormat::Carousel->value],
+            'seconds_per_slide' => VideoRenderer::DEFAULT_SECONDS_PER_SLIDE,
         ];
     }
 

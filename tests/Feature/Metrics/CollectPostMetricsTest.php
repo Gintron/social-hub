@@ -157,6 +157,7 @@ final class CollectPostMetricsTest extends TestCase
 
         $reel = $this->published(Platform::InstagramBusiness, '11', ContentFormat::Video);
         $image = $this->published(Platform::InstagramBusiness, '12');
+        $this->published(Platform::FacebookPage, '13', ContentFormat::Video);
         $this->reading($reel, hoursAgo: 1, views: 5000);
         $this->reading($image, hoursAgo: 1, views: 120);
 
@@ -165,6 +166,8 @@ final class CollectPostMetricsTest extends TestCase
             ->assertOk()
             ->assertSee('Kanal i format')
             ->assertSee('5.000')
+            ->assertSee('Nedostaju očitanja')
+            ->assertSee('Facebook Page · Video: 1')
             ->assertSee('Najgledanije objave');
     }
 

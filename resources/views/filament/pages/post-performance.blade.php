@@ -23,6 +23,21 @@
         </div>
     </div>
 
+    @if ($this->unmeasuredCount() > 0)
+        <div class="{{ $box }}" style="font-size:14px;line-height:1.55;border-left:4px solid rgb(245,158,11)">
+            <div style="font-weight:600;margin-bottom:4px">Nedostaju očitanja za objavljene kanale</div>
+            <div>
+                @foreach ($this->getMeasurementGaps() as $gap)
+                    <span style="display:inline-block;margin-right:12px">{{ $gap['label'] }}: {{ $gap['posts'] }}</span>
+                @endforeach
+            </div>
+            <div style="margin-top:4px;opacity:.75">
+                Objave su starije od {{ \App\Actions\CollectPostMetrics::FRESH_EVERY_HOURS }} sati, ali platforma nije vratila nijednu metriku.
+                Provjeri dozvole za uvide i ponovno poveži pogođeni račun.
+            </div>
+        </div>
+    @endif
+
     @if ($this->measuredCount() === 0)
         <div class="{{ $box }}" style="font-size:14px;line-height:1.5">
             Još nema očitanja za ovo razdoblje. Pregledi stižu nekoliko sati nakon objave; ako ih nema ni

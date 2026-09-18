@@ -110,6 +110,7 @@ final class ScheduleDigest
                 channelSettings: $rules->mapWithKeys(fn (AutoPublishRule $rule): array => [$rule->platform->value => (array) $rule->settings])->all(),
                 tag: $series->tag,
                 formats: $accounts->mapWithKeys(fn (SocialAccount $account): array => [$account->platform->value => $series->formatFor($account->platform)])->all(),
+                video: ['seconds' => $series->secondsPerSlide],
                 series: $series->key,
             );
         } catch (InvalidArgumentException $e) {

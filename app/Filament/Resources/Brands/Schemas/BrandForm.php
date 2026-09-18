@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Brands\Schemas;
 use App\Drafting\DigestBuilder;
 use App\Drafting\DigestSeries;
 use App\Enums\ContentKind;
+use App\Rendering\VideoRenderer;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
@@ -120,6 +121,9 @@ final class BrandForm
                                 Select::make('formats.tiktok')->label('TikTok')
                                     ->options(['carousel' => 'Foto carousel', 'video' => 'Video'])
                                     ->default('carousel')->selectablePlaceholder(false),
+                                TextInput::make('seconds_per_slide')->label('Sekundi po slajdu')->numeric()
+                                    ->default(VideoRenderer::DEFAULT_SECONDS_PER_SLIDE)->minValue(1.5)->maxValue(5)->step(0.25)
+                                    ->helperText('Za Reel/video. Kraće zadržava brži ritam.'),
                             ])
                             ->columns(3)
                             ->default([])

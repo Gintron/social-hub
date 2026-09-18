@@ -164,14 +164,17 @@ final class CaptionBuilder
             $number = $index + 1;
             $detail = $this->digestDetail($item);
 
-            $lines[] = "{$number}. ".$item->title.($detail !== null ? " — {$detail}" : '');
+            // The caption supports the slides; it must not become a catalogue dump. Long source
+            // titles stay available on the linked page while the social caption remains scannable.
+            $title = Str::limit((string) $item->title, 72);
+            $lines[] = "{$number}. {$title}".($detail !== null ? " — {$detail}" : '');
         }
 
         $sections[] = implode("\n", $lines);
 
         if ($instagram) {
             $host = TemplateData::displayUrl($brand->site_url) ?? '';
-            $sections[] = '🔗 Link u biu → '.$host;
+            $sections[] = "💾 Spremi popis i pošalji ga osobi s kojom kupuješ\n🔗 Link u biu → {$host}";
 
             $tags = $this->hashtags($items->first(), $brand);
             if ($tags !== []) {

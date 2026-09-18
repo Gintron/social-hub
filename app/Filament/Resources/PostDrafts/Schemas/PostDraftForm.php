@@ -13,6 +13,7 @@ use App\Models\PostDraft;
 use App\Models\PostVariant;
 use App\Publishing\FormatCheck;
 use App\Rendering\TemplateRegistry;
+use App\Rendering\VideoRenderer;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -351,7 +352,8 @@ final class PostDraftForm
         $tracks = $variant->draft?->brand?->audioTracks() ?? [];
 
         return [
-            TextInput::make('seconds')->label('Sekundi po slajdu')->numeric()->default(3)->minValue(2)->maxValue(10)->required(),
+            TextInput::make('seconds')->label('Sekundi po slajdu')->numeric()
+                ->default(VideoRenderer::DEFAULT_SECONDS_PER_SLIDE)->minValue(1.5)->maxValue(10)->step(0.25)->required(),
             Select::make('audio')->label('Zvuk')->required()->default('auto')
                 ->options([
                     'auto' => 'Automatski iz knjižnice brenda',

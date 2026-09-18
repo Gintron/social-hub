@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Actions\CollectPostMetrics;
+use App\Enums\VariantStatus;
 use App\Models\Brand;
 use App\Models\PostVariant;
 use BackedEnum;
@@ -83,6 +85,27 @@ final class PostPerformance extends Page
     }
 
     /**
+     * Published channels old enough for the collector to have read, but with no reading at all.
+     * Without this the dashboard silently omitted a whole platform and made a permissions problem
+     * look like poor performance on the remaining one.
+     *
+     * @return list<array{label: string, posts: int}>
+     */
+    public function getMeasurementGaps(): array
+    {
+        return $this->unmeasured()
+            ->groupBy(fn (PostVariant $variant): string => $variant->platform->label().' · '.$variant->format()->label())
+            ->map(fn (Collection $variants, string $label): array => ['label' => $label, 'posts' => $variants->count()])
+            ->values()
+            ->all();
+    }
+
+    public function unmeasuredCount(): int
+    {
+        return $this->unmeasured()->count();
+    }
+
+    /**
      * Published channels with at least one reading, newest reading per channel.
      *
      * @return Collection<int, PostVariant>
@@ -95,6 +118,26 @@ final class PostPerformance extends Page
             ->with(['latestMetric', 'draft.contentItems', 'draft.brand'])
             ->whereHas('latestMetric')
             ->where(fn ($query) => $query->where('published_at', '>=', $since)->orWhere('manual_posted_at', '>=', $since))
+            ->when($this->brandId, fn ($query) => $query->whereHas('draft', fn ($draft) => $draft->where('brand_id', $this->brandId)))
+            ->get());
+    }
+
+    /**
+     * @return Collection<int, PostVariant>
+     */
+    private function unmeasured(): Collection
+    {
+        $since = CarbonImmutable::now()->subDays(max(1, $this->days));
+        $dueBefore = CarbonImmutable::now()->subHours(CollectPostMetrics::FRESH_EVERY_HOURS);
+
+        return once(fn () => PostVariant::query()
+            ->with(['draft.brand'])
+            ->whereIn('status', [VariantStatus::Published->value, VariantStatus::ManualDone->value])
+            ->whereNotNull('external_post_id')
+            ->whereDoesntHave('metrics')
+            ->where(fn ($query) => $query
+                ->whereBetween('published_at', [$since, $dueBefore])
+                ->orWhereBetween('manual_posted_at', [$since, $dueBefore]))
             ->when($this->brandId, fn ($query) => $query->whereHas('draft', fn ($draft) => $draft->where('brand_id', $this->brandId)))
             ->get());
     }
