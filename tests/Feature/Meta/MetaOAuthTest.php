@@ -60,6 +60,22 @@ final class MetaOAuthTest extends TestCase
             ->assertRedirectContains(urlencode('instagram_content_publish'));
     }
 
+    public function test_connect_can_use_classic_login_when_page_has_no_business_portfolio(): void
+    {
+        config()->set('meta.login_config_id', 'cfg-9');
+
+        $response = $this->get(route('meta.connect', ['brand' => $this->brand, 'classic' => 1]));
+
+        $response->assertRedirectContains('https://www.facebook.com/v23.0/dialog/oauth');
+
+        $location = (string) $response->headers->get('Location');
+
+        $this->assertStringNotContainsString('config_id=', $location);
+        $this->assertStringContainsString('scope=', $location);
+        $this->assertStringContainsString('pages_show_list', urldecode($location));
+        $this->assertStringContainsString('pages_read_engagement', urldecode($location));
+    }
+
     public function test_callback_stores_pages_and_linked_instagram_accounts(): void
     {
         $this->fakeTokenAndAssets();

@@ -21,7 +21,7 @@ final class MetaOAuth
     /**
      * URL of the consent dialog the admin is sent to.
      */
-    public function dialogUrl(string $state): string
+    public function dialogUrl(string $state, bool $useBusinessLogin = true): string
     {
         $this->assertConfigured();
 
@@ -34,7 +34,7 @@ final class MetaOAuth
 
         // Facebook Login for Business drives permissions from a saved configuration; classic
         // Facebook Login takes an explicit scope list.
-        if (filled(config('meta.login_config_id'))) {
+        if ($useBusinessLogin && filled(config('meta.login_config_id'))) {
             $query['config_id'] = (string) config('meta.login_config_id');
         } else {
             $query['scope'] = implode(',', (array) config('meta.scopes', []));

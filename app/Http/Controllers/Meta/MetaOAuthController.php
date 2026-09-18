@@ -40,7 +40,10 @@ final class MetaOAuthController extends Controller
             'brand_id' => $brand->id,
         ]);
 
-        return redirect()->away($this->oauth->dialogUrl($state));
+        // A Page managed directly by a personal profile may not belong to a Meta business
+        // portfolio. Facebook Login for Business then fails with an empty selected_business_id,
+        // so admins can retry the same scopes through classic Facebook Login via ?classic=1.
+        return redirect()->away($this->oauth->dialogUrl($state, ! $request->boolean('classic')));
     }
 
     /**
