@@ -164,6 +164,100 @@ final class MetaOAuthTest extends TestCase
         $this->assertSame(0, SocialAccount::query()->count());
     }
 
+    public function test_reconnect_fetches_a_known_business_page_directly_when_accounts_omits_it(): void
+    {
+        SocialAccount::factory()->create([
+            'brand_id' => $this->brand->id,
+            'platform' => Platform::FacebookPage,
+            'external_id' => 'page-known',
+            'access_token' => 'old-page-token',
+        ]);
+
+        Http::fake(function (Request $request) {
+            $url = $request->url();
+
+            if (str_contains($url, '/oauth/access_token')) {
+                return Http::response(['access_token' => 'user-token', 'expires_in' => 5184000]);
+            }
+
+            if (str_contains($url, 'me/accounts')) {
+                return Http::response(['data' => []]);
+            }
+
+            if (str_contains($url, '/page-known')) {
+                if ($request['access_token'] === 'new-page-token') {
+                    return Http::response(['id' => 'page-known']);
+                }
+
+                return Http::response([
+                    'id' => 'page-known',
+                    'name' => 'Listo - Popis za kupovinu',
+                    'access_token' => 'new-page-token',
+                    'instagram_business_account' => ['id' => 'ig-listo', 'username' => 'listo_hrvatska', 'name' => 'Listo'],
+                ]);
+            }
+
+            return Http::response(['id' => 'fb-user-1']);
+        });
+
+        $this->withSession(['meta_oauth' => ['state' => 'st-1', 'brand_id' => $this->brand->id]])
+            ->get(route('meta.callback', ['code' => 'auth-code', 'state' => 'st-1']))
+            ->assertRedirect();
+
+        $page = SocialAccount::query()->where('external_id', 'page-known')->firstOrFail();
+        $this->assertSame('new-page-token', $page->access_token);
+        $this->assertSame('Listo - Popis za kupovinu', $page->name);
+
+        $instagram = SocialAccount::query()->where('external_id', 'ig-listo')->firstOrFail();
+        $this->assertSame('new-page-token', $instagram->access_token);
+        $this->assertSame('@listo_hrvatska', $instagram->name);
+    }
+
+    public function test_reconnect_does_not_overwrite_a_working_token_with_an_invalid_page_token(): void
+    {
+        SocialAccount::factory()->create([
+            'brand_id' => $this->brand->id,
+            'platform' => Platform::FacebookPage,
+            'external_id' => 'page-known',
+            'access_token' => 'working-page-token',
+        ]);
+
+        Http::fake(function (Request $request) {
+            $url = $request->url();
+
+            if (str_contains($url, '/oauth/access_token')) {
+                return Http::response(['access_token' => 'user-token', 'expires_in' => 5184000]);
+            }
+
+            if (str_contains($url, 'me/accounts')) {
+                return Http::response(['data' => [[
+                    'id' => 'page-known',
+                    'name' => 'Known page',
+                    'access_token' => 'invalid-page-token',
+                ]]]);
+            }
+
+            if (str_contains($url, '/page-known')) {
+                return Http::response([
+                    'error' => [
+                        'message' => 'The token cannot impersonate this Page.',
+                        'type' => 'OAuthException',
+                        'code' => 190,
+                    ],
+                ], 400);
+            }
+
+            return Http::response(['id' => 'fb-user-1']);
+        });
+
+        $this->withSession(['meta_oauth' => ['state' => 'st-1', 'brand_id' => $this->brand->id]])
+            ->get(route('meta.callback', ['code' => 'auth-code', 'state' => 'st-1']))
+            ->assertRedirect();
+
+        $page = SocialAccount::query()->where('external_id', 'page-known')->firstOrFail();
+        $this->assertSame('working-page-token', $page->access_token);
+    }
+
     public function test_discovery_logs_what_facebook_returned(): void
     {
         Log::spy();
@@ -214,6 +308,10 @@ final class MetaOAuthTest extends TestCase
                     'access_token' => 'page-token-1',
                     'instagram_business_account' => ['id' => 'ig-1', 'username' => 'studentskiposlovi', 'name' => 'Studentski poslovi'],
                 ]]]);
+            }
+
+            if (str_contains($url, '/page-1')) {
+                return Http::response(['id' => 'page-1']);
             }
 
             return Http::response(['id' => 'fb-user-1']);

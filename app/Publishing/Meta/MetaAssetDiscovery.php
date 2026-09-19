@@ -9,6 +9,7 @@ use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\SocialAccount;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Given a user (or system user) token, lists the Pages it manages and stores a Page account plus the
@@ -25,16 +26,62 @@ final class MetaAssetDiscovery
      */
     public function discover(Brand $brand, string $userToken): array
     {
+        $fields = 'id,name,access_token,instagram_business_account{id,username,name}';
+
         // Stored on every account so the deauthorize callback (which only knows the app-scoped user
         // id) can find the accounts that just lost their token.
         $connectedUserId = (string) ($this->graph->get('me', ['fields' => 'id'], $userToken, 'discover.me')['id'] ?? '');
 
         $response = $this->graph->get('me/accounts', [
-            'fields' => 'id,name,access_token,instagram_business_account{id,username,name}',
+            'fields' => $fields,
             'limit' => 100,
         ], $userToken, 'discover');
 
-        $pages = $response['data'] ?? [];
+        $returnedPages = collect($response['data'] ?? [])
+            ->filter(fn (mixed $page): bool => is_array($page) && filled($page['id'] ?? null))
+            ->keyBy(fn (array $page): string => (string) $page['id']);
+
+        // Facebook Login for Business can grant a token granular access to a Page owned by a
+        // business portfolio while omitting that Page from /me/accounts. On reconnect we already
+        // know the Page that belongs to this brand, so ask Graph for it directly. A user token that
+        // was not actually granted that asset still fails safely here.
+        $knownPageIds = SocialAccount::query()
+            ->where('brand_id', $brand->id)
+            ->where('platform', Platform::FacebookPage->value)
+            ->pluck('external_id')
+            ->filter()
+            ->map(fn (mixed $id): string => (string) $id)
+            ->values();
+
+        $directPages = collect();
+
+        foreach ($knownPageIds as $pageId) {
+            if ($returnedPages->has($pageId)) {
+                continue;
+            }
+
+            try {
+                $page = $this->graph->get($pageId, ['fields' => $fields], $userToken, 'discover.known_page');
+
+                if ((string) ($page['id'] ?? '') === $pageId) {
+                    $directPages->put($pageId, $page);
+                }
+            } catch (Throwable $e) {
+                Log::warning('meta.discover_known_page_failed', [
+                    'brand' => $brand->slug,
+                    'page_id' => $pageId,
+                    'error' => mb_substr($e->getMessage(), 0, 300),
+                ]);
+            }
+        }
+
+        $allPages = $returnedPages->union($directPages);
+
+        // Once a brand has a Page assigned, reconnecting that brand must not overwrite a sibling
+        // brand with an unrelated (and potentially unusable) Page token returned by Facebook.
+        $pages = $knownPageIds->isNotEmpty()
+            ? $allPages->only($knownPageIds)->values()->all()
+            : $allPages->values()->all();
 
         // GraphClient only logs calls that belong to a post variant, and discovery has none — yet
         // this is the call that fails first when a Page is owned by a business portfolio or the
@@ -43,6 +90,9 @@ final class MetaAssetDiscovery
             'brand' => $brand->slug,
             'connected_user_id' => $connectedUserId,
             'page_count' => count($pages),
+            'returned_page_count' => $returnedPages->count(),
+            'direct_page_count' => $directPages->count(),
+            'known_page_ids' => $knownPageIds->all(),
             'pages' => array_map(
                 fn (array $page): array => [
                     'id' => $page['id'] ?? null,
@@ -58,22 +108,42 @@ final class MetaAssetDiscovery
 
         foreach ($pages as $page) {
             $pageToken = (string) ($page['access_token'] ?? '');
+            $pageId = (string) ($page['id'] ?? '');
 
-            if ($pageToken === '' || blank($page['id'] ?? null)) {
+            if ($pageToken === '' || $pageId === '') {
+                continue;
+            }
+
+            // Meta may return a Page from /me/accounts even when the freshly granted granular
+            // permissions target a different asset. Validate the derived token before it can
+            // overwrite a working token already stored by the hub.
+            try {
+                $verifiedPageId = (string) ($this->graph->get($pageId, ['fields' => 'id'], $pageToken, 'discover.page_token')['id'] ?? '');
+            } catch (Throwable $e) {
+                Log::warning('meta.discover_page_token_failed', [
+                    'brand' => $brand->slug,
+                    'page_id' => $pageId,
+                    'error' => mb_substr($e->getMessage(), 0, 300),
+                ]);
+
+                continue;
+            }
+
+            if ($verifiedPageId !== $pageId) {
                 continue;
             }
 
             $accounts[] = $this->store(
                 Platform::FacebookPage,
-                (string) $page['id'],
+                $pageId,
                 $brand,
                 [
-                    'name' => (string) ($page['name'] ?? $page['id']),
+                    'name' => (string) ($page['name'] ?? $pageId),
                     'access_token' => $pageToken,
                     'token_expires_at' => null,
                     'status' => AccountStatus::Active,
                     'last_verified_at' => now(),
-                    'meta' => ['page_id' => (string) $page['id'], 'connected_user_id' => $connectedUserId],
+                    'meta' => ['page_id' => $pageId, 'connected_user_id' => $connectedUserId],
                 ],
             );
 
@@ -90,7 +160,7 @@ final class MetaAssetDiscovery
                         'token_expires_at' => null,
                         'status' => AccountStatus::Active,
                         'last_verified_at' => now(),
-                        'meta' => ['page_id' => (string) $page['id'], 'connected_user_id' => $connectedUserId, 'username' => $ig['username'] ?? null, 'ig_name' => $ig['name'] ?? null],
+                        'meta' => ['page_id' => $pageId, 'connected_user_id' => $connectedUserId, 'username' => $ig['username'] ?? null, 'ig_name' => $ig['name'] ?? null],
                     ],
                 );
             }
