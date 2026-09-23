@@ -87,6 +87,14 @@ final class TemplateRegistry
         return is_array(config("templates.{$key}")) ? $key : null;
     }
 
+    /**
+     * Is this the brand's end card, in whichever orientation it was rendered?
+     */
+    public function isClosing(?string $key): bool
+    {
+        return $key !== null && str_starts_with($key, 'kinds/cta-') && is_array(config("templates.{$key}"));
+    }
+
     public function defaultFor(ContentKind $kind, string $orientation = 'square'): string
     {
         foreach ($this->all() as $key => $template) {

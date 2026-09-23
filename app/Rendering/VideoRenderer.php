@@ -39,6 +39,13 @@ final class VideoRenderer
     public const DEFAULT_TRANSITION_SECONDS = 0.35;
 
     /**
+     * The brand's end card is the one slide that has to be read, not glanced at: the call to
+     * action, a sentence on what the brand does and where to get it. At two seconds it went by
+     * before the reason did; the slides before it keep their quicker rhythm.
+     */
+    public const END_CARD_SECONDS = 3.5;
+
+    /**
      * Stored as the asset's template_key, so a draft's video can be found and reused.
      */
     public const TEMPLATE_KEY = 'video/slideshow';
@@ -58,7 +65,12 @@ final class VideoRenderer
 
     private const AUDIO_FADE_OUT_SECONDS = 1.2;
 
+    public function __construct(private readonly TemplateRegistry $templates) {}
+
     /**
+     * A video that closes with the brand's end card holds it for END_CARD_SECONDS; the card is
+     * recognised by its template, so every caller gets the same hold.
+     *
      * @param  Collection<int, MediaAsset>  $slides  Rendered images, in the order they should play.
      * @param  string|null  $audioPath  Absolute path to a track to play underneath; null keeps a silent track.
      */
@@ -83,18 +95,21 @@ final class VideoRenderer
         $transitionSeconds = min($transitionSeconds, $secondsPerSlide / 2);
 
         $count = $slides->count();
-        $total = $count * $secondsPerSlide - ($count - 1) * $transitionSeconds;
+        $lastSlideSeconds = $this->templates->isClosing($slides->last()->template_key) ? self::END_CARD_SECONDS : null;
+        $durations = $this->durations($count, $secondsPerSlide, $lastSlideSeconds);
+        $total = array_sum($durations) - ($count - 1) * $transitionSeconds;
 
         // A single slide would otherwise produce a 3-second clip only by accident; make the floor explicit.
         if ($total < self::MIN_TOTAL_SECONDS) {
             $secondsPerSlide += (self::MIN_TOTAL_SECONDS - $total) / $count + 0.1;
-            $total = $count * $secondsPerSlide - ($count - 1) * $transitionSeconds;
+            $durations = $this->durations($count, $secondsPerSlide, $lastSlideSeconds);
+            $total = array_sum($durations) - ($count - 1) * $transitionSeconds;
         }
 
         $output = tempnam(sys_get_temp_dir(), 'hub-video-').'.mp4';
 
         try {
-            $this->encode($slides, $output, $secondsPerSlide, $transitionSeconds, $total, $this->background($brand), $audioPath, $motion);
+            $this->encode($slides, $output, $durations, $transitionSeconds, $total, $this->background($brand), $audioPath, $motion);
 
             $binary = file_get_contents($output);
 
@@ -114,6 +129,7 @@ final class VideoRenderer
                 'params' => [
                     'slides' => $slides->pluck('id')->all(),
                     'seconds_per_slide' => $secondsPerSlide,
+                    'last_slide_seconds' => end($durations),
                     'transition_seconds' => $transitionSeconds,
                     'audio' => $audioPath === null ? null : basename($audioPath),
                     'motion' => $motion,
@@ -135,12 +151,29 @@ final class VideoRenderer
     }
 
     /**
+     * How long each slide stays on screen, in order. Only the last one may differ.
+     *
+     * @return list<float>
+     */
+    private function durations(int $count, float $perSlide, ?float $lastSlideSeconds): array
+    {
+        $durations = array_fill(0, $count, $perSlide);
+
+        if ($lastSlideSeconds !== null) {
+            $durations[$count - 1] = max($perSlide, $lastSlideSeconds);
+        }
+
+        return $durations;
+    }
+
+    /**
      * @param  Collection<int, MediaAsset>  $slides
+     * @param  list<float>  $durations
      */
     private function encode(
         Collection $slides,
         string $output,
-        float $perSlide,
+        array $durations,
         float $transition,
         float $total,
         string $background,
@@ -149,11 +182,11 @@ final class VideoRenderer
     ): void {
         $arguments = ['ffmpeg', '-y', '-hide_banner', '-loglevel', 'error'];
 
-        foreach ($slides as $slide) {
+        foreach ($slides->values() as $i => $slide) {
             // zoompan turns one still frame into a whole clip itself; a looped input would multiply it.
             $arguments = $motion
                 ? [...$arguments, '-i', $slide->absolutePath()]
-                : [...$arguments, '-loop', '1', '-t', (string) $perSlide, '-i', $slide->absolutePath()];
+                : [...$arguments, '-loop', '1', '-t', (string) $durations[$i], '-i', $slide->absolutePath()];
         }
 
         $audioInput = $slides->count();
@@ -164,7 +197,7 @@ final class VideoRenderer
             // Loop a short track, cut a long one; either way the video decides the length.
             : [...$arguments, '-stream_loop', '-1', '-i', $audioPath];
 
-        $graph = $this->filter($slides->count(), $perSlide, $transition, $background, $motion);
+        $graph = $this->filter($durations, $transition, $background, $motion);
 
         if ($audioPath !== null) {
             $graph .= ';'.$this->audioFilter($audioInput, $total);
@@ -197,14 +230,17 @@ final class VideoRenderer
 
     /**
      * Scale every slide into the vertical frame, then crossfade them one into the next.
+     *
+     * @param  list<float>  $durations
      */
-    private function filter(int $count, float $perSlide, float $transition, string $background, bool $motion): string
+    private function filter(array $durations, float $transition, string $background, bool $motion): string
     {
+        $count = count($durations);
         $parts = [];
 
         for ($i = 0; $i < $count; $i++) {
             $parts[] = $motion
-                ? $this->movingSlide($i, $perSlide, $background)
+                ? $this->movingSlide($i, $durations[$i], $background)
                 : sprintf(
                     '[%d:v]scale=%d:%d:force_original_aspect_ratio=decrease,'
                     .'pad=%d:%d:(ow-iw)/2:(oh-ih)/2:color=%s,setsar=1,fps=%d,format=yuv420p[v%d]',
@@ -217,10 +253,11 @@ final class VideoRenderer
         }
 
         $current = '[v0]';
+        $offset = 0.0;
 
         for ($i = 1; $i < $count; $i++) {
             // Each transition starts one slide-length (minus the overlap) after the previous one.
-            $offset = $i * ($perSlide - $transition);
+            $offset += $durations[$i - 1] - $transition;
             $label = $i === $count - 1 ? '[out]' : "[x{$i}]";
 
             $parts[] = sprintf('%s[v%d]xfade=transition=fade:duration=%.2f:offset=%.2f%s', $current, $i, $transition, $offset, $label);

@@ -61,6 +61,28 @@ final class VideoRendererTest extends TestCase
         $this->assertEqualsWithDelta(7.8, (float) $this->duration($probe), 0.2);
     }
 
+    public function test_the_brands_end_card_stays_long_enough_to_be_read(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+
+        $brand = Brand::factory()->create(['slug' => 'uselisto']);
+        $end = $this->slide($brand);
+        $end->update(['template_key' => 'kinds/cta-story']);
+        $slides = collect([$this->slide($brand), $this->slide($brand), $end]);
+
+        $video = app(VideoRenderer::class)->slideshow($brand, $slides, secondsPerSlide: 2.0, transitionSeconds: 0.35);
+
+        // Hook and card keep two seconds each; the end card gets END_CARD_SECONDS. 2 + 2 + 3.5 − 2 × 0.35.
+        $this->assertEqualsWithDelta(6.8, (float) $video->durationSeconds(), 0.05);
+        $this->assertSame(VideoRenderer::END_CARD_SECONDS, $video->params['last_slide_seconds']);
+        $this->assertEqualsWithDelta(6.8, (float) $this->duration($this->probe(Storage::disk('public')->path($video->path))), 0.2);
+
+        // A last slide that is someone's offer, not the brand's card, keeps the common rhythm.
+        $plain = app(VideoRenderer::class)->slideshow($brand, collect([$this->slide($brand), $this->slide($brand)]), secondsPerSlide: 2.0, transitionSeconds: 0.35);
+        $this->assertEqualsWithDelta(3.65, (float) $plain->durationSeconds(), 0.05);
+    }
+
     public function test_a_single_slide_still_clears_the_three_second_floor(): void
     {
         Storage::fake('public');
