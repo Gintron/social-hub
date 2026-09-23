@@ -65,6 +65,14 @@ final class BrandForm
                         Textarea::make('voice.rules')->label('Pravila')->rows(3)->placeholder('Ne izmišljaj brojke. Uvijek navedi lokaciju. Bez emotikona u naslovu.'),
                         TagsInput::make('voice.hashtags')->label('Fiksni hashtagovi')->placeholder('studentskiposao'),
                         TextInput::make('voice.cta')->label('Poziv na akciju')->placeholder('Prijavi se na studentski-poslovi.hr'),
+                        TextInput::make('voice.pitch')->label('Rečenica o brendu')
+                            ->placeholder('Svi letci na jednom mjestu: dodirni proizvod i on je na listi, s cijenom.')
+                            ->helperText('Što brend radi, u jednoj rečenici. Ide na završni slajd i u TikTok i Instagram tekst, gdje poveznica nije klikabilna i gledatelj inače vidi samo ponudu, a ne razlog da dođe. Bez iznosa: tekst smije navesti samo iznose iz podataka stavke.')
+                            ->maxLength(140)->columnSpanFull(),
+                        TextInput::make('voice.cta_note')->label('Napomena uz poziv na akciju')
+                            ->placeholder('Besplatno na App Storeu i Google Playu · 20 dana bez kartice')
+                            ->helperText('Kratak redak ispod adrese na završnom slajdu.')
+                            ->maxLength(90)->columnSpanFull(),
                         Toggle::make('voice.agent_enabled')->label('AI piše nacrte')
                             ->helperText('Jutarnji prolaz piše tekstove za nove stavke i ostavlja ih na odobrenje. Ne objavljuje.')
                             ->default(false)->columnSpanFull(),

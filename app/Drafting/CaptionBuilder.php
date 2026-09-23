@@ -136,6 +136,10 @@ final class CaptionBuilder
             $sections[] = implode(' · ', array_map(fn (string $badge): string => '✅ '.$badge, $item->badges));
         }
 
+        if (($pitch = $this->pitch($brand)) !== null) {
+            $sections[] = $pitch;
+        }
+
         $host = TemplateData::displayUrl($item->url) ?? TemplateData::displayUrl($brand->site_url) ?? '';
         $sections[] = '🔗 Link u biu → '.$host;
 
@@ -173,6 +177,10 @@ final class CaptionBuilder
         $sections[] = implode("\n", $lines);
 
         if ($instagram) {
+            if (($pitch = $this->pitch($brand)) !== null) {
+                $sections[] = $pitch;
+            }
+
             $host = TemplateData::displayUrl($brand->site_url) ?? '';
             $sections[] = "💾 Spremi popis i pošalji ga osobi s kojom kupuješ\n🔗 Link u biu → {$host}";
 
@@ -245,6 +253,10 @@ final class CaptionBuilder
             $sections[] = (string) $excerpt;
         }
 
+        if (($pitch = $this->pitch($brand)) !== null) {
+            $sections[] = $pitch;
+        }
+
         $host = TemplateData::displayUrl($item->url) ?? TemplateData::displayUrl($brand->site_url) ?? '';
         $sections[] = '🔗 Link u biu → '.$host."\n📤 Pošalji prijatelju kojem ovo treba";
 
@@ -257,6 +269,19 @@ final class CaptionBuilder
         $limit = (int) config('hub.limits.ig_caption_chars', 2200);
 
         return mb_strlen($caption) > $limit ? mb_rtrim(mb_substr($caption, 0, $limit - 1)).'…' : $caption;
+    }
+
+    /**
+     * The brand's one sentence about itself (voice.pitch) for networks where the link is not
+     * clickable. There the post shows someone else's offer and a "link in bio", and without a
+     * reason to follow it nobody does: a paid TikTok deal post of that shape reached ~6 000 viewers
+     * in September 2026 and brought not one registration.
+     */
+    public function pitch(Brand $brand): ?string
+    {
+        $pitch = mb_trim((string) data_get($brand->voice, 'pitch', ''));
+
+        return $pitch === '' ? null : '📲 '.$pitch;
     }
 
     /**

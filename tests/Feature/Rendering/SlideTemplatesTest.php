@@ -79,6 +79,37 @@ final class SlideTemplatesTest extends TestCase
         $end = $renderer->html($brand, 'kinds/cta-portrait', $params);
         $this->assertStringContainsString('Prijavi se na studentski-poslovi.hr', $end);
         $this->assertStringContainsString('studentski-poslovi.hr', $end);
+        $this->assertStringNotContainsString('class="pitch"', $end, 'brend bez rečenice ne dobiva prazan redak');
+        $this->assertStringNotContainsString('class="note"', $end);
+    }
+
+    public function test_the_end_card_says_what_the_brand_does_and_where_to_get_it(): void
+    {
+        Http::fake();
+
+        $brand = Brand::factory()->create([
+            'slug' => 'uselisto',
+            'name' => 'Listo',
+            'site_url' => 'https://uselisto.com',
+            'voice' => [
+                'cta' => 'Preuzmi Listo besplatno',
+                'pitch' => 'Svi letci na jednom mjestu: dodirni proizvod i on je na listi.',
+                'cta_note' => 'App Store i Google Play · 20 dana bez kartice',
+            ],
+        ]);
+        $item = ContentItem::factory()->for(Source::factory()->for($brand))->for($brand)->create([
+            'kind' => ContentKind::Deal,
+            'title' => 'Tuna u maslinovom ulju',
+            'subtitle' => 'Konzum',
+            'price' => ['current_cents' => 100, 'old_cents' => 189, 'discount_pct' => 47, 'currency' => 'EUR', 'unit_label' => null],
+            'images' => [],
+        ]);
+
+        $end = app(ImageRenderer::class)->html($brand, 'kinds/cta-story', app(TemplateData::class)->forItem($item, $brand));
+
+        $this->assertStringContainsString('<div class="pitch">Svi letci na jednom mjestu: dodirni proizvod i on je na listi.</div>', $end);
+        $this->assertStringContainsString('<div class="note">App Store i Google Play · 20 dana bez kartice</div>', $end);
+        $this->assertLessThan(mb_strpos($end, 'class="where"'), mb_strpos($end, 'class="pitch"'), 'razlog prije adrese');
     }
 
     public function test_a_deal_hook_strikes_the_old_price_and_a_filled_logo_keeps_its_colours(): void

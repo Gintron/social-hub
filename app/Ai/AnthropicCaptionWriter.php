@@ -83,6 +83,12 @@ final class AnthropicCaptionWriter implements CaptionWriter
             $lines[] = '- Poziv na akciju: '.$voice['cta'];
         }
 
+        // The brand's own sentence is not an item fact, so rule 7 below would otherwise forbid it —
+        // and on Instagram and TikTok it is the only reason a viewer is given to open the profile.
+        if (filled($voice['pitch'] ?? null)) {
+            $lines[] = '- Rečenica o brendu (Instagram i TikTok tekst je uključuju doslovno, prije upute na poveznicu u profilu; to je tekst brenda, ne podatak stavke): '.mb_trim((string) $voice['pitch']);
+        }
+
         $fixed = (array) ($voice['hashtags'] ?? []);
         if ($fixed !== []) {
             $lines[] = '- Uvijek uključi ove hashtagove: '.implode(' ', array_map(fn (string $tag): string => '#'.mb_ltrim($tag, '#'), $fixed));

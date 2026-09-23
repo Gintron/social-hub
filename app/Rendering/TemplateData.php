@@ -173,6 +173,10 @@ final class TemplateData
             'background' => $colors['background'] ?? '#ffffff',
             'surface' => $colors['surface'] ?? '#f3f4f6',
             'cta' => filled(data_get($brand->voice, 'cta')) ? (string) data_get($brand->voice, 'cta') : null,
+            // What the brand does and where to get it, for the end card: the slides before it show
+            // someone else's offer, so without these a viewer learns the price and never the reason.
+            'pitch' => filled(data_get($brand->voice, 'pitch')) ? (string) data_get($brand->voice, 'pitch') : null,
+            'cta_note' => filled(data_get($brand->voice, 'cta_note')) ? (string) data_get($brand->voice, 'cta_note') : null,
             // A mark on a transparent background goes white on the primary colour; a filled one
             // (a square with a tick) would become a blank block, so it keeps its colours.
             'logo_filter' => ($colors['logo_footer'] ?? 'white') === 'original' ? 'border-radius: 14px;' : 'filter: brightness(0) invert(1);',

@@ -68,6 +68,32 @@ final class CaptionBuilderTest extends TestCase
         $this->assertSame(5, preg_match_all('/#\w+/u', $caption));
     }
 
+    public function test_the_brands_pitch_goes_where_the_link_is_not_clickable(): void
+    {
+        $item = $this->item(['price' => ['current_cents' => 100, 'old_cents' => 189, 'discount_pct' => 47], 'subtitle' => 'Konzum']);
+        $brand = new Brand([
+            'name' => 'Listo',
+            'site_url' => 'https://uselisto.com',
+            'voice' => ['pitch' => 'Svi letci na jednom mjestu: dodirni proizvod i on je na listi.'],
+        ]);
+        $builder = new CaptionBuilder;
+
+        foreach ([Platform::TikTok, Platform::InstagramBusiness] as $platform) {
+            $caption = $builder->for($platform, $item, $brand);
+            $pitch = mb_strpos($caption, '📲 Svi letci na jednom mjestu: dodirni proizvod i on je na listi.');
+
+            $this->assertNotFalse($pitch, $platform->value);
+            $this->assertLessThan(mb_strpos($caption, 'Link u biu'), $pitch, 'razlog ide prije upute na profil');
+        }
+
+        $digest = $builder->digest(Platform::TikTok, collect([$item]), $brand, 'Top akcije');
+        $this->assertStringContainsString('📲 Svi letci na jednom mjestu', $digest);
+
+        // Na Facebooku je poveznica klikabilna i vodi na samu ponudu; rečenica bi samo produžila tekst.
+        $this->assertStringNotContainsString('📲', $builder->for(Platform::FacebookPage, $item, $brand));
+        $this->assertNull($builder->pitch(new Brand(['voice' => ['pitch' => '  ']])));
+    }
+
     public function test_the_page_caption_links_the_listing_and_leaves_contacts_to_the_group_post(): void
     {
         $item = $this->item(['price' => ['current_cents' => 700, 'unit_label' => '€/H'], 'cta' => ['label' => 'Prijavi se', 'url' => 'https://example.test/posao/1']]);
