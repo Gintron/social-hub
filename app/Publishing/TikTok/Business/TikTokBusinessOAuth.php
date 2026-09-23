@@ -37,7 +37,9 @@ final class TikTokBusinessOAuth implements TikTokTokens
             throw new RuntimeException('TIKTOK_BUSINESS_AUTHORIZE_URL nije postavljen — TikTok ga generira uz aktivni redirect URL u portalu.');
         }
 
-        return $url.(str_contains($url, '?') ? '&' : '?').http_build_query(['state' => $state]);
+        // Always show the consent screen: it names the TikTok account being connected, which is
+        // the only moment a person can notice it is the wrong brand's.
+        return $url.(str_contains($url, '?') ? '&' : '?').http_build_query(['state' => $state, 'disable_auto_auth' => 1]);
     }
 
     /**

@@ -45,6 +45,7 @@ final class TikTokBusinessOAuthTest extends TestCase
 
         $response->assertRedirectContains('https://www.tiktok.com/v2/auth/authorize?client_key=app-id&response_type=code');
         $response->assertRedirectContains('state=');
+        $response->assertRedirectContains('disable_auto_auth=1');
 
         $this->assertSame($this->brand->id, session('tiktok_business_oauth')['brand_id']);
     }
@@ -103,6 +104,28 @@ final class TikTokBusinessOAuthTest extends TestCase
             ->assertActionVisible('connect_tiktok')
             ->callAction('connect_tiktok', data: ['brand_id' => $this->brand->id])
             ->assertRedirect(route('tiktok.business.connect', $this->brand));
+    }
+
+    public function test_an_account_already_on_another_brand_is_not_moved(): void
+    {
+        $this->fakeTokens();
+        $listo = Brand::factory()->create(['name' => 'Listo']);
+        $existing = SocialAccount::factory()->create([
+            'brand_id' => $listo->id,
+            'platform' => Platform::TikTok->value,
+            'external_id' => 'open-id-9',
+            'access_token' => 'listo-token',
+        ]);
+
+        // The browser is still logged in as Listo's TikTok, so TikTok returns that account.
+        $this->withSession(['tiktok_business_oauth' => ['state' => 'st-1', 'brand_id' => $this->brand->id]])
+            ->get('/tiktok/business/callback/?code=the-code&state=st-1')
+            ->assertRedirect();
+
+        $existing->refresh();
+        $this->assertSame($listo->id, $existing->brand_id);
+        $this->assertSame('listo-token', $existing->access_token);
+        $this->assertSame(1, SocialAccount::query()->where('platform', Platform::TikTok->value)->count());
     }
 
     public function test_a_mismatched_state_never_exchanges_the_code(): void

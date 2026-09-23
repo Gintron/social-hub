@@ -72,6 +72,23 @@ final class TikTokBusinessOAuthController extends Controller
         $profile = $this->profile($client, $token['access_token'], $token['open_id']);
         $username = (string) ($profile['username'] ?? $profile['display_name'] ?? $token['open_id']);
 
+        // TikTok skips the consent screen for an account that already authorized the app, so a
+        // browser still logged in as one brand's account comes back with that account whatever
+        // brand was picked. Moving it silently would send one brand's posts to another's feed.
+        $existing = SocialAccount::query()
+            ->with('brand')
+            ->where('platform', Platform::TikTok->value)
+            ->where('external_id', $token['open_id'])
+            ->first();
+
+        if ($existing !== null && $existing->brand_id !== $brand->id) {
+            return $this->fail(
+                $back,
+                "@{$username} je već povezan s brendom {$existing->brand?->name}",
+                "TikTok je vratio račun u koji je preglednik prijavljen. Za {$brand->name} se odjavi na tiktok.com (ili otvori privatni prozor) i prijavi u TikTok račun tog brenda, pa pokušaj ponovno.",
+            );
+        }
+
         $account = SocialAccount::query()->updateOrCreate(
             ['platform' => Platform::TikTok->value, 'external_id' => $token['open_id']],
             [
