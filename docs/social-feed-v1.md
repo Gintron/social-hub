@@ -76,7 +76,7 @@ kriva ovlast → `403`.
 | Polje | Tip | Obavezno | Napomena |
 |---|---|---|---|
 | `id` | string | da | Stabilan i jedinstven unutar izvora. Hub ga koristi za idempotenciju (`unique(source_id, external_id)`). Preporuka: `"<vrsta>:<id>"`. |
-| `kind` | enum | da | `job`, `deal`, `article`, `event`, `generic`. Određuje zadani predložak slike i caption builder. |
+| `kind` | enum | da | `job`, `deal`, `article`, `event`, `generic`, `comparison`. Određuje zadani predložak slike i caption builder. |
 | `title` | string | da | Do 300 znakova. |
 | `subtitle` | string | ne | Tvrtka / trgovački lanac / autor. |
 | `body_text` | string | ne | **Čisti tekst bez HTML-a.** `\n` za novi red, `• ` za natuknice. Stranica radi HTML→tekst, ne hub. |
@@ -106,6 +106,22 @@ Sve vremenske oznake su UTC ISO 8601 (`2026-09-05T07:10:00Z`).
 Zato pošalji znak **u punoj rezoluciji i bez praznog ruba oko njega** — obrezani rub hub čita kao
 dio oblika i znak ispadne manji. Prozirni PNG je najbolji; SVG se mjeri po `viewBox`-u. Bez te slike
 hub ispiše `subtitle` kao ime.
+
+## Usporedba (`kind: comparison`)
+
+Rang ponuda više izvora po jednoj brojci — npr. najpovoljnija kava u letku svakog lanca, po
+kilogramu. Hub je crta kao listu redaka (`templates.kinds.comparison`), s udicom i pozivom na akciju
+kao i jednu stavku.
+
+| Polje | Značenje u usporedbi |
+|---|---|
+| `facts` | **Redci, od prvog.** `label` je čiji je redak (lanac), `value` brojka po kojoj se rangira („9,98 €/kg“). Hub prikaže do 5. |
+| `subtitle` | Prazan. To je polje onoga čija je ponuda, a ovdje ih je više; hub bi inače jedan izvor stavio na cijelu objavu. |
+| `price` | `null`. Cijena pakiranja pojedinog retka ide u `raw.rows`. |
+| `body_text` | Redak po izvoru s proizvodom i cijenom pakiranja; ide u tekst objave kakav jest, red po red. |
+| `images` | `primary` je proizvod prvog retka (udica ga pokazuje uz najnižu brojku), ostali `gallery`. |
+| `raw.rows[]` | Neobavezno, isti redoslijed kao `facts`: `chain_name` (mora biti jednak `label`), `title` (proizvod i pakiranje), `price_cents`, `logo` i `image` (apsolutni URL-ovi). Redak kojemu `chain_name` ne odgovara hub prikaže bez tih dodataka. |
+| `expires_at` | Kad prva od ponuda istječe: nakon toga usporedba više nije točna. |
 
 ## Kako stranica prevodi svoj domen
 

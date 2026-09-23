@@ -35,6 +35,28 @@ final class CaptionValidatorTest extends TestCase
         $this->assertSame([], $this->validator->validate($captions, $this->item()));
     }
 
+    public function test_a_comparison_may_quote_its_rows_and_pack_prices(): void
+    {
+        $item = new ContentItem([
+            'kind' => ContentKind::Comparison,
+            'title' => 'Kava u ovotjednim letcima: cijena po kilogramu',
+            'body_text' => "• Lidl: Bellarom Mljevena kava 500 g za 4,99 € (9,98 €/kg)\n• Konzum: Franck Jubilarna kava 400 g za 6,49 € (16,23 €/kg)",
+            'facts' => [['label' => 'Lidl', 'value' => '9,98 €/kg'], ['label' => 'Konzum', 'value' => '16,23 €/kg']],
+            'badges' => ['2 trgovine', 'Razlika do 39 %'],
+            'url' => 'https://uselisto.com/trazi?q=kava&sort=unit',
+            'images' => [],
+        ]);
+
+        $good = FakeCaptionWriter::captions(
+            facebook: 'Kava je ovaj tjedan najpovoljnija u Lidlu: 9,98 €/kg (500 g za 4,99 €), u Konzumu 16,23 €/kg. Razlika do 39 %. https://uselisto.com/trazi?q=kava&sort=unit',
+            instagram: 'Lidl 9,98 €/kg, Konzum 16,23 €/kg. Link u biu.',
+        );
+        $this->assertSame([], $this->validator->validate($good, $item));
+
+        $invented = FakeCaptionWriter::captions(facebook: 'Kava u Lidlu za 3,99 €.', instagram: 'Kava 3,99 €.');
+        $this->assertNotSame([], $this->validator->validate($invented, $item));
+    }
+
     public function test_an_invented_wage_is_caught(): void
     {
         $captions = FakeCaptionWriter::captions(

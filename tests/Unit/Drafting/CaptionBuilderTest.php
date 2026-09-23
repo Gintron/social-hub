@@ -138,6 +138,46 @@ final class CaptionBuilderTest extends TestCase
         $this->assertLessThan(260, mb_strlen($caption));
     }
 
+    public function test_a_comparison_names_the_shop_beside_every_price(): void
+    {
+        $body = "• Lidl: Bellarom Mljevena kava 500 g za 4,99 € (9,98 €/kg)\n• Spar: Barcaffe Kava mljevena 500 g za 5,99 € (11,98 €/kg)\n• Konzum: Franck Jubilarna kava 400 g za 6,49 € (16,23 €/kg)";
+        $item = $this->item([
+            'kind' => ContentKind::Comparison,
+            'title' => 'Kava u ovotjednim letcima: cijena po kilogramu',
+            'subtitle' => null,
+            'body_text' => $body,
+            'facts' => [
+                ['label' => 'Lidl', 'value' => '9,98 €/kg'],
+                ['label' => 'Spar', 'value' => '11,98 €/kg'],
+                ['label' => 'Konzum', 'value' => '16,23 €/kg'],
+            ],
+            'badges' => ['3 trgovine', 'Razlika do 39 %'],
+            'price' => null,
+            'cta' => ['label' => 'Usporedi u Listu', 'url' => 'https://uselisto.com/trazi?q=kava&sort=unit'],
+            'url' => 'https://uselisto.com/trazi?q=kava&sort=unit',
+            'tags' => ['usporedba', 'kava', 'lidl'],
+            'raw' => [],
+        ]);
+        $brand = new Brand(['name' => 'Listo', 'site_url' => 'https://uselisto.com']);
+        $builder = new CaptionBuilder;
+
+        $instagram = explode("\n", $builder->instagram($item, $brand));
+        $this->assertSame('⚖️ Kava u ovotjednim letcima: cijena po kilogramu', $instagram[0]);
+        $this->assertSame('🥇 Lidl 9,98 €/kg · Spar 11,98 €/kg', $instagram[1]);
+        $this->assertStringContainsString($body, implode("\n", $instagram), 'redak po trgovini ostaje redak');
+
+        $tiktok = explode("\n", $builder->tiktok($item, $brand));
+        $this->assertSame('⚖️ Kava u ovotjednim letcima: cijena po kilogramu · Lidl 9,98 €/kg', $tiktok[0]);
+        $this->assertStringContainsString('Spar 11,98 €/kg · Konzum 16,23 €/kg', implode("\n", $tiktok));
+
+        $page = $builder->facebookPage($item, $brand);
+        $this->assertStringNotContainsString(CaptionBuilder::bold('LIDL:'), $page, 'redci su već u tekstu, s proizvodom');
+        $this->assertStringContainsString($body, $page);
+        $this->assertStringContainsString(CaptionBuilder::bold('Usporedi u Listu').":\nhttps://uselisto.com/trazi?q=kava&sort=unit", $page);
+
+        $this->assertStringContainsString(CaptionBuilder::bold('Usporedi sve ponude').':', $builder->facebook($item, $brand));
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

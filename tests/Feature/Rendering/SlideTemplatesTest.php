@@ -144,6 +144,55 @@ final class SlideTemplatesTest extends TestCase
         $this->assertStringContainsString('invert(1)', $renderer->html($brand->refresh(), 'kinds/hook-portrait', $params));
     }
 
+    public function test_a_comparison_ranks_every_shop_with_its_product_and_names_it_on_the_hook(): void
+    {
+        Http::fake();
+
+        $brand = Brand::factory()->create(['slug' => 'uselisto', 'name' => 'Listo', 'site_url' => 'https://uselisto.com']);
+        $item = ContentItem::factory()->for(Source::factory()->for($brand))->for($brand)->create([
+            'kind' => ContentKind::Comparison,
+            'title' => 'Kava u ovotjednim letcima: cijena po kilogramu',
+            'subtitle' => null,
+            'price' => null,
+            'facts' => [
+                ['label' => 'Lidl', 'value' => '9,98 €/kg'],
+                ['label' => 'Spar', 'value' => '11,98 €/kg'],
+                ['label' => 'Konzum', 'value' => '16,23 €/kg'],
+            ],
+            'badges' => ['3 trgovine', 'Razlika do 39 %'],
+            'cta' => ['label' => 'Usporedi u Listu', 'url' => 'https://uselisto.com/trazi?q=kava&sort=unit'],
+            'raw' => ['rows' => [
+                ['chain_name' => 'Lidl', 'title' => 'Bellarom Mljevena kava 500 g', 'price_cents' => 499],
+                ['chain_name' => 'Spar', 'title' => 'Barcaffe Kava mljevena 500 g', 'price_cents' => 599],
+                // Out of step with the facts: this product must not end up beside Konzum's price.
+                ['chain_name' => 'Kaufland', 'title' => 'Tuđa kava 400 g', 'price_cents' => 649],
+            ]],
+            'images' => [],
+            'expires_at' => '2026-09-27 23:59:59',
+        ]);
+
+        $registry = app(TemplateRegistry::class);
+        $this->assertSame(['kinds/hook-story', 'kinds/comparison-story', 'kinds/cta-story'], $registry->slidesFor(ContentKind::Comparison, 'story'));
+        $this->assertSame('kinds/comparison-portrait', $registry->defaultFor(ContentKind::Comparison, 'portrait'));
+
+        $renderer = app(ImageRenderer::class);
+        $params = app(TemplateData::class)->forItem($item, $brand);
+
+        $card = $renderer->html($brand, 'kinds/comparison-portrait', $params);
+        foreach (['Lidl', 'Spar', 'Konzum', '9,98 €/kg', '16,23 €/kg', 'Bellarom Mljevena kava 500 g', '4,99 €', 'Usporedi u Listu', 'Cijene iz letaka, vrijede do 27.09.2026'] as $text) {
+            $this->assertStringContainsString($text, $card);
+        }
+        $this->assertStringNotContainsString('Tuđa kava', $card);
+        $rows = mb_substr($card, mb_strpos($card, '<div class="rows">'));
+        $this->assertLessThan(mb_strpos($rows, 'Konzum'), mb_strpos($rows, 'Lidl'), 'najjeftiniji je prvi');
+
+        $hook = $renderer->html($brand, 'kinds/hook-story', $params);
+        $this->assertStringContainsString('<div class="figure">9,98 €/kg</div>', $hook);
+        $this->assertStringContainsString('<div class="figure-label">Lidl</div>', $hook);
+        $this->assertStringContainsString('Spar 11,98 €/kg', $hook);
+        $this->assertStringNotContainsString('class="provider', $hook, 'nijedan lanac nije vlasnik cijele usporedbe');
+    }
+
     public function test_a_roundup_cover_leads_with_its_deepest_discount_and_skips_empty_tiles(): void
     {
         Http::fake();

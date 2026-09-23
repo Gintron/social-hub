@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Drafting;
 
+use App\Enums\ContentKind;
 use App\Models\ContentItem;
 
 /**
@@ -26,6 +27,18 @@ final class Highlights
      */
     public static function figure(ContentItem $item): ?array
     {
+        // A comparison has no price of its own: its figure is the first row, and whose it is.
+        if ($item->kind === ContentKind::Comparison) {
+            $first = ($item->facts ?? [])[0] ?? null;
+
+            return $first === null ? null : [
+                'value' => (string) $first['value'],
+                'label' => (string) $first['label'],
+                'fact' => (string) $first['label'],
+                'old' => null,
+            ];
+        }
+
         $price = $item->price ?? [];
         $amount = self::currentAmount($item);
 
@@ -62,6 +75,15 @@ final class Highlights
      */
     public static function points(ContentItem $item, int $limit = 2): array
     {
+        // The rows after the first keep their names: "11,98 €/kg" alone reads as a second price
+        // of the first shop.
+        if ($item->kind === ContentKind::Comparison) {
+            return array_slice(array_map(
+                fn (array $fact): string => $fact['label'].' '.$fact['value'],
+                array_slice($item->facts ?? [], 1),
+            ), 0, $limit);
+        }
+
         $skip = self::figure($item)['fact'] ?? null;
         $points = [];
 

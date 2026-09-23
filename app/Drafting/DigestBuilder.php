@@ -227,6 +227,7 @@ final class DigestBuilder
             ContentKind::Deal => "Top {$count} akcija ovog tjedna",
             ContentKind::Job => "Top {$count} oglasa ovog tjedna",
             ContentKind::Event => "{$count} događaja koje ne propuštaš",
+            ContentKind::Comparison => "{$count} usporedbi cijena",
             default => "Izdvojeno: {$count} novosti",
         };
     }

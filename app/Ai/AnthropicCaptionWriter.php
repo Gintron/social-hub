@@ -110,6 +110,11 @@ final class AnthropicCaptionWriter implements CaptionWriter
             '- Prvi red svakog teksta je udica: što je posao/ponuda i najvažniji podatak iz podataka (iznos, mjesto). Ljudi odluče u prvih 125 znakova.',
             '- Kratke rečenice, obraćanje s „ti“, bez uvoda tipa „Tražimo…“ ili „Pozivamo…“.',
             '- Instagram i TikTok završavaju pozivom da se objava pošalje prijatelju kojem treba.',
+            '',
+            'USPOREDBA (kind „comparison“)',
+            '- facts su trgovine poredane od prve; uz svaku cijenu uvijek napiši čija je (trgovina), nikad gola cijena.',
+            '- To su najpovoljnije ponude tog proizvoda u letku svake trgovine, ne isti proizvod: ne piši da je „ista kava“ ili „isti proizvod“ negdje jeftiniji.',
+            '- Cijena u facts je po kilogramu ili litri, kako u njima piše; cijena pakiranja stoji u body_text.',
         ]];
 
         return implode("\n", $lines);

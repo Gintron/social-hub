@@ -14,6 +14,8 @@ enum ContentKind: string implements HasColor, HasLabel
     case Article = 'article';
     case Event = 'event';
     case Generic = 'generic';
+    // Rang ponuda više izvora (lanaca, poslodavaca) po jednoj brojci: `facts` su redci, od prvog.
+    case Comparison = 'comparison';
 
     public function label(): string
     {
@@ -23,6 +25,7 @@ enum ContentKind: string implements HasColor, HasLabel
             self::Article => 'Članak',
             self::Event => 'Događaj',
             self::Generic => 'Općenito',
+            self::Comparison => 'Usporedba',
         };
     }
 
@@ -39,6 +42,7 @@ enum ContentKind: string implements HasColor, HasLabel
             self::Article => 'warning',
             self::Event => 'primary',
             self::Generic => 'gray',
+            self::Comparison => 'danger',
         };
     }
 }

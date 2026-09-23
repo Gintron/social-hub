@@ -103,6 +103,25 @@ final class SocialFeedV1SourceTest extends TestCase
         $this->assertSame(64, mb_strlen($item->checksum()));
     }
 
+    public function test_accepts_a_comparison_and_keeps_its_rows_in_order(): void
+    {
+        Http::fake([self::URL.'*' => Http::response(FeedPayload::page([FeedPayload::item('comparison:kava:2026-W39', [
+            'kind' => 'comparison',
+            'title' => 'Kava u ovotjednim letcima: cijena po kilogramu',
+            'subtitle' => null,
+            'price' => null,
+            'facts' => [['label' => 'Lidl', 'value' => '9,98 €/kg'], ['label' => 'Spar', 'value' => '11,98 €/kg']],
+            'raw' => ['rows' => [['chain_name' => 'Lidl', 'title' => 'Bellarom Mljevena kava 500 g']]],
+        ])], brand: 'uselisto'))]);
+
+        [$item] = iterator_to_array(app(SocialFeedV1Source::class)->fetch($this->source(), null), false);
+
+        $this->assertSame('comparison', $item->kind->value);
+        $this->assertNull($item->subtitle);
+        $this->assertSame(['Lidl', 'Spar'], array_column($item->facts, 'label'));
+        $this->assertSame('Bellarom Mljevena kava 500 g', $item->raw['rows'][0]['title']);
+    }
+
     public function test_test_connection_reports_warnings(): void
     {
         Http::fake([

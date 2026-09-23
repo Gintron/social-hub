@@ -19,7 +19,7 @@
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 191, "description": "Stabilan, jedinstven unutar izvora (npr. job:12345)." },
-        "kind": { "enum": ["job", "deal", "article", "event", "generic"] },
+        "kind": { "enum": ["job", "deal", "article", "event", "generic", "comparison"] },
         "title": { "type": "string", "minLength": 1, "maxLength": 300 },
         "subtitle": { "type": ["string", "null"], "maxLength": 300, "description": "Tvrtka, trgovački lanac, autor…" },
         "body_text": { "type": ["string", "null"], "maxLength": 20000, "description": "Čisti tekst bez HTML-a; \\n za novi red, • za natuknice." },

@@ -65,7 +65,7 @@ final class CaptionBuilder
         $figure = Highlights::figure($item);
 
         if ($figure !== null) {
-            $parts[] = '💰 '.$figure['value'];
+            $parts[] = $this->isComparison($item) ? '🥇 '.$this->figureText($item) : '💰 '.$figure['value'];
         }
 
         foreach (Highlights::points($item, 1) as $point) {
@@ -91,7 +91,8 @@ final class CaptionBuilder
             $sections[] = (string) $item->subtitle;
         }
 
-        $facts = $this->factLines($item);
+        // A comparison's body already lists every row with its product; the facts would repeat it.
+        $facts = $this->isComparison($item) ? [] : $this->factLines($item);
         if ($facts !== []) {
             $sections[] = implode("\n", $facts);
         }
@@ -100,7 +101,7 @@ final class CaptionBuilder
             $sections[] = implode("\n", array_map(fn (string $badge): string => '✅ '.$badge, $item->badges));
         }
 
-        $excerpt = TemplateData::excerpt($item->body_text, 400);
+        $excerpt = $this->body($item, 400);
         if (filled($excerpt)) {
             $sections[] = (string) $excerpt;
         }
@@ -121,7 +122,7 @@ final class CaptionBuilder
      */
     public function tiktok(ContentItem $item, Brand $brand): string
     {
-        $hook = Highlights::figure($item)['value'] ?? (Highlights::points($item, 1)[0] ?? null);
+        $hook = Highlights::figure($item) !== null ? $this->figureText($item) : (Highlights::points($item, 1)[0] ?? null);
         $sections = [$this->emoji($item).' '.$item->title.($hook !== null ? ' · '.$hook : '')];
 
         $details = array_filter([
@@ -206,7 +207,7 @@ final class CaptionBuilder
             $sections[] = (string) $item->subtitle;
         }
 
-        $facts = $this->factLines($item);
+        $facts = $this->isComparison($item) ? [] : $this->factLines($item);
         if ($facts !== []) {
             $sections[] = implode("\n", $facts);
         }
@@ -248,7 +249,7 @@ final class CaptionBuilder
             $sections[] = implode(' · ', array_map(fn (string $badge): string => '✅ '.$badge, $item->badges));
         }
 
-        $excerpt = TemplateData::excerpt($item->body_text, 400);
+        $excerpt = $this->body($item, 400);
         if (filled($excerpt)) {
             $sections[] = (string) $excerpt;
         }
@@ -313,6 +314,38 @@ final class CaptionBuilder
         return mb_trim($text);
     }
 
+    private function isComparison(ContentItem $item): bool
+    {
+        return $item->kind === ContentKind::Comparison;
+    }
+
+    /**
+     * The figure as a caption says it: a comparison's names the shop ("Lidl 9,98 €/kg"), because
+     * a price per kilogram with no shop beside it answers nothing.
+     */
+    private function figureText(ContentItem $item): string
+    {
+        $figure = Highlights::figure($item) ?? [];
+        $value = (string) ($figure['value'] ?? '');
+
+        return $this->isComparison($item) && filled($figure['label'] ?? null) ? $figure['label'].' '.$value : $value;
+    }
+
+    /**
+     * The body as a caption carries it. A comparison's is one line per shop and stays that way;
+     * squeezed into one paragraph like a listing's excerpt, the rows run into each other.
+     */
+    private function body(ContentItem $item, int $max): ?string
+    {
+        if ($this->isComparison($item) && filled($item->body_text)) {
+            $body = mb_trim((string) $item->body_text);
+
+            return mb_strlen($body) <= $max ? $body : mb_rtrim(mb_substr($body, 0, $max - 1)).'…';
+        }
+
+        return TemplateData::excerpt($item->body_text, $max);
+    }
+
     /**
      * The one number that matters per line: the price for a deal, the pay or location for a job.
      */
@@ -366,6 +399,7 @@ final class CaptionBuilder
             ContentKind::Job => 'Detalji o poslu',
             ContentKind::Deal => 'Detalji o akciji',
             ContentKind::Event => 'Detalji o događaju',
+            ContentKind::Comparison => 'Usporedi sve ponude',
             default => 'Više',
         };
     }

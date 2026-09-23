@@ -14,6 +14,9 @@ use App\Models\ContentItem;
  */
 final class TemplateData
 {
+    /** How many rows of a comparison fit on a slide and in a first glance. */
+    public const COMPARISON_ROWS = 5;
+
     public function __construct(private readonly RemoteImageCache $images) {}
 
     public static function defaultEmoji(ContentKind $kind): string
@@ -24,6 +27,7 @@ final class TemplateData
             ContentKind::Article => '📰',
             ContentKind::Event => '📅',
             ContentKind::Generic => '📌',
+            ContentKind::Comparison => '⚖️',
         };
     }
 
@@ -81,7 +85,9 @@ final class TemplateData
     public function forItem(ContentItem $item, Brand $brand, array $overrides = []): array
     {
         $raw = $item->raw ?? [];
-        $facts = array_slice($item->facts ?? [], 0, 4);
+        $comparison = $item->kind === ContentKind::Comparison;
+        // A comparison's facts are its rows, and a ranking cut at four hides the dearest shop.
+        $facts = array_slice($item->facts ?? [], 0, $comparison ? self::COMPARISON_ROWS : 4);
         $expiresAt = $item->expires_at?->utc()->format('d.m.Y');
         $figure = Highlights::figure($item);
 
@@ -114,6 +120,7 @@ final class TemplateData
                 'points' => Highlights::points($item, 2),
             ],
             'cta_label' => $item->cta['label'] ?? null,
+            'rows' => $comparison ? $this->rows($item, $facts) : [],
         ], $overrides);
     }
 
@@ -226,6 +233,50 @@ final class TemplateData
             // Wordmark or badge: the plaque gives a badge the height it cannot get in width.
             'logo_ratio' => $this->images->aspectRatio($logo),
         ];
+    }
+
+    /**
+     * A comparison's ranking, one row per fact in the feed's order (Social Feed v1: `kind` =
+     * `comparison`). `raw.rows` may add what the row shows beside its figure — the product, its
+     * pack price, the provider's mark and picture — but only when it lines up with the facts row
+     * for row; a mismatched extra would put one shop's product next to another shop's price.
+     *
+     * @param  list<array{label: string, value: string}>  $facts
+     * @return list<array{name: string, value: string, title: string|null, price: string|null, image: string|null, provider: array{name: string, logo: string|null, logo_ratio: float|null}}>
+     */
+    private function rows(ContentItem $item, array $facts): array
+    {
+        $extras = data_get($item->raw, 'rows');
+        $extras = is_array($extras) ? array_values($extras) : [];
+
+        $rows = [];
+
+        foreach (array_values($facts) as $index => $fact) {
+            $extra = is_array($extras[$index] ?? null) ? $extras[$index] : [];
+
+            if (filled($extra['chain_name'] ?? null) && $extra['chain_name'] !== $fact['label']) {
+                $extra = [];
+            }
+
+            $logo = is_string($extra['logo'] ?? null) ? $extra['logo'] : null;
+            $image = is_string($extra['image'] ?? null) ? $extra['image'] : null;
+            $cents = $extra['price_cents'] ?? null;
+
+            $rows[] = [
+                'name' => (string) $fact['label'],
+                'value' => (string) $fact['value'],
+                'title' => filled($extra['title'] ?? null) ? (string) $extra['title'] : null,
+                'price' => is_numeric($cents) ? number_format(((int) $cents) / 100, 2, ',', '.').' €' : null,
+                'image' => $this->images->dataUri($image),
+                'provider' => [
+                    'name' => (string) $fact['label'],
+                    'logo' => $this->images->dataUri($logo),
+                    'logo_ratio' => $this->images->aspectRatio($logo),
+                ],
+            ];
+        }
+
+        return $rows;
     }
 
     /**
