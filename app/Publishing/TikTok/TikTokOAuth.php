@@ -16,7 +16,7 @@ use RuntimeException;
  * Unlike Meta's page tokens, nothing here is permanent: an access token lasts a day and a refresh
  * token about a year, and both are replaced on every refresh.
  */
-final class TikTokOAuth
+final class TikTokOAuth implements TikTokTokens
 {
     public function authorizeUrl(string $state): string
     {

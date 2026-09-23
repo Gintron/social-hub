@@ -101,6 +101,17 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **TikTok se pita prije objave.** `creator_info/query` daje dopuštene razine privatnosti i najdulje
   trajanje; hub se prilagođava odgovoru umjesto da pretpostavlja. Neauditirana aplikacija smije samo
   `SELF_ONLY` — to se ne zaobilazi.
+- **Neauditiranost je trajna na ovom tracku, ne faza.** TikTok je 22. 09. 2026. odbio produkciju jer
+  „utility tool to help upload contents to the account(s) you or your team manages" njihove
+  Content Sharing Guidelines izrijekom navode kao neprihvatljiv use-case — hub je po definiciji to.
+  Ne pisati kod koji pretpostavlja da audit stiže i ne predlagati ponovnu prijavu s drugim opisom.
+  Jedini put su Business Center + **Organic API** (`business-api.tiktok.com`, drugi auth tok).
+  Oba tracka postoje u kodu i bira ih `TIKTOK_API=developer|business`; Business aplikacija je
+  odobrena 23. 09. 2026. — puštanje u produkciju u `docs/tiktok-business-api.md` § 11, pozadina u
+  `docs/tiktok.md` („Zid 0"). Na Business tracku `video_url` mora biti unutar verificiranog URL
+  prefiksa (`hub:tiktok-url-property`, verificira `storage/media/`); verifikacija je po aplikaciji,
+  ne po računu. Prekidač je privremen, ne trajna apstrakcija: kad Business proradi,
+  developer track i `TikTokTokens` sučelje idu van.
 - **TikTok tokeni istječu**: pristupni 24 h, refresh se rotira pri svakom osvježavanju. Uvijek spremi
   **novi** refresh token; `hub:refresh-tiktok-tokens` radi satno.
 - **Zvuk se miksa u hubu, iz licencirane knjižnice brenda** (`brands.audio_tracks`,

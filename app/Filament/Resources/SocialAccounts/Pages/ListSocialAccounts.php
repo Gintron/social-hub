@@ -43,14 +43,20 @@ final class ListSocialAccounts extends ListRecords
                 ->label('Poveži TikTok')
                 ->icon(Heroicon::OutlinedVideoCamera)
                 ->color('gray')
-                ->modalDescription('Otvara TikTok dijalog za pristanak. Dok aplikacija ne prođe TikTok audit, objave su vidljive samo vlasniku računa (SELF_ONLY).')
+                ->modalDescription(fn (): string => self::tiktokBusiness()
+                    ? 'Otvara TikTok dijalog za pristanak (API for Business). Prijavi se u TikTok račun brenda koji povezuješ.'
+                    : 'Otvara TikTok dijalog za pristanak. Dok aplikacija ne prođe TikTok audit, objave su vidljive samo vlasniku računa (SELF_ONLY).')
                 ->modalSubmitActionLabel('Nastavi na TikTok')
-                ->visible(fn (): bool => filled(config('tiktok.client_key')))
+                ->visible(fn (): bool => self::tiktokBusiness()
+                    ? filled(config('tiktok.business.app_id')) && filled(config('tiktok.business.authorize_url'))
+                    : filled(config('tiktok.client_key')))
                 ->schema([
                     Select::make('brand_id')->label('Brend')->options(Brand::query()->orderBy('name')->pluck('name', 'id'))->required(),
                 ])
                 ->action(function (array $data, Component $livewire): void {
-                    $livewire->redirect(route('tiktok.connect', ['brand' => (int) $data['brand_id']]), navigate: false);
+                    $route = self::tiktokBusiness() ? 'tiktok.business.connect' : 'tiktok.connect';
+
+                    $livewire->redirect(route($route, ['brand' => (int) $data['brand_id']]), navigate: false);
                 }),
 
             Action::make('discover')
@@ -83,5 +89,13 @@ final class ListSocialAccounts extends ListRecords
                 }),
             CreateAction::make()->label('Dodaj ručno'),
         ];
+    }
+
+    /**
+     * Temporary, like the driver switch itself: goes when the developer track is removed.
+     */
+    private static function tiktokBusiness(): bool
+    {
+        return config('tiktok.driver') === 'business';
     }
 }

@@ -1,8 +1,46 @@
 # TikTok: što treba prije prve objave
 
 TikTok objavljivanje radi kroz **Content Posting API** (Direct Post). Za razliku od Mete, gdje je za
-vlastite stranice dovoljna aplikacija u razvojnom modu, TikTok ima dva zida koja se ne daju zaobići
-kodom.
+vlastite stranice dovoljna aplikacija u razvojnom modu, TikTok ima tri zida koja se ne daju zaobići
+kodom. Prvi je kategorija aplikacije i on je za nas trenutno zatvoren.
+
+## Zid 0: hub nije prihvatljiv use-case za obični developer track
+
+**Zahtjev za produkciju odbijen 22. 09. 2026.** Obrazloženje recenzenta: *„TikTok for Developers
+currently does not support personal or internal company use."*
+
+To nije greška u opisu prijave i ne rješava se boljom formulacijom. TikTokove
+[Content Sharing Guidelines](https://developers.tiktok.com/docs/en/content-sharing-guidelines) pod
+„Intended Use" traže da aplikacija cilja široku publiku (*„not limited to internal groups/private
+use"*) i **izrijekom navode naš slučaj kao neprihvatljiv**:
+
+> „A utility tool to help upload contents to the account(s) you or your team manages."
+
+Hub je točno to. Standardni track (Login Kit + Content Posting API na `open.tiktokapis.com`, ono što
+danas stoji u `config/tiktok.php`) zato ostaje zauvijek neauditiran — dakle **SELF_ONLY**, do 5
+korisnika u 24 h, račun mora biti privatan. Za stvarno objavljivanje je neupotrebljiv.
+
+Recenzentova druga rečenica („Display posts from the TikTok account(s) you or your team manage on
+your website") **ne opisuje hub** — hub nigdje ne prikazuje ni ugrađuje tuđe TikTok objave; scope
+`video.list` služi samo za brojke u `App\Metrics\TikTokMetrics`. To je TikTokov predložak odbijenice,
+ne nalaz o kodu. Ne treba mijenjati kod zbog te rečenice.
+
+### Put koji postoji: TikTok API for Business → Organic API
+
+[Organic API](https://business-api.tiktok.com/portal/docs/organic-api/v1.3) na
+`business-api.tiktok.com` je namijenjen upravo brendovima i agencijama koji vode organski sadržaj na
+računima koje posjeduju ili im ih je netko povjerio. Traži:
+
+- onboarding u **TikTok Business Center** (jedan Business Center može držati sve brendove),
+- **verifikaciju tvrtke** (dokumenti),
+- vlastiti sandbox → produkcija pregled, odvojen od developer portala.
+
+To je drugi tok autorizacije (`tt_user` OAuth umjesto Login Kita) i druga bazna adresa, pa migracija
+dira `App\Publishing\TikTok\TikTokOAuth`, `config/tiktok.php` i `TikTokMetrics`. Do tada TikTok
+varijante idu kroz inbox (`settings.delivery = inbox`) ili stoje u SELF_ONLY sandboxu.
+
+**Postava i cijela migracija razrađene su u [`docs/tiktok-business-api.md`](tiktok-business-api.md)** —
+ondje su točne vrijednosti za portal, scopeovi, pravila redirect URL-a i endpointi.
 
 ## Zid 1: audit
 
@@ -31,6 +69,9 @@ Metu. Alternativa je `FILE_UPLOAD` (slanje bajtova u komadima), koja nije implem
 chunked upload i ne donosi ništa dok domena ionako mora biti javna zbog Instagrama.
 
 ## Postavljanje
+
+Ovo je postava developer tracka; nakon odbijenice iz „Zid 0" ona vrijedi samo za sandbox
+(SELF_ONLY). Za javne objave vrijedi tek kad se pređe na Organic API, što mijenja korake 1–3.
 
 1. Developer portal → nova aplikacija → dodaj proizvod **Content Posting API** i **Login Kit**.
 2. Scopeovi: `user.info.basic`, `video.publish` (Direct Post) i `video.upload` (nacrt u inboxu).

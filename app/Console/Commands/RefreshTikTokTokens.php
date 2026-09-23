@@ -8,7 +8,7 @@ use App\Enums\AccountStatus;
 use App\Enums\Platform;
 use App\Models\SocialAccount;
 use App\Notifications\AccountNeedsReconnect;
-use App\Publishing\TikTok\TikTokOAuth;
+use App\Publishing\TikTok\TikTokTokens;
 use App\Support\AdminNotifier;
 use Illuminate\Console\Command;
 use Throwable;
@@ -24,7 +24,7 @@ final class RefreshTikTokTokens extends Command
 
     protected $description = 'Trade TikTok refresh tokens for fresh access tokens before they expire';
 
-    public function handle(TikTokOAuth $oauth, AdminNotifier $notifier): int
+    public function handle(TikTokTokens $oauth, AdminNotifier $notifier): int
     {
         $accounts = SocialAccount::query()
             ->with('brand')

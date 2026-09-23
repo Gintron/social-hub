@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Meta\MetaOAuthController;
 use App\Http\Controllers\Meta\MetaWebhookController;
+use App\Http\Controllers\TikTok\TikTokBusinessOAuthController;
 use App\Http\Controllers\TikTok\TikTokOAuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,13 @@ Route::middleware(['web', 'auth'])->group(function (): void {
 
     Route::get('/tiktok/connect/{brand}', [TikTokOAuthController::class, 'connect'])->name('tiktok.connect');
     Route::get('/tiktok/callback', [TikTokOAuthController::class, 'callback'])->name('tiktok.callback');
+
+    /*
+     * TikTok API for Business. Its redirect URL must end in a slash, so the route does too — the
+     * portal rejects the version without it. See docs/tiktok-business-api.md.
+     */
+    Route::get('/tiktok/business/connect/{brand}', [TikTokBusinessOAuthController::class, 'connect'])->name('tiktok.business.connect');
+    Route::get('/tiktok/business/callback/', [TikTokBusinessOAuthController::class, 'callback'])->name('tiktok.business.callback');
 });
 
 /*
