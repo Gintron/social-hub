@@ -67,7 +67,9 @@ final class SourceForm
                                     ->live()
                                     ->helperText(fn (Get $get): ?string => match (self::platform($get)) {
                                         Platform::FacebookGroup => 'Ručni kanal: hub pripremi objavu, čovjek je zalijepi u grupu.',
-                                        Platform::TikTok => 'Dok TikTok ne auditira aplikaciju, izravna objava je privatna — koristi inbox.',
+                                        Platform::TikTok => config('tiktok.driver') === 'business'
+                                            ? 'Izravna objava je javna; inbox samo ako čovjek dodaje trending zvuk u aplikaciji.'
+                                            : 'Dok TikTok ne auditira aplikaciju, izravna objava je privatna — koristi inbox.',
                                         default => null,
                                     }),
                                 Select::make('format')->label('Format')

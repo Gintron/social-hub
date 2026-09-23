@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Resources\SocialAccounts\Tables;
 
 use App\Enums\AccountStatus;
+use App\Enums\Platform;
 use App\Models\SocialAccount;
 use App\Publishing\Exceptions\PublishException;
 use App\Publishing\Meta\GraphClient;
+use App\Publishing\TikTok\Business\TikTokBusinessClient;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -33,12 +35,16 @@ final class SocialAccountsTable
                     ->label('Provjeri')
                     ->icon(Heroicon::OutlinedSignal)
                     ->color('gray')
-                    ->visible(fn (SocialAccount $record): bool => ! $record->platform->isManual())
+                    // A developer-track TikTok token has nothing to be asked here; that track is on its way out.
+                    ->visible(fn (SocialAccount $record): bool => ! $record->platform->isManual()
+                        && ($record->platform !== Platform::TikTok || config('tiktok.driver') === 'business'))
                     ->action(function (SocialAccount $record): void {
                         try {
-                            $me = app(GraphClient::class)->get($record->external_id, ['fields' => 'id,name,username'], (string) $record->access_token, 'verify');
+                            $answer = $record->platform === Platform::TikTok
+                                ? self::tiktok($record)
+                                : self::meta($record);
                             $record->forceFill(['status' => AccountStatus::Active, 'last_verified_at' => now()])->save();
-                            Notification::make()->title('Token radi')->body('Graph API vraća: '.($me['name'] ?? $me['username'] ?? $me['id'] ?? '?'))->success()->send();
+                            Notification::make()->title('Token radi')->body($answer)->success()->send();
                         } catch (PublishException $e) {
                             if ($e->errorCode === 'token_invalid') {
                                 $record->forceFill(['status' => AccountStatus::NeedsReconnect])->save();
@@ -48,5 +54,22 @@ final class SocialAccountsTable
                     }),
                 EditAction::make(),
             ]);
+    }
+
+    private static function meta(SocialAccount $record): string
+    {
+        $me = app(GraphClient::class)->get($record->external_id, ['fields' => 'id,name,username'], (string) $record->access_token, 'verify');
+
+        return 'Graph API vraća: '.($me['name'] ?? $me['username'] ?? $me['id'] ?? '?');
+    }
+
+    private static function tiktok(SocialAccount $record): string
+    {
+        $me = app(TikTokBusinessClient::class)->get('business/get/', [
+            'business_id' => (string) ($record->meta['open_id'] ?? $record->external_id),
+            'fields' => json_encode(['username', 'display_name']),
+        ], (string) $record->access_token, 'verify');
+
+        return 'TikTok vraća: @'.($me['username'] ?? $me['display_name'] ?? '?');
     }
 }

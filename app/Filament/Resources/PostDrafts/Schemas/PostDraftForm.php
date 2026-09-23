@@ -148,7 +148,9 @@ final class PostDraftForm
                             ->selectablePlaceholder(false)
                             ->disabled($locked)
                             ->helperText('TikTok dopušta samo razine koje sam vrati za taj račun; hub pada natrag na dopuštenu.')
-                            ->visible(fn (Get $get): bool => $platform === Platform::TikTok && $get("{$path}.delivery") !== 'inbox'),
+                            // API for Business has no privacy level: a direct post is public.
+                            ->visible(fn (Get $get): bool => $platform === Platform::TikTok && $get("{$path}.delivery") !== 'inbox'
+                                && config('tiktok.driver') !== 'business'),
 
                         Toggle::make("{$path}.auto_add_music")
                             ->label('TikTok doda glazbu ispod fotografija')

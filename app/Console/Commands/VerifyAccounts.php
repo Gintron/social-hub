@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Enums\AccountStatus;
+use App\Enums\Platform;
 use App\Models\SocialAccount;
 use App\Notifications\AccountNeedsReconnect;
 use App\Publishing\Exceptions\TokenInvalidException;
@@ -21,8 +22,12 @@ final class VerifyAccounts extends Command
 
     public function handle(GraphClient $graph, AdminNotifier $notifier): int
     {
-        $accounts = SocialAccount::query()->with('brand')->active()->get()
-            ->reject(fn (SocialAccount $account): bool => $account->platform->isManual());
+        // Graph API only knows Meta tokens. A TikTok token sent here comes back "invalid OAuth
+        // token", which used to mark every TikTok account for reconnection each morning; TikTok
+        // tokens are proven hourly by hub:refresh-tiktok-tokens instead.
+        $accounts = SocialAccount::query()->with('brand')->active()
+            ->whereIn('platform', [Platform::FacebookPage->value, Platform::InstagramBusiness->value])
+            ->get();
 
         $failed = 0;
 
