@@ -11,11 +11,9 @@
     $figure = $hook['figure'] ?? null;
     // A deal's picture is a crop of the catalog page, neighbours' prices included: stretched behind
     // the text it turns into noise, so the product is shown whole on a card of its own. A
-    // comparison's picture is the same kind of crop (its first row's product).
-    $product = in_array($item['kind'] ?? null, ['deal', 'comparison'], true) && ! empty($item['primary_image']);
+    // comparison has a hook of its own (comparison-hook).
+    $product = ($item['kind'] ?? null) === 'deal' && ! empty($item['primary_image']);
     $gap = $product ? ($story ? 28 : 24) : ($story ? 44 : 30);
-    // A comparison's title is the question its rows answer; cut at two lines it loses the question.
-    $titleLines = $product ? (($item['kind'] ?? null) === 'comparison' ? 3 : 2) : 4;
 @endphp
 
 @section('styles')
@@ -36,7 +34,7 @@
   .hook .figure { font-size: {{ $story ? 150 : 122 }}px; font-weight: 900; line-height: 1; letter-spacing: -3px; }
   .hook .figure-old { margin-top: 14px; font-size: {{ $story ? 64 : 52 }}px; font-weight: 700; text-decoration: line-through; opacity: .8; }
   .hook .points { display: flex; flex-direction: column; gap: 12px; font-size: {{ $story ? 50 : 40 }}px; font-weight: 800; }
-  .hook .title { font-size: {{ $story ? 76 : 62 }}px; -webkit-line-clamp: {{ $titleLines }}; }
+  .hook .title { font-size: {{ $story ? 76 : 62 }}px; -webkit-line-clamp: {{ $product ? 2 : 4 }}; }
   .hook .provider { align-self: flex-start; }
 @endsection
 

@@ -172,7 +172,8 @@ final class SlideTemplatesTest extends TestCase
         ]);
 
         $registry = app(TemplateRegistry::class);
-        $this->assertSame(['kinds/hook-story', 'kinds/comparison-story', 'kinds/cta-story'], $registry->slidesFor(ContentKind::Comparison, 'story'));
+        $this->assertSame(['kinds/comparison-hook-story', 'kinds/comparison-story', 'kinds/cta-story'], $registry->slidesFor(ContentKind::Comparison, 'story'));
+        $this->assertSame(['kinds/comparison-hook-portrait', 'kinds/comparison-portrait', 'kinds/cta-portrait'], $registry->slidesFor(ContentKind::Comparison, 'portrait'));
         $this->assertSame('kinds/comparison-portrait', $registry->defaultFor(ContentKind::Comparison, 'portrait'));
 
         $renderer = app(ImageRenderer::class);
@@ -186,11 +187,18 @@ final class SlideTemplatesTest extends TestCase
         $rows = mb_substr($card, mb_strpos($card, '<div class="rows">'));
         $this->assertLessThan(mb_strpos($rows, 'Konzum'), mb_strpos($rows, 'Lidl'), 'najjeftiniji je prvi');
 
-        $hook = $renderer->html($brand, 'kinds/hook-story', $params);
-        $this->assertStringContainsString('<div class="figure">9,98 €/kg</div>', $hook);
-        $this->assertStringContainsString('<div class="figure-label">Lidl</div>', $hook);
-        $this->assertStringContainsString('Spar 11,98 €/kg', $hook);
-        $this->assertStringNotContainsString('class="provider', $hook, 'nijedan lanac nije vlasnik cijele usporedbe');
+        // The hook names the cheapest shop as its headline and the next two beside it, each by its own plaque.
+        $hook = $renderer->html($brand, 'kinds/comparison-hook-story', $params);
+        $winner = mb_substr($hook, mb_strpos($hook, '<div class="winner">'), mb_strpos($hook, '<div class="next">') - mb_strpos($hook, '<div class="winner">'));
+        foreach (['NAJJEFTINIJE', '<div class="name">Lidl</div>', '<div class="figure">9,98 €/kg</div>', 'Bellarom Mljevena kava 500 g · 4,99 €'] as $text) {
+            $this->assertStringContainsString($text, $winner);
+        }
+        $next = mb_substr($hook, mb_strpos($hook, '<div class="next">'));
+        $this->assertLessThan(mb_strpos($next, '<div class="name">Konzum</div>'), mb_strpos($next, '<div class="name">Spar</div>'));
+        $this->assertStringContainsString('<div class="value">16,23 €/kg</div>', $next);
+        $this->assertStringContainsString('Kava u ovotjednim letcima', $hook);
+        $this->assertStringNotContainsString('class="footer"', $hook, 'na 9:16 podnožje pokriva aplikacija');
+        $this->assertStringContainsString('class="footer"', $renderer->html($brand, 'kinds/comparison-hook-square', $params));
     }
 
     public function test_a_roundup_cover_leads_with_its_deepest_discount_and_skips_empty_tiles(): void
