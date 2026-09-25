@@ -72,7 +72,7 @@ final class TikTokBusinessPublisher implements Publisher
         $data = $client->post('business/video/publish/', [
             'business_id' => $businessId,
             'video_url' => $asset->publicUrl(),
-            'post_info' => $inbox ? ['upload_to_draft' => true] : $this->postInfo($variant, $settings),
+            'post_info' => $inbox ? ['upload_to_draft' => true, ...$this->disclosure($variant)] : $this->postInfo($variant, $settings),
         ], $token, $inbox ? 'tiktok.draft' : 'tiktok.publish');
 
         $shareId = $data['share_id'] ?? null;
@@ -118,18 +118,31 @@ final class TikTokBusinessPublisher implements Publisher
             throw new PermanentPublishException('TikTok objava treba tekst.', 'empty_caption');
         }
 
-        $branded = (bool) $variant->setting('branded_content', false);
-
         return [
             'caption' => self::utf16Cut($caption, self::MAX_CAPTION),
-            // Required pair. The hub posts a brand's own offers, so this is Brand Organic unless the
-            // variant says it is a paid partnership; setting both would silently drop brand organic.
-            'is_brand_organic' => ! $branded && (bool) config('tiktok.business.brand_organic', true),
-            'is_branded_content' => $branded,
+            ...$this->disclosure($variant),
             'disable_comment' => (bool) $variant->setting('disable_comment', (bool) ($settings['comment_disabled'] ?? false)),
             'disable_duet' => (bool) $variant->setting('disable_duet', (bool) ($settings['duet_disabled'] ?? false)),
             'disable_stitch' => (bool) $variant->setting('disable_stitch', (bool) ($settings['stitch_disabled'] ?? false)),
             'thumbnail_offset' => (int) $variant->setting('cover_timestamp_ms', 0),
+        ];
+    }
+
+    /**
+     * The commercial-content pair TikTok requires on every post, a draft for the inbox included
+     * (without it: 40002 "post_info.is_brand_organic: Missing data for required field"). The hub posts
+     * a brand's own offers, so this is Brand Organic unless the variant says it is a paid
+     * partnership; setting both would silently drop brand organic.
+     *
+     * @return array{is_brand_organic: bool, is_branded_content: bool}
+     */
+    private function disclosure(PostVariant $variant): array
+    {
+        $branded = (bool) $variant->setting('branded_content', false);
+
+        return [
+            'is_brand_organic' => ! $branded && (bool) config('tiktok.business.brand_organic', true),
+            'is_branded_content' => $branded,
         ];
     }
 

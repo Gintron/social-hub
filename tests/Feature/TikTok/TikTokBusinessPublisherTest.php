@@ -100,7 +100,7 @@ final class TikTokBusinessPublisherTest extends TestCase
         });
     }
 
-    public function test_inbox_delivery_uploads_a_draft_and_sends_no_caption(): void
+    public function test_inbox_delivery_uploads_a_draft_with_only_the_required_disclosure(): void
     {
         $this->fakeBusiness();
 
@@ -115,8 +115,9 @@ final class TikTokBusinessPublisherTest extends TestCase
                 return false;
             }
 
-            // Everything else in post_info is ignored by TikTok when the post goes to drafts.
-            return $request->data()['post_info'] === ['upload_to_draft' => true];
+            // The caption is pasted in the app; the brand-content pair is required even for a draft
+            // (TikTok answered 40002 without it on 25 Sep 2026).
+            return $request->data()['post_info'] === ['upload_to_draft' => true, 'is_brand_organic' => true, 'is_branded_content' => false];
         });
     }
 
