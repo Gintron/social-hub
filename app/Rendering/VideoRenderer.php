@@ -31,10 +31,11 @@ final class VideoRenderer
     public const HEIGHT = 1920;
 
     /**
-     * Reels made from cards need a quicker rhythm than a presentation. Two seconds leaves enough
-     * time to read the price and product, while a five-slide Top 3 stays under ten seconds.
+     * How long each card stays up. Three seconds (Marijan, 25 Sep 2026): two was too short to read
+     * the product, the price and whose offer it is. A series can still set its own
+     * (`seconds_per_slide`); none did, so this is what every video uses.
      */
-    public const DEFAULT_SECONDS_PER_SLIDE = 2.0;
+    public const DEFAULT_SECONDS_PER_SLIDE = 3.0;
 
     public const DEFAULT_TRANSITION_SECONDS = 0.35;
 

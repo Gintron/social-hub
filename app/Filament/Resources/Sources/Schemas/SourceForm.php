@@ -87,7 +87,7 @@ final class SourceForm
                                         'direct' => 'Objavi izravno',
                                         'inbox' => 'Pošalji u TikTok inbox (trending zvuk i objava u aplikaciji)',
                                     ])
-                                    ->default('inbox')
+                                    ->default('direct')
                                     ->visible(fn (Get $get): bool => self::platform($get) === Platform::TikTok),
                                 Toggle::make('settings.share_to_feed')->label('Reel i u feed profila')->default(true)
                                     ->visible(fn (Get $get): bool => self::platform($get) === Platform::InstagramBusiness),
