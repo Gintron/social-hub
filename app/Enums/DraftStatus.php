@@ -17,6 +17,7 @@ enum DraftStatus: string implements HasColor, HasLabel
     case Published = 'published';
     case PartiallyPublished = 'partially_published';
     case Failed = 'failed';
+    case Skipped = 'skipped';
     case Discarded = 'discarded';
 
     public function label(): string
@@ -30,13 +31,14 @@ enum DraftStatus: string implements HasColor, HasLabel
             self::Published => 'Objavljeno',
             self::PartiallyPublished => 'Djelomično objavljeno',
             self::Failed => 'Neuspjelo',
+            self::Skipped => 'Preskočeno',
             self::Discarded => 'Odbačeno',
         };
     }
 
     public function isTerminal(): bool
     {
-        return in_array($this, [self::Published, self::Discarded], true);
+        return in_array($this, [self::Published, self::Discarded, self::Skipped], true);
     }
 
     public function canBePublished(): bool
@@ -52,7 +54,7 @@ enum DraftStatus: string implements HasColor, HasLabel
     public function getColor(): string
     {
         return match ($this) {
-            self::Draft, self::Discarded => 'gray',
+            self::Draft, self::Discarded, self::Skipped => 'gray',
             self::PendingApproval, self::Publishing, self::PartiallyPublished => 'warning',
             self::Approved, self::Scheduled => 'info',
             self::Published => 'success',

@@ -14,6 +14,7 @@ use App\Models\PostDraft;
 use App\Models\SocialAccount;
 use App\Models\Source;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\Support\FeedPayload;
 use Tests\TestCase;
@@ -26,6 +27,14 @@ final class IngestControllerTest extends TestCase
     use RefreshDatabase;
 
     private const SECRET = 'webhook-tajna';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Auto-publish checks each item's page before scheduling it.
+        Http::fake(['example.test/*' => Http::response()]);
+    }
 
     public function test_a_signed_payload_creates_items(): void
     {

@@ -118,6 +118,12 @@ final class PostDraft extends Model
         $relevant = $variants->reject(fn (PostVariant $variant): bool => in_array($variant->status->value, ['disabled', 'skipped'], true));
 
         if ($relevant->isEmpty()) {
+            // Every channel skipped (a dead link, an expired item): nothing is left in flight, and
+            // "publishing" would stay on the list forever.
+            if ($variants->contains(fn (PostVariant $variant): bool => $variant->status->value === 'skipped') && $this->status !== DraftStatus::Skipped) {
+                $this->forceFill(['status' => DraftStatus::Skipped])->save();
+            }
+
             return;
         }
 

@@ -17,6 +17,7 @@ use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
 use App\Models\SocialAccount;
+use App\Publishing\LinkPreflight;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
@@ -51,7 +52,10 @@ final class DigestBuilder
      */
     private const CANDIDATE_POOL = 100;
 
-    public function __construct(private readonly CaptionBuilder $captions) {}
+    public function __construct(
+        private readonly CaptionBuilder $captions,
+        private readonly LinkPreflight $links,
+    ) {}
 
     /**
      * @param  Collection<int, SocialAccount>|list<SocialAccount>  $accounts
@@ -153,6 +157,9 @@ final class DigestBuilder
      * the same catalog page is one post, not a roundup. When that leaves too few, the rest is filled
      * by priority, so a roundup never comes out shorter than it could.
      *
+     * An item whose page no longer answers is passed over for the next one. Checked at publish
+     * time only, one such item used to cost the whole roundup on every channel.
+     *
      * @return Collection<int, ContentItem>
      */
     public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false, ?string $tag = null): Collection
@@ -175,11 +182,19 @@ final class DigestBuilder
 
         $picked = [];
         $perTag = [];
+        $alive = [];
+        $isAlive = function (ContentItem $item) use (&$alive): bool {
+            return $alive[$item->id] ??= $this->links->isAlive($item);
+        };
 
         foreach ($candidates as $item) {
             $tags = array_values(array_diff(array_map('strval', $item->tags ?? []), [(string) $tag]));
 
             if (array_any($tags, fn (string $other): bool => ($perTag[$other] ?? 0) >= self::MAX_PER_TAG)) {
+                continue;
+            }
+
+            if (! $isAlive($item)) {
                 continue;
             }
 
@@ -199,7 +214,9 @@ final class DigestBuilder
                 break;
             }
 
-            $picked[$item->id] ??= $item;
+            if (! isset($picked[$item->id]) && $isAlive($item)) {
+                $picked[$item->id] = $item;
+            }
         }
 
         // Back into priority order: the roundup still reads from the best deal down.

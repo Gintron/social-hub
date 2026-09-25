@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property array<string, mixed>|null $raw
  * @property CarbonImmutable|null $published_at
  * @property CarbonImmutable|null $expires_at
+ * @property CarbonImmutable|null $link_dead_at
  * @property CarbonImmutable $source_updated_at
  * @property string $checksum
  * @property CarbonImmutable $first_seen_at
@@ -65,11 +66,13 @@ final class ContentItem extends Model
     }
 
     /**
+     * Not expired, and its page was not found gone the last time a pick looked (LinkPreflight::isAlive()).
+     *
      * @param  Builder<ContentItem>  $query
      */
     public function scopeLive(Builder $query): void
     {
-        $query->where(function (Builder $q): void {
+        $query->whereNull('link_dead_at')->where(function (Builder $q): void {
             $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
         });
     }
@@ -135,6 +138,7 @@ final class ContentItem extends Model
             'priority' => 'integer',
             'published_at' => 'immutable_datetime',
             'expires_at' => 'immutable_datetime',
+            'link_dead_at' => 'immutable_datetime',
             'source_updated_at' => 'immutable_datetime',
             'first_seen_at' => 'immutable_datetime',
             'last_seen_at' => 'immutable_datetime',

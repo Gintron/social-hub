@@ -70,12 +70,13 @@ final class SourceSyncer
             }
 
             if ($existing->checksum !== $data->checksum()) {
-                $existing->fill([...$data->toAttributes(), 'last_seen_at' => $seenAt])->save();
+                // Seen again: the source vouches for the item, so its page gets checked afresh.
+                $existing->fill([...$data->toAttributes(), 'last_seen_at' => $seenAt])->forceFill(['link_dead_at' => null])->save();
 
                 return 'updated';
             }
 
-            $existing->forceFill(['last_seen_at' => $seenAt, 'source_updated_at' => $data->updatedAt])->saveQuietly();
+            $existing->forceFill(['last_seen_at' => $seenAt, 'source_updated_at' => $data->updatedAt, 'link_dead_at' => null])->saveQuietly();
 
             return 'unchanged';
         });

@@ -17,6 +17,7 @@ use App\Models\SocialAccount;
 use App\Models\Source;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -33,6 +34,7 @@ final class ScheduleDigestTest extends TestCase
         parent::setUp();
 
         Queue::fake();
+        Http::fake(['example.test/*' => Http::response()]);
         // Monday, an hour before the digest is due.
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-14 18:05', 'Europe/Zagreb'));
 

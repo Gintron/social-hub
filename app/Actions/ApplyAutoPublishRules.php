@@ -11,6 +11,7 @@ use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\SocialAccount;
 use App\Models\Source;
+use App\Publishing\LinkPreflight;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -34,9 +35,18 @@ final class ApplyAutoPublishRules
      */
     public const DEFAULT_DAILY_CAP = 25;
 
+    /**
+     * Candidates looked at per post still owed today (at most CANDIDATE_POOL), so items whose page
+     * is gone can be passed over without the day's posts falling short.
+     */
+    private const CANDIDATES_PER_POST = 8;
+
+    private const CANDIDATE_POOL = 100;
+
     public function __construct(
         private readonly CreateDraft $createDraft,
         private readonly PostingSchedule $schedule,
+        private readonly LinkPreflight $links,
     ) {}
 
     /**
@@ -76,8 +86,13 @@ final class ApplyAutoPublishRules
             ->notDrafted()
             ->orderByDesc('priority')
             ->orderByDesc('published_at')
-            ->limit($most)
-            ->get();
+            ->limit(min(self::CANDIDATE_POOL, $most * self::CANDIDATES_PER_POST))
+            ->get()
+            ->lazy()
+            ->filter(fn (ContentItem $item): bool => $this->links->isAlive($item))
+            ->take($most)
+            ->values()
+            ->collect();
 
         if ($items->isEmpty()) {
             return 0;

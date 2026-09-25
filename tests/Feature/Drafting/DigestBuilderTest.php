@@ -17,6 +17,7 @@ use App\Models\SocialAccount;
 use App\Models\Source;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use InvalidArgumentException;
 use Tests\TestCase;
@@ -24,6 +25,14 @@ use Tests\TestCase;
 final class DigestBuilderTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Every item's own page answers; picking checks it.
+        Http::fake(['example.test/*' => Http::response()]);
+    }
 
     public function test_collects_the_highest_priority_items_into_one_carousel(): void
     {
@@ -124,6 +133,22 @@ final class DigestBuilderTest extends TestCase
         $picked = app(DigestBuilder::class)->pick($brand, ContentKind::Deal, 10);
 
         $this->assertSame(['Svjeza', 'Druga'], $picked->pluck('title')->all());
+    }
+
+    public function test_an_item_whose_page_is_gone_gives_its_place_to_the_next_one(): void
+    {
+        Http::fake(['uselisto.test/*' => Http::response('', 404)]);
+
+        $brand = $this->brand();
+        $items = $this->deals($brand, [['Nestala', 90], ['Jaja', 60], ['Kava', 45], ['Mlijeko', 20]]);
+        $gone = $items->firstWhere('title', 'Nestala');
+        $gone->forceFill(['url' => 'https://uselisto.test/katalozi/konzum/nestala'])->save();
+
+        $picked = app(DigestBuilder::class)->pick($brand, ContentKind::Deal, 3);
+
+        $this->assertSame(['Jaja', 'Kava', 'Mlijeko'], $picked->pluck('title')->all());
+        $this->assertNotNull($gone->refresh()->link_dead_at, 'zapamćena, da je sljedeći pregled ne pita ponovno');
+        $this->assertFalse(ContentItem::query()->live()->whereKey($gone->id)->exists());
     }
 
     public function test_the_command_builds_a_digest(): void

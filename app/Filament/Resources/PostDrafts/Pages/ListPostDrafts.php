@@ -26,7 +26,7 @@ final class ListPostDrafts extends ListRecords
             'published' => Tab::make('Objavljeno')
                 ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', [DraftStatus::Published->value, DraftStatus::PartiallyPublished->value])),
             'failed' => Tab::make('Neuspjelo')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', DraftStatus::Failed->value)),
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', [DraftStatus::Failed->value, DraftStatus::Skipped->value])),
             'all' => Tab::make('Sve'),
         ];
     }

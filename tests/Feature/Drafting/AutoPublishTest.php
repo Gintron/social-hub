@@ -14,11 +14,13 @@ use App\Jobs\RenderVideoJob;
 use App\Jobs\SyncSourceJob;
 use App\Models\AutoPublishRule;
 use App\Models\Brand;
+use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\SocialAccount;
 use App\Models\Source;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\Support\FeedPayload;
@@ -39,6 +41,13 @@ final class AutoPublishTest extends TestCase
      */
     private array $payload;
 
+    /**
+     * Item pages that answer 404.
+     *
+     * @var list<string>
+     */
+    private array $gone = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -47,7 +56,9 @@ final class AutoPublishTest extends TestCase
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-07 12:00', 'Europe/Zagreb'));
 
         $this->payload = FeedPayload::page([]);
-        Http::fake(fn () => Http::response($this->payload));
+        Http::fake(fn (Request $request) => in_array($request->url(), $this->gone, true)
+            ? Http::response('', 404)
+            : Http::response($this->payload));
     }
 
     protected function tearDown(): void
@@ -254,6 +265,27 @@ final class AutoPublishTest extends TestCase
         $this->assertSame(4, PostDraft::query()->count());
     }
 
+    public function test_an_item_whose_page_is_gone_is_passed_over_until_the_feed_sends_it_again(): void
+    {
+        $this->fakeFeed(3);
+        $this->gone = ['https://example.test/posao/1'];
+        $source = $this->source();
+        SocialAccount::factory()->for($source->brand)->create();
+        $this->rule($source, Platform::FacebookPage, dailyCap: 1);
+
+        $this->sync($source);
+
+        $this->assertSame(['Oglas 2'], PostDraft::query()->with('contentItems')->get()->flatMap->contentItems->pluck('title')->all());
+        $gone = ContentItem::query()->where('title', 'Oglas 1')->firstOrFail();
+        $this->assertNotNull($gone->link_dead_at);
+
+        // The feed sends it again: its page gets another look.
+        $this->gone = [];
+        $this->sync($source);
+
+        $this->assertNull($gone->refresh()->link_dead_at);
+    }
+
     private function sync(Source $source): void
     {
         $this->fakeRenders();
@@ -272,6 +304,7 @@ final class AutoPublishTest extends TestCase
         for ($i = $startAt; $i < $startAt + $count; $i++) {
             $items[] = FeedPayload::item("job:{$i}", [
                 'title' => "Oglas {$i}",
+                'url' => "https://example.test/posao/{$i}",
                 'priority' => 100 - $i,
                 'updated_at' => CarbonImmutable::now()->toIso8601ZuluString(),
                 'expires_at' => CarbonImmutable::now()->addDays(10)->toIso8601ZuluString(),

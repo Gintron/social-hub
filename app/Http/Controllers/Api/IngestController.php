@@ -100,13 +100,14 @@ final class IngestController extends Controller
             }
 
             if ($existing->checksum !== $data->checksum()) {
-                $existing->fill([...$data->toAttributes(), 'last_seen_at' => $seenAt])->save();
+                // Seen again: the source vouches for the item, so its page gets checked afresh.
+                $existing->fill([...$data->toAttributes(), 'last_seen_at' => $seenAt])->forceFill(['link_dead_at' => null])->save();
                 $updated++;
 
                 return;
             }
 
-            $existing->forceFill(['last_seen_at' => $seenAt])->saveQuietly();
+            $existing->forceFill(['last_seen_at' => $seenAt, 'link_dead_at' => null])->saveQuietly();
         });
     }
 

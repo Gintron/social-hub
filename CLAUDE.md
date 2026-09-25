@@ -41,7 +41,11 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   stavku tiho prestane vraćati (arhiviranje, brisanje) nikad ne dobije priliku ispraviti taj datum —
   hub samo prestane čuti za nju. Zato `PublishVariantJob` neposredno prije objave provjerava i
   `App\Publishing\LinkPreflight` (stvaran HTTP poziv na `content_item.url`), ne samo `isExpired()`;
-  promašaj ide u `Skipped` s `error_code=dead_link`, isto kao istekla stavka.
+  promašaj ide u `Skipped` s `error_code=dead_link`, isto kao istekla stavka. Isto se pita i **pri
+  odabiru** (`LinkPreflight::isAlive()` u `DigestBuilder::pick` i `ApplyAutoPublishRules`): mrtva
+  stavka ustupa mjesto sljedećoj umjesto da jedna sruši cijeli pregled na svim kanalima, a 404/410 se
+  pamti u `content_items.link_dead_at` (izvan `live()`) dok je sinkronizacija ponovno ne vidi. Nacrt
+  kojem su svi kanali preskočeni prelazi u `DraftStatus::Skipped`, ne ostaje „objavljuje se".
 - **Instagram token je Page token.** Discovery sprema isti token na `fb_page` i `ig_business` račun, plus
   `connected_user_id` koji deauthorize callback koristi da nađe pogođene račune.
 - **Tokeni** su `encrypted` castovi i redigiraju se u `publish_logs` (`GraphClient::log`).

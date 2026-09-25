@@ -218,6 +218,8 @@ final class PublishFlowTest extends TestCase
         $this->assertSame(VariantStatus::Skipped, $variant->status);
         $this->assertSame('dead_link', $variant->error_code);
         $this->assertStringContainsString('uselisto.test/katalozi/konzum/gone', (string) $variant->error_message);
+        $this->assertSame(DraftStatus::Skipped, $draft->refresh()->status, 'ne ostaje zauvijek "objavljuje se"');
+        $this->assertNotNull($item->refresh()->link_dead_at);
     }
 
     public function test_a_reachable_link_publishes_normally(): void
