@@ -151,14 +151,6 @@ final class PostDraftForm
                             // API for Business has no privacy level: a direct post is public.
                             ->visible(fn (Get $get): bool => $platform === Platform::TikTok && $get("{$path}.delivery") !== 'inbox'
                                 && config('tiktok.driver') !== 'business'),
-
-                        Toggle::make("{$path}.auto_add_music")
-                            ->label('TikTok doda glazbu ispod fotografija')
-                            ->helperText('Pjesmu bira TikTok; API je ne može odabrati.')
-                            ->disabled($locked)
-                            ->visible(fn (Get $get): bool => $platform === Platform::TikTok
-                                && in_array($get("{$path}.format"), [ContentFormat::Image->value, ContentFormat::Carousel->value], true)
-                                && $get("{$path}.delivery") !== 'inbox'),
                     ]),
 
                     Group::make([
@@ -226,7 +218,7 @@ final class PostDraftForm
         return match ($platform) {
             Platform::FacebookPage => 'Link: samo tekst s pregledom stranice. Reel: uspravni video.',
             Platform::InstagramBusiness => 'Carousel: 2–10 slika istog omjera. Reel: uspravni video.',
-            Platform::TikTok => 'Slika i carousel idu kao TikTok foto objava (do 35 slika).',
+            Platform::TikTok => 'Uvijek video: slajdovi s pokretom i zvukom.',
             Platform::FacebookGroup => 'Tekst i medij zalijepiš u grupu ručno.',
         };
     }
@@ -379,10 +371,6 @@ final class PostDraftForm
             $tagWarn = $hashtags > $maxTags ? ' — PREVIŠE' : '';
 
             return "{$length}/{$limit} znakova{$warn} · {$hashtags}/{$maxTags} hashtagova{$tagWarn} · linkovi nisu klikabilni";
-        }
-
-        if ($platform === Platform::TikTok && in_array($format, [ContentFormat::Image, ContentFormat::Carousel], true)) {
-            return "{$length} znakova · prvi redak postaje naslov (do 90 znakova), cijeli tekst opis (do 4000)";
         }
 
         return "{$length} znakova · {$hashtags} hashtagova";
