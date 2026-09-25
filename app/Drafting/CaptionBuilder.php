@@ -76,8 +76,9 @@ final class CaptionBuilder
     }
 
     /**
-     * A Page post: the hook up front, the facts, a short pitch and the link — no contact lines,
-     * those belong on the listing and in the group post.
+     * A Page post: the hook up front, the facts, a short pitch and where the link is — no contact
+     * lines, those belong on the listing and in the group post. The link itself goes in the first
+     * comment (FacebookPagePublisher): Facebook shows a post with an outside link to fewer people.
      */
     public function facebookPage(ContentItem $item, Brand $brand): string
     {
@@ -106,7 +107,9 @@ final class CaptionBuilder
             $sections[] = (string) $excerpt;
         }
 
-        $sections[] = '👉 '.self::bold($item->cta['label'] ?? $this->footerLabel($item->kind)).":\n".$item->url;
+        if (filled($item->url)) {
+            $sections[] = '👇 '.self::bold($item->cta['label'] ?? $this->footerLabel($item->kind)).' u prvom komentaru';
+        }
 
         $fixed = array_slice($this->hashtags($item, $brand, fixedOnly: true), 0, 3);
         if ($fixed !== []) {
@@ -190,7 +193,10 @@ final class CaptionBuilder
                 $sections[] = implode(' ', $tags);
             }
         } elseif (filled($brand->site_url)) {
-            $sections[] = self::bold('Sve ponude').":\n".$brand->site_url;
+            // A Page gets the link as its first comment; a group post is pasted whole by a human.
+            $sections[] = $platform === Platform::FacebookPage
+                ? '👇 '.self::bold('Sve ponude').' u prvom komentaru'
+                : self::bold('Sve ponude').":\n".$brand->site_url;
         }
 
         return self::tidy(implode("\n\n", $sections));

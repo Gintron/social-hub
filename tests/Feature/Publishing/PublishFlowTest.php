@@ -89,6 +89,7 @@ final class PublishFlowTest extends TestCase
         Notification::fake();
         Http::fake([
             'graph.facebook.com/v23.0/*/photos' => Http::response(['id' => '111', 'post_id' => '999_111']),
+            'graph.facebook.com/v23.0/999_111/comments' => Http::response(['id' => '999_111_1']),
             'example.test/*' => Http::response('', 200),
         ]);
 
@@ -111,15 +112,20 @@ final class PublishFlowTest extends TestCase
         $this->assertSame('https://www.facebook.com/999_111', $variant->permalink);
         $this->assertSame(DraftStatus::Published, $draft->refresh()->status);
 
-        Http::assertSent(function (Request $request) use ($asset): bool {
+        Http::assertSent(function (Request $request) use ($asset, $item): bool {
             $body = $request->data();
 
             return str_ends_with(parse_url($request->url(), PHP_URL_PATH), '/v23.0/999/photos')
                 && $body['access_token'] === 'page-token'
                 && $body['appsecret_proof'] === hash_hmac('sha256', 'page-token', 'app-secret')
                 && $body['url'] === $asset->publicUrl()
-                && str_contains($body['caption'], 'Konobar/ica');
+                && str_contains($body['caption'], 'Konobar/ica')
+                && ! str_contains($body['caption'], $item->url);
         });
+
+        // The link goes in the first comment: Facebook shows posts with an outside link to fewer people.
+        Http::assertSent(fn (Request $request): bool => str_ends_with(parse_url($request->url(), PHP_URL_PATH), '/v23.0/999_111/comments')
+            && $request->data()['message'] === '👉 '.$item->url);
 
         $log = PublishLog::query()->firstOrFail();
         $this->assertSame('[redacted]', $log->request['params']['access_token']);
@@ -151,10 +157,50 @@ final class PublishFlowTest extends TestCase
             app(\App\Publishing\FormatCheck::class),
         );
 
-        // Idempotency claim is about the Graph call, not the total request count — the link
-        // preflight hits the item's own URL once per publish attempt, which is unrelated.
-        $this->assertCount(1, Http::recorded(fn ($request): bool => str_contains($request->url(), 'graph.facebook.com')));
+        // Idempotency claim is about the post, not the total request count — the link preflight
+        // hits the item's own URL once per publish attempt, and the link goes in a comment after it.
+        $this->assertCount(1, Http::recorded(fn ($request): bool => str_contains($request->url(), 'graph.facebook.com')
+            && ! str_contains($request->url(), '/comments')));
         $this->assertSame(VariantStatus::Published, $variant->refresh()->status);
+    }
+
+    public function test_a_failed_link_comment_leaves_the_post_published(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*/comments' => Http::response(['error' => ['message' => '(#200) Requires pages_manage_engagement', 'code' => 200]], 403),
+            'graph.facebook.com/*' => Http::response(['id' => '9_1']),
+            'example.test/*' => Http::response('', 200),
+        ]);
+
+        [$brand, $item] = $this->brandWithItem();
+        $page = SocialAccount::factory()->for($brand)->create();
+        $draft = app(CreateDraft::class)->execute($item, [$page], render: false);
+        $this->postAsLink($draft);
+
+        app(ApproveDraft::class)->execute($draft, null);
+        app(DispatchDraftPublishing::class)->execute($draft->refresh());
+
+        $this->assertSame(VariantStatus::Published, $draft->variants->first()->refresh()->status, 'objava je već javna');
+    }
+
+    public function test_a_link_already_in_the_text_is_not_repeated_in_a_comment(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*' => Http::response(['id' => '9_2']),
+            'example.test/*' => Http::response('', 200),
+        ]);
+
+        [$brand, $item] = $this->brandWithItem();
+        $page = SocialAccount::factory()->for($brand)->create();
+        // Written by hand (or by the agent) with the link in the text.
+        $draft = app(CreateDraft::class)->execute($item, [$page], render: false, captionOverrides: ['fb_page' => "Konobar/ica\n{$item->url}"]);
+        $this->postAsLink($draft);
+
+        app(ApproveDraft::class)->execute($draft, null);
+        app(DispatchDraftPublishing::class)->execute($draft->refresh());
+
+        $this->assertSame(VariantStatus::Published, $draft->variants->first()->refresh()->status);
+        Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/comments'));
     }
 
     public function test_invalid_token_marks_account_for_reconnect_and_notifies(): void

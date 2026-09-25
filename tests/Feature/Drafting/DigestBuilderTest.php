@@ -68,7 +68,8 @@ final class DigestBuilderTest extends TestCase
         $facebook = $draft->variants->firstWhere('platform', Platform::FacebookPage)->caption;
         $this->assertStringContainsString('1. Jaja — 1,99 € (−60 %)', $facebook);
         $this->assertStringContainsString('2. Kava — 1,99 € (−45 %)', $facebook);
-        $this->assertStringContainsString('https://uselisto.com', $facebook);
+        $this->assertStringContainsString('👇 '.\App\Drafting\CaptionBuilder::bold('Sve ponude').' u prvom komentaru', $facebook);
+        $this->assertSame('https://uselisto.com', $draft->variants->firstWhere('platform', Platform::FacebookPage)->link_url, 'link za prvi komentar');
 
         $instagramCaption = $draft->variants->firstWhere('platform', Platform::InstagramBusiness)->caption;
         $this->assertStringContainsString('Link u biu', $instagramCaption);

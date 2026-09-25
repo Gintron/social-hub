@@ -94,7 +94,7 @@ final class CaptionBuilderTest extends TestCase
         $this->assertNull($builder->pitch(new Brand(['voice' => ['pitch' => '  ']])));
     }
 
-    public function test_the_page_caption_links_the_listing_and_leaves_contacts_to_the_group_post(): void
+    public function test_the_page_caption_points_to_the_link_in_the_comment_and_leaves_contacts_to_the_group_post(): void
     {
         $item = $this->item(['price' => ['current_cents' => 700, 'unit_label' => '€/H'], 'cta' => ['label' => 'Prijavi se', 'url' => 'https://example.test/posao/1']]);
         $brand = new Brand(['name' => 'Studentski poslovi', 'voice' => ['hashtags' => ['studentskiposao']]]);
@@ -103,7 +103,9 @@ final class CaptionBuilderTest extends TestCase
         $group = (new CaptionBuilder)->for(Platform::FacebookGroup, $item, $brand);
 
         $this->assertStringContainsString('💰 7.00 €/H · Split', $page);
-        $this->assertStringContainsString(CaptionBuilder::bold('Prijavi se').":\nhttps://example.test/posao/1", $page);
+        $this->assertStringContainsString('👇 '.CaptionBuilder::bold('Prijavi se').' u prvom komentaru', $page);
+        $this->assertStringNotContainsString('https://example.test/posao/1', $page, 'link ide u prvi komentar, ne u tekst');
+        $this->assertStringContainsString('https://example.test/posao/1', $group, 'grupu čovjek lijepi cijelu, s linkom');
         $this->assertStringEndsWith('#studentskiposao', $page);
         $this->assertStringNotContainsString('posao@example.test', $page);
         $this->assertStringContainsString('posao@example.test', $group);
@@ -173,7 +175,7 @@ final class CaptionBuilderTest extends TestCase
         $page = $builder->facebookPage($item, $brand);
         $this->assertStringNotContainsString(CaptionBuilder::bold('LIDL:'), $page, 'redci su već u tekstu, s proizvodom');
         $this->assertStringContainsString($body, $page);
-        $this->assertStringContainsString(CaptionBuilder::bold('Usporedi u Listu').":\nhttps://uselisto.com/trazi?q=kava&sort=unit", $page);
+        $this->assertStringContainsString('👇 '.CaptionBuilder::bold('Usporedi u Listu').' u prvom komentaru', $page);
 
         $this->assertStringContainsString(CaptionBuilder::bold('Usporedi sve ponude').':', $builder->facebook($item, $brand));
     }

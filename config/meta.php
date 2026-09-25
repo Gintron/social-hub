@@ -27,6 +27,9 @@ return [
         // Reactions, comments and shares of a Page post (App\Metrics\FacebookMetrics): without it
         // Graph answers "(#10) This endpoint requires the 'pages_read_user_content' permission".
         'pages_read_user_content',
+        // The link of a Page post goes in its first comment (FacebookPagePublisher), and commenting
+        // as the Page needs this.
+        'pages_manage_engagement',
     ],
 
     /*

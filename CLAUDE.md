@@ -37,6 +37,11 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   `Illuminate\Support\Sleep` da bi testovi mogli `Sleep::fake()`.
 - **Nakon objave ništa ne smije srušiti varijantu**: permalink i prvi komentar hvataju iznimku i samo
   logiraju — objava je već javna.
+- **Link objave na Facebook stranici ide u prvi komentar, ne u tekst** (Facebook objavu s vanjskim
+  linkom pokazuje manjem broju ljudi). `CaptionBuilder` piše „👇 … u prvom komentaru“, a
+  `FacebookPagePublisher` nakon objave ostavi `settings.first_comment` ili `link_url` — osim kad tekst
+  već sadrži taj link. Komentiranje kao stranica traži `pages_manage_engagement`. Grupe (ručni kanal)
+  zadržavaju link u tekstu.
 - **`expires_at` je stara koliko i zadnja sinkronizacija koja je stavku stvarno vidjela.** Izvor koji
   stavku tiho prestane vraćati (arhiviranje, brisanje) nikad ne dobije priliku ispraviti taj datum —
   hub samo prestane čuti za nju. Zato `PublishVariantJob` neposredno prije objave provjerava i

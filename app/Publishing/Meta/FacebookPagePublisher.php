@@ -11,6 +11,8 @@ use App\Models\PostVariant;
 use App\Publishing\Contracts\Publisher;
 use App\Publishing\Exceptions\PermanentPublishException;
 use App\Publishing\PublishResult;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Facebook Page posts via Graph API.
@@ -21,6 +23,10 @@ use App\Publishing\PublishResult;
  * - video                 → a Reel (FacebookReels)
  *
  * The format is the variant's (`PostVariant::format()`).
+ *
+ * The link goes in the first comment, not the text: Facebook shows a post with an outside link to
+ * fewer people. The comment is `settings.first_comment` or the variant's link, and is left out
+ * when the text already carries that link (edited by hand, written by the agent).
  */
 final class FacebookPagePublisher implements Publisher
 {
@@ -47,6 +53,15 @@ final class FacebookPagePublisher implements Publisher
         $pageId = $account->external_id;
 
         $caption = $this->caption($variant);
+        $result = $this->post($variant, $graph, $pageId, $token, $caption);
+
+        $this->leaveLink($variant, $graph, $result->externalId, $token, $caption);
+
+        return $result;
+    }
+
+    private function post(PostVariant $variant, GraphClient $graph, string $pageId, string $token, string $caption): PublishResult
+    {
         $media = $variant->media()->get();
         $format = $variant->format();
 
@@ -82,6 +97,29 @@ final class FacebookPagePublisher implements Publisher
         $response = $graph->post("{$pageId}/feed", ['message' => $caption, ...$attached], $token, 'fb.feed.multi');
 
         return $this->result($response['id'] ?? null, $response);
+    }
+
+    /**
+     * The post is already public: a comment that fails is logged, never a failed variant.
+     */
+    private function leaveLink(PostVariant $variant, GraphClient $graph, string $postId, string $token, string $caption): void
+    {
+        $link = (string) $variant->link_url;
+        $comment = mb_trim((string) $variant->setting('first_comment', ''));
+
+        if ($comment === '' && $link !== '' && ! str_contains($caption, $link)) {
+            $comment = '👉 '.$link;
+        }
+
+        if ($comment === '') {
+            return;
+        }
+
+        try {
+            $graph->post("{$postId}/comments", ['message' => $comment], $token, 'fb.first_comment');
+        } catch (Throwable $e) {
+            Log::warning('hub.fb.first_comment_failed', ['variant' => $variant->id, 'error' => $e->getMessage()]);
+        }
     }
 
     private function caption(PostVariant $variant): string
