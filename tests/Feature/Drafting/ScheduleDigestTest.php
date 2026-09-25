@@ -86,9 +86,9 @@ final class ScheduleDigestTest extends TestCase
         $this->assertSame(['ig_business', 'tiktok'], $platforms, 'ručna grupa i kanal bez pravila ne dobivaju pregled');
 
         $tiktok = $draft->variants->firstWhere('platform', Platform::TikTok);
-        $this->assertSame(ContentFormat::Carousel, $tiktok->format());
+        $this->assertSame(ContentFormat::Video, $tiktok->format());
         $this->assertSame('inbox', $tiktok->setting('delivery'));
-        Queue::assertNotPushed(\App\Jobs\RenderVideoJob::class);
+        Queue::assertPushed(\App\Jobs\RenderVideoJob::class, fn (\App\Jobs\RenderVideoJob $job): bool => $job->variantIds === [$tiktok->id]);
     }
 
     public function test_it_waits_for_its_day_and_hour_and_runs_once(): void
@@ -150,7 +150,7 @@ final class ScheduleDigestTest extends TestCase
 
         $this->assertSame(ContentFormat::Carousel, $weekly->variants->firstWhere('platform', Platform::InstagramBusiness)->format());
         $this->assertSame(ContentFormat::Video, $split->variants->firstWhere('platform', Platform::InstagramBusiness)->format(), 'Reel');
-        $this->assertSame(ContentFormat::Carousel, $split->variants->firstWhere('platform', Platform::TikTok)->format());
+        $this->assertSame(ContentFormat::Video, $split->variants->firstWhere('platform', Platform::TikTok)->format());
         Queue::assertPushed(\App\Jobs\RenderVideoJob::class, fn (\App\Jobs\RenderVideoJob $job): bool => $job->draftId === $split->id && $job->secondsPerSlide === 1.75);
 
         $this->assertSame(

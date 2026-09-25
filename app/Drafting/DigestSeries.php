@@ -107,14 +107,19 @@ final readonly class DigestSeries
     }
 
     /**
-     * A Reel on Facebook and Instagram, a photo carousel or a video on TikTok — whatever the series
-     * asks for, as long as the channel takes it; anything else falls back to a carousel.
+     * A carousel or a Reel on Facebook and Instagram, as the series asks; a video on TikTok, which
+     * takes nothing else. What the channel cannot take falls back to a carousel, or where there is
+     * none, to the channel's default.
      */
     public function formatFor(Platform $platform): ContentFormat
     {
         $format = $platform === Platform::TikTok ? $this->tiktokFormat : $this->metaFormat;
 
-        return in_array($format, $platform->formats(), true) ? $format : ContentFormat::Carousel;
+        return match (true) {
+            in_array($format, $platform->formats(), true) => $format,
+            in_array(ContentFormat::Carousel, $platform->formats(), true) => ContentFormat::Carousel,
+            default => $platform->defaultFormat(),
+        };
     }
 
     private static function time(string $time): string

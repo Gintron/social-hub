@@ -79,7 +79,7 @@ final class VariantFormatTest extends TestCase
         $this->assertSame('Video se još renderira.', app(FormatCheck::class)->problem($tiktok));
     }
 
-    public function test_one_item_as_a_carousel_is_rendered_as_its_slide_set_per_orientation(): void
+    public function test_one_item_as_a_carousel_is_its_slide_set_and_on_tiktok_a_video_of_them(): void
     {
         Queue::fake();
 
@@ -89,18 +89,18 @@ final class VariantFormatTest extends TestCase
             SocialAccount::factory()->for($brand)->create(['platform' => Platform::TikTok]),
         ], channelOptions: [
             'ig_business' => ['format' => ContentFormat::Carousel],
-            'tiktok' => ['format' => 'carousel', 'settings' => ['delivery' => 'inbox']],
+            'tiktok' => ['settings' => ['delivery' => 'inbox']],
         ]);
 
         $instagram = $this->variantFor($draft, Platform::InstagramBusiness);
         $tiktok = $this->variantFor($draft, Platform::TikTok);
 
         $this->assertSame('inbox', $tiktok->setting('delivery'));
-        Queue::assertPushed(RenderSlidesJob::class, 2);
+        $this->assertSame(ContentFormat::Video, $tiktok->format(), 'TikTok je uvijek video');
+        Queue::assertPushed(RenderSlidesJob::class, 1);
         Queue::assertPushed(RenderSlidesJob::class, fn (RenderSlidesJob $job): bool => $job->variantIds === [$instagram->id]
             && $job->templateKeys === ['kinds/hook-portrait', 'kinds/job-portrait', 'kinds/cta-portrait']);
-        Queue::assertPushed(RenderSlidesJob::class, fn (RenderSlidesJob $job): bool => $job->variantIds === [$tiktok->id]
-            && $job->templateKeys === ['kinds/hook-story', 'kinds/job-story', 'kinds/cta-story']);
+        Queue::assertPushed(RenderVideoJob::class, fn (RenderVideoJob $job): bool => $job->variantIds === [$tiktok->id]);
         Queue::assertNotPushed(RenderMediaJob::class);
     }
 
@@ -291,7 +291,7 @@ final class VariantFormatTest extends TestCase
         $this->assertStringStartsWith('Render nije uspio', (string) app(FormatCheck::class)->problem($variant));
     }
 
-    public function test_a_digest_carousel_is_rendered_once_per_orientation(): void
+    public function test_a_digest_carousel_is_rendered_once_for_facebook_and_instagram_and_tiktok_gets_a_video(): void
     {
         Queue::fake();
 
@@ -310,11 +310,10 @@ final class VariantFormatTest extends TestCase
         $instagram = $this->variantFor($draft, Platform::InstagramBusiness);
         $tiktok = $this->variantFor($draft, Platform::TikTok);
 
-        Queue::assertPushed(RenderDigestJob::class, 2);
+        Queue::assertPushed(RenderDigestJob::class, 1);
         Queue::assertPushed(RenderDigestJob::class, fn (RenderDigestJob $job): bool => $job->coverTemplate === 'kinds/digest-cover-portrait'
             && $job->variantIds === [$page->id, $instagram->id] && ! $job->coverOnly);
-        Queue::assertPushed(RenderDigestJob::class, fn (RenderDigestJob $job): bool => $job->coverTemplate === 'kinds/digest-cover-story'
-            && $job->variantIds === [$tiktok->id]);
+        Queue::assertPushed(RenderVideoJob::class, fn (RenderVideoJob $job): bool => $job->variantIds === [$tiktok->id]);
     }
 
     public function test_a_render_finishing_late_cannot_undo_a_format_change(): void

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Publishing\TikTok\Business;
 
-use App\Enums\ContentFormat;
 use App\Enums\Platform;
 use App\Models\MediaAsset;
 use App\Models\PostVariant;
@@ -59,13 +58,6 @@ final class TikTokBusinessPublisher implements Publisher
 
         if ($businessId === '') {
             throw new PermanentPublishException('TikTok račun nema open_id; poveži ga ponovno.', 'no_business_id');
-        }
-
-        if (in_array($variant->format(), [ContentFormat::Image, ContentFormat::Carousel], true)) {
-            throw new PermanentPublishException(
-                'Accounts API objavljuje video; za TikTok foto objavu koristi isporuku u inbox.',
-                'tiktok_photo_unsupported',
-            );
         }
 
         $client = $this->client->forVariant($variant);

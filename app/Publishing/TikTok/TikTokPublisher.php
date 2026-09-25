@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Publishing\TikTok;
 
-use App\Enums\ContentFormat;
 use App\Enums\Platform;
 use App\Models\MediaAsset;
 use App\Models\PostVariant;
@@ -23,9 +22,9 @@ use Illuminate\Support\Sleep;
  * levels differ per creator, and an app that has not passed TikTok's audit may only post privately.
  *
  * Variant settings: `privacy_level`, `disable_comment`, `disable_duet`, `disable_stitch`,
- * `cover_timestamp_ms`, `delivery` (`direct` | `inbox`), `auto_add_music` (photo posts, default true).
+ * `cover_timestamp_ms`, `delivery` (`direct` | `inbox`).
  *
- * The variant's format decides the flow: video, or a photo post for image and carousel.
+ * Every TikTok post is a video (Platform::formats()).
  *
  * `delivery = inbox` uploads the video as a draft into the creator's TikTok inbox instead. The API
  * cannot attach a sound from TikTok's library; in the app a human can, then posts it and marks the
@@ -44,17 +43,6 @@ final class TikTokPublisher implements Publisher
      * TikTok reads the caption as the post title; anything longer is refused.
      */
     private const MAX_TITLE_CHARS = 2200;
-
-    /**
-     * A photo post splits the text: a short title and a long description (UTF-16 units).
-     */
-    private const MAX_PHOTO_TITLE = 90;
-
-    private const MAX_PHOTO_DESCRIPTION = 4000;
-
-    private const MAX_PHOTOS = 35;
-
-    private const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
 
     public function __construct(private readonly TikTokClient $client) {}
 
@@ -79,10 +67,6 @@ final class TikTokPublisher implements Publisher
         $token = (string) $account->access_token;
 
         $inbox = $variant->setting('delivery') === 'inbox';
-
-        if (in_array($variant->format(), [ContentFormat::Image, ContentFormat::Carousel], true)) {
-            return $this->publishPhotos($client, $variant, $token, $inbox);
-        }
 
         if ($inbox) {
             return $this->sendToInbox($client, $variant, $token);
@@ -124,141 +108,6 @@ final class TikTokPublisher implements Publisher
             $this->permalink($creator, $status),
             ['creator' => $creator['creator_username'] ?? null, 'status' => $status],
         );
-    }
-
-    /**
-     * TikTok counts its limits in UTF-16 units, so an emoji costs two.
-     */
-    private static function utf16Cut(string $text, int $max): string
-    {
-        $units = 0;
-        $out = '';
-
-        foreach (mb_str_split($text) as $char) {
-            $width = mb_ord($char) > 0xFFFF ? 2 : 1;
-
-            if ($units + $width > $max) {
-                break;
-            }
-
-            $units += $width;
-            $out .= $char;
-        }
-
-        return $out;
-    }
-
-    /**
-     * A photo post (one image or a carousel of up to 35). Same two walls as video — privacy the
-     * creator allows, media on the verified domain — but TikTok splits the text into a short title
-     * and a description, and can lay its own music under the photos (`auto_add_music`).
-     *
-     * @see https://developers.tiktok.com/doc/content-posting-api-reference-photo-post
-     */
-    private function publishPhotos(TikTokClient $client, PostVariant $variant, string $token, bool $inbox): PublishResult
-    {
-        $photos = $this->photos($variant);
-        $caption = mb_trim($variant->caption);
-
-        $postInfo = array_filter([
-            'title' => self::utf16Cut($this->firstLine($caption), self::MAX_PHOTO_TITLE),
-            'description' => self::utf16Cut($caption, self::MAX_PHOTO_DESCRIPTION),
-        ], fn (string $value): bool => $value !== '');
-
-        $creator = [];
-
-        if (! $inbox) {
-            if ($caption === '') {
-                throw new PermanentPublishException('TikTok objava treba tekst.', 'empty_caption');
-            }
-
-            $creator = $client->post('post/publish/creator_info/query/', [], $token, 'tiktok.creator_info');
-
-            $postInfo += [
-                'privacy_level' => $this->privacyLevel($variant, $creator),
-                'disable_comment' => (bool) $variant->setting('disable_comment', (bool) ($creator['comment_disabled'] ?? false)),
-                'auto_add_music' => (bool) $variant->setting('auto_add_music', true),
-            ];
-        }
-
-        $payload = [
-            'media_type' => 'PHOTO',
-            'post_mode' => $inbox ? 'MEDIA_UPLOAD' : 'DIRECT_POST',
-            'source_info' => [
-                'source' => 'PULL_FROM_URL',
-                'photo_images' => $photos->map(fn (MediaAsset $asset): string => $asset->publicUrl())->values()->all(),
-                'photo_cover_index' => 0,
-            ],
-        ];
-
-        // An inbox upload without text has no post_info at all; an empty one would be encoded as a
-        // JSON array, which TikTok rejects as the wrong type (as it did for creator_info/query).
-        if ($postInfo !== []) {
-            $payload['post_info'] = $postInfo;
-        }
-
-        $init = $client->post('post/publish/content/init/', $payload, $token, 'tiktok.photo_init');
-
-        $publishId = $init['publish_id'] ?? null;
-
-        if (blank($publishId)) {
-            throw new TransientPublishException('TikTok nije vratio publish_id: '.json_encode($init), 'tiktok_no_publish_id');
-        }
-
-        if ($inbox) {
-            $status = $this->await($client, (string) $publishId, $token, ['SEND_TO_USER_INBOX', 'PUBLISH_COMPLETE']);
-
-            return new PublishResult((string) $publishId, null, ['status' => $status], handedToCreator: true);
-        }
-
-        $status = $this->await($client, (string) $publishId, $token, ['PUBLISH_COMPLETE']);
-
-        return new PublishResult(
-            (string) $publishId,
-            $this->permalink($creator, $status, 'photo'),
-            ['creator' => $creator['creator_username'] ?? null, 'status' => $status],
-        );
-    }
-
-    /**
-     * @return \Illuminate\Support\Collection<int, MediaAsset>
-     */
-    private function photos(PostVariant $variant): \Illuminate\Support\Collection
-    {
-        $media = $variant->media()->get();
-
-        if ($media->isEmpty()) {
-            throw new PermanentPublishException('TikTok foto objava treba barem jednu sliku.', 'no_media');
-        }
-
-        if ($media->contains(fn (MediaAsset $asset): bool => $asset->isVideo())) {
-            throw new PermanentPublishException('TikTok foto objava prima samo slike; priložen je video.', 'not_image');
-        }
-
-        if ($media->count() > self::MAX_PHOTOS) {
-            throw new PermanentPublishException(sprintf('TikTok foto objava prima najviše %d slika; priloženo je %d.', self::MAX_PHOTOS, $media->count()), 'too_many_images');
-        }
-
-        foreach ($media as $index => $asset) {
-            if (! in_array($asset->format, ['jpg', 'jpeg', 'webp'], true)) {
-                throw new PermanentPublishException(sprintf('Slika %d je %s; TikTok prima JPEG ili WEBP.', $index + 1, $asset->format), 'not_jpeg');
-            }
-
-            if ($asset->bytes !== null && $asset->bytes > self::MAX_PHOTO_BYTES) {
-                throw new PermanentPublishException(sprintf('Slika %d ima %.1f MB; TikTok prima najviše 20 MB.', $index + 1, $asset->bytes / 1048576), 'image_too_large');
-            }
-
-            if (app()->isProduction() && ! str_starts_with($asset->publicUrl(), 'https://')) {
-                throw new PermanentPublishException('TikTok dohvaća slike s naše adrese i traži https.', 'media_url_not_https');
-            }
-        }
-
-        return $media;
-    }
-
-    private function firstLine(string $caption): string
-    {
-        return mb_trim(preg_split('/\R/u', $caption, 2)[0] ?? '');
     }
 
     /**
@@ -405,7 +254,7 @@ final class TikTokPublisher implements Publisher
      * @param  array<string, mixed>  $creator
      * @param  array<string, mixed>  $status
      */
-    private function permalink(array $creator, array $status, string $kind = 'video'): ?string
+    private function permalink(array $creator, array $status): ?string
     {
         $username = $creator['creator_username'] ?? null;
         $postId = $status['publicaly_available_post_id'][0] ?? null;
@@ -414,6 +263,6 @@ final class TikTokPublisher implements Publisher
             return filled($username) ? "https://www.tiktok.com/@{$username}" : null;
         }
 
-        return "https://www.tiktok.com/@{$username}/{$kind}/{$postId}";
+        return "https://www.tiktok.com/@{$username}/video/{$postId}";
     }
 }

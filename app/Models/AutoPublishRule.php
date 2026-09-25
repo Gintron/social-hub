@@ -36,12 +36,17 @@ final class AutoPublishRule extends Model
     /**
      * What this rule asks of every variant it creates, in the shape CreateDraft takes.
      *
+     * A format the channel no longer takes (a TikTok photo post saved before the API for Business)
+     * is left out, so the channel's default goes out instead of every post failing on it.
+     *
      * @return array{format?: ContentFormat, settings?: array<string, mixed>}
      */
     public function channelOptions(): array
     {
+        $format = $this->format !== null && in_array($this->format, $this->platform->formats(), true) ? $this->format : null;
+
         return array_filter([
-            'format' => $this->format,
+            'format' => $format,
             'settings' => $this->settings ?: null,
         ], fn (mixed $value): bool => $value !== null);
     }

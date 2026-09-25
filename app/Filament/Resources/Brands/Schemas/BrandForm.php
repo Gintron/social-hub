@@ -125,10 +125,8 @@ final class BrandForm
                                 Select::make('kind')->label('Vrsta stavki')->options(ContentKind::class)->default(ContentKind::Job->value),
                                 Select::make('formats.meta')->label('Facebook i Instagram')
                                     ->options(['carousel' => 'Carousel', 'video' => 'Reel'])
-                                    ->default('carousel')->selectablePlaceholder(false),
-                                Select::make('formats.tiktok')->label('TikTok')
-                                    ->options(['carousel' => 'Foto carousel', 'video' => 'Video'])
-                                    ->default('carousel')->selectablePlaceholder(false),
+                                    ->default('carousel')->selectablePlaceholder(false)
+                                    ->helperText('TikTok uvijek dobiva video.'),
                                 TextInput::make('seconds_per_slide')->label('Sekundi po slajdu')->numeric()
                                     ->default(VideoRenderer::DEFAULT_SECONDS_PER_SLIDE)->minValue(1.5)->maxValue(5)->step(0.25)
                                     ->helperText('Za Reel/video. Kraće zadržava brži ritam.'),

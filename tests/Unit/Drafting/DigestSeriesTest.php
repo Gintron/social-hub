@@ -9,7 +9,7 @@ use App\Enums\ContentFormat;
 use App\Enums\ContentKind;
 use App\Enums\Platform;
 use Carbon\CarbonImmutable;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 final class DigestSeriesTest extends TestCase
 {
@@ -48,7 +48,7 @@ final class DigestSeriesTest extends TestCase
         $this->assertSame(ContentFormat::Video, $series->formatFor(Platform::InstagramBusiness));
         $this->assertSame(ContentFormat::Video, $series->formatFor(Platform::FacebookPage));
         $this->assertSame(ContentFormat::Carousel, $series->formatFor(Platform::FacebookGroup));
-        $this->assertSame(ContentFormat::Carousel, $series->formatFor(Platform::TikTok));
+        $this->assertSame(ContentFormat::Video, $series->formatFor(Platform::TikTok), 'TikTok je uvijek video');
     }
 
     public function test_it_is_due_on_its_days_at_its_time(): void

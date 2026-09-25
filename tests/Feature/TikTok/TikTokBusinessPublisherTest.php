@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\TikTok;
 
 use App\Actions\CreateDraft;
+use App\Enums\ContentFormat;
 use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\ContentItem;
@@ -166,16 +167,37 @@ final class TikTokBusinessPublisherTest extends TestCase
         }
     }
 
-    public function test_photo_posts_are_sent_to_the_inbox_route_instead(): void
+    public function test_a_photo_format_left_from_the_developer_track_goes_out_as_a_video(): void
     {
+        // API for Business publishes video only. Rules and digest series still said "carousel" from
+        // the developer track, and every TikTok post of 25 Sep 2026 failed on it.
         $this->fakeBusiness();
 
         [$variant] = $this->variant(['format' => 'carousel']);
 
-        $this->expectException(PermanentPublishException::class);
-        $this->expectExceptionMessageMatches('/foto objavu/');
+        $this->assertSame(ContentFormat::Video, $variant->format());
 
         app(TikTokBusinessPublisher::class)->publish($variant);
+
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/business/video/publish/'));
+    }
+
+    public function test_a_rule_asking_for_a_tiktok_carousel_drafts_a_video(): void
+    {
+        $brand = Brand::factory()->create();
+        $item = ContentItem::factory()->for(Source::factory()->for($brand))->for($brand)->create();
+        $account = SocialAccount::factory()->for($brand)->create(['platform' => Platform::TikTok]);
+        $rule = \App\Models\AutoPublishRule::query()->create([
+            'source_id' => $item->source_id, 'platform' => Platform::TikTok, 'enabled' => true, 'delay_minutes' => 0,
+            'format' => ContentFormat::Carousel, 'settings' => ['delivery' => 'inbox'],
+        ]);
+
+        $draft = app(CreateDraft::class)->execute($item, [$account], render: false, channelOptions: [
+            Platform::TikTok->value => $rule->channelOptions(),
+        ]);
+
+        $this->assertSame(ContentFormat::Video, $draft->variants->first()->format());
+        $this->assertSame([ContentFormat::Video], Platform::TikTok->formats());
     }
 
     public function test_the_registry_follows_the_configured_driver(): void

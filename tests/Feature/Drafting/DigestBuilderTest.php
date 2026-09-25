@@ -99,10 +99,25 @@ final class DigestBuilderTest extends TestCase
         $this->assertSame('Top 2 akcija u Kauflandu', $draft->title);
         $this->assertSame(['Kava', 'Mlijeko'], $draft->contentItems->pluck('title')->all());
         $this->assertSame(ContentFormat::Video, $draft->variants->firstWhere('platform', Platform::FacebookPage)->format());
-        $this->assertSame(ContentFormat::Carousel, $draft->variants->firstWhere('platform', Platform::TikTok)->format());
+        $this->assertSame(ContentFormat::Video, $draft->variants->firstWhere('platform', Platform::TikTok)->format());
 
         Queue::assertPushed(RenderVideoJob::class, fn (RenderVideoJob $job): bool => $job->draftId === $draft->id);
-        Queue::assertPushed(RenderDigestJob::class, fn (RenderDigestJob $job): bool => $job->draftId === $draft->id);
+        Queue::assertNotPushed(RenderDigestJob::class);
+    }
+
+    public function test_a_tiktok_roundup_is_always_a_video(): void
+    {
+        Queue::fake();
+
+        $brand = $this->brand();
+        $this->deals($brand, [['Jaja', 60], ['Kava', 45], ['Mlijeko', 20]]);
+        $tiktok = SocialAccount::factory()->for($brand)->create(['platform' => Platform::TikTok]);
+
+        // Every Listo series still said "carousel" for TikTok from the developer track.
+        $draft = app(DigestBuilder::class)->build($brand, ContentKind::Deal, [$tiktok], formats: [Platform::TikTok->value => ContentFormat::Carousel]);
+
+        $this->assertSame(ContentFormat::Video, $draft->variants->first()->format());
+        Queue::assertPushed(RenderVideoJob::class, fn (RenderVideoJob $job): bool => $job->draftId === $draft->id);
     }
 
     public function test_it_refuses_to_build_a_carousel_out_of_one_item(): void

@@ -40,6 +40,10 @@ enum Platform: string implements HasColor, HasLabel
     /**
      * What this channel can post, in the order the review screen offers it.
      *
+     * TikTok is always a video — the same slides, set to motion and sound. Its API for Business
+     * publishes nothing else, and a photo format saved earlier (a rule, a digest series) falls back
+     * to video in PostVariant::format() and the pickers.
+     *
      * @return list<ContentFormat>
      */
     public function formats(): array
@@ -47,7 +51,7 @@ enum Platform: string implements HasColor, HasLabel
         return match ($this) {
             self::FacebookPage => [ContentFormat::Image, ContentFormat::Carousel, ContentFormat::Video, ContentFormat::Link],
             self::InstagramBusiness => [ContentFormat::Image, ContentFormat::Carousel, ContentFormat::Video],
-            self::TikTok => [ContentFormat::Video, ContentFormat::Image, ContentFormat::Carousel],
+            self::TikTok => [ContentFormat::Video],
             // A group post is pasted by hand; a video would have to be downloaded and uploaded again.
             self::FacebookGroup => [ContentFormat::Image, ContentFormat::Carousel, ContentFormat::Link],
         };

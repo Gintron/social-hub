@@ -224,18 +224,21 @@ final class DigestBuilder
     }
 
     /**
-     * A digest is always slides: a carousel, or a video made of them. Anything the channel cannot
-     * take — or a single image, which would drop every item but the cover — is a carousel.
+     * A digest is always slides: a carousel, or a video made of them. Anything else — a single image,
+     * which would drop every item but the cover — is a carousel; and when the channel takes only one
+     * of the two (TikTok's API for Business: video), it gets that one.
      *
      * @param  array<string, ContentFormat>  $formats
      */
     private static function formatFor(Platform $platform, array $formats): ContentFormat
     {
+        $slides = array_values(array_filter(
+            [ContentFormat::Carousel, ContentFormat::Video],
+            fn (ContentFormat $format): bool => in_array($format, $platform->formats(), true),
+        ));
         $format = $formats[$platform->value] ?? ContentFormat::Carousel;
 
-        return $format === ContentFormat::Video && in_array($format, $platform->formats(), true)
-            ? ContentFormat::Video
-            : ContentFormat::Carousel;
+        return in_array($format, $slides, true) ? $format : ($slides[0] ?? ContentFormat::Carousel);
     }
 
     private function defaultHeadline(ContentKind $kind, int $count): string

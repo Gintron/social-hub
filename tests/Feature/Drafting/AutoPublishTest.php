@@ -190,7 +190,7 @@ final class AutoPublishTest extends TestCase
 
         $this->assertSame(ContentFormat::Video, $instagram->format());
         $this->assertTrue($instagram->setting('share_to_feed'));
-        $this->assertSame(ContentFormat::Carousel, $tiktok->format());
+        $this->assertSame(ContentFormat::Video, $tiktok->format(), 'TikTok je uvijek video, i kad pravilo kaže carousel');
         $this->assertSame('inbox', $tiktok->setting('delivery'));
         $this->assertTrue($tiktok->setting('auto_add_music'));
         $this->assertNull($tiktok->setting('unknown'), 'pravilo smije postaviti samo ono što smije i pregled objave');
