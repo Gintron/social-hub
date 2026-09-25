@@ -90,6 +90,32 @@ final class CollectPostMetricsTest extends TestCase
         $this->assertSame(7, $metric->comments);
     }
 
+    public function test_a_facebook_post_keeps_its_lifetime_reach_and_no_token(): void
+    {
+        // The shape Graph v26 answered with on 25 Sep 2026: reach twice, lifetime and per day, and
+        // paging links carrying the Page token.
+        Http::fake([
+            'graph.facebook.com/v23.0/9_1/insights*' => Http::response([
+                'data' => [
+                    ['name' => 'post_media_view', 'period' => 'lifetime', 'values' => [['value' => 10]]],
+                    ['name' => 'post_total_media_view_unique', 'period' => 'lifetime', 'values' => [['value' => 1]]],
+                    ['name' => 'post_total_media_view_unique', 'period' => 'day', 'values' => [['value' => 0, 'end_time' => '2026-09-20T07:00:00+0000']]],
+                ],
+                'paging' => ['next' => 'https://graph.facebook.com/v26.0/9_1/insights?access_token=EAAtajna&metric=post_media_view&since=1'],
+            ]),
+            'graph.facebook.com/v23.0/9_1*' => Http::response(['reactions' => ['summary' => ['total_count' => 2]], 'comments' => ['summary' => ['total_count' => 0]]]),
+        ]);
+
+        $variant = $this->published(Platform::FacebookPage, '9_1');
+
+        $metric = app(CollectPostMetrics::class)->execute($variant);
+
+        $this->assertSame(10, $metric->views);
+        $this->assertSame(1, $metric->reach, 'dnevna nula ne smije pregaziti doseg objave');
+        $this->assertStringNotContainsString('EAAtajna', (string) json_encode($metric->raw));
+        $this->assertStringContainsString('access_token=[redacted]', (string) json_encode($metric->raw, JSON_UNESCAPED_SLASHES));
+    }
+
     public function test_tiktok_looks_the_video_up_once_and_then_reads_its_counts(): void
     {
         Http::fake([

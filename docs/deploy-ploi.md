@@ -119,8 +119,10 @@ Developer dashboard → tvoja app → **Settings → Basic**:
 (ista vrijednost ide u `META_REDIRECT_URI`).
 
 U **Configurations** napravi konfiguraciju s dozvolama `pages_show_list`, `pages_manage_posts`,
-`pages_read_engagement`, `instagram_basic`, `instagram_content_publish` i njezin id upiši u
-`META_LOGIN_CONFIG_ID`. Bez konfiguracije hub šalje klasičan `scope` popis iz `config/meta.php`.
+`pages_read_engagement`, `instagram_basic`, `instagram_content_publish`, a za mjerenje i
+`instagram_manage_insights`, `read_insights`, `pages_read_user_content` (lajkovi i komentari objava
+stranice), i njezin id upiši u `META_LOGIN_CONFIG_ID`. Nova dozvola u konfiguraciji vrijedi tek kad
+se račun ponovno poveže. Bez konfiguracije hub šalje klasičan `scope` popis iz `config/meta.php`.
 
 Aplikacija smije ostati u **Development modu** dok objavljuje na vlastite stranice: svatko tko ima
 ulogu u aplikaciji (Admin/Developer/Tester) daje dozvole bez App Reviewa. App Review i Business

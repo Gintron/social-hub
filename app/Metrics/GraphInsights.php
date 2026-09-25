@@ -31,7 +31,7 @@ final class GraphInsights
 
         try {
             $response = $this->graph->get($path, ['metric' => implode(',', array_keys($metrics))], $token, 'metrics.insights');
-            $raw[$path] = $response;
+            $raw[$path] = GraphClient::redact($response);
 
             return $this->map($response, $metrics);
         } catch (PermanentPublishException $e) {
@@ -63,7 +63,7 @@ final class GraphInsights
     {
         try {
             $response = $this->graph->get($path, ['fields' => $fields], $token, 'metrics.fields');
-            $raw[$path.'?fields'] = $response;
+            $raw[$path.'?fields'] = GraphClient::redact($response);
 
             return $response;
         } catch (PermanentPublishException $e) {
@@ -85,6 +85,12 @@ final class GraphInsights
         foreach ((array) ($response['data'] ?? []) as $row) {
             $column = $metrics[$row['name'] ?? ''] ?? null;
             $value = $row['total_value']['value'] ?? ($row['values'][0]['value'] ?? null);
+
+            // Facebook answers some metrics twice, for the post's lifetime and for the last days
+            // (reach: lifetime 1, day 0). The lifetime figure is the post's; a daily one only fills in.
+            if (isset($values[$column ?? '']) && ($row['period'] ?? null) !== 'lifetime') {
+                continue;
+            }
 
             // Some metrics come back as a breakdown object (reactions by type); only plain counts map.
             if ($column !== null && is_numeric($value)) {

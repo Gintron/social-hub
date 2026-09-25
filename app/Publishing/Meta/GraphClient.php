@@ -23,6 +23,30 @@ final class GraphClient
     public function __construct(private readonly GraphErrorMapper $errors) {}
 
     /**
+     * Tokens out of anything Graph sent or was sent, before it is stored: the fields themselves, and
+     * the query strings Graph echoes back — every `paging.next` link carries the Page token.
+     *
+     * @template T of array<array-key, mixed>
+     *
+     * @param  T  $data
+     * @return T
+     */
+    public static function redact(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (in_array($key, ['access_token', 'appsecret_proof'], true)) {
+                $data[$key] = '[redacted]';
+            } elseif (is_array($value)) {
+                $data[$key] = self::redact($value);
+            } elseif (is_string($value)) {
+                $data[$key] = preg_replace('/\b(access_token|appsecret_proof)=[^&\s"]+/', '$1=[redacted]', $value) ?? $value;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
      * Log every request of this client against a variant (publish_logs).
      */
     public function forVariant(?PostVariant $variant): self
@@ -140,19 +164,12 @@ final class GraphClient
             return;
         }
 
-        $redacted = $params;
-        foreach (['access_token', 'appsecret_proof'] as $key) {
-            if (isset($redacted[$key])) {
-                $redacted[$key] = '[redacted]';
-            }
-        }
-
         PublishLog::query()->create([
             'post_variant_id' => $this->variant->id,
             'event' => $event,
             'http_status' => $response?->status(),
-            'request' => ['method' => $method, 'url' => $url, 'params' => $redacted],
-            'response' => $responseBody,
+            'request' => ['method' => $method, 'url' => $url, 'params' => self::redact($params)],
+            'response' => $responseBody === null ? null : self::redact($responseBody),
         ]);
     }
 }

@@ -48,7 +48,9 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   kojem su svi kanali preskočeni prelazi u `DraftStatus::Skipped`, ne ostaje „objavljuje se".
 - **Instagram token je Page token.** Discovery sprema isti token na `fb_page` i `ig_business` račun, plus
   `connected_user_id` koji deauthorize callback koristi da nađe pogođene račune.
-- **Tokeni** su `encrypted` castovi i redigiraju se u `publish_logs` (`GraphClient::log`).
+- **Tokeni** su `encrypted` castovi i ne smiju u bazu u čistom obliku: sve što Graph pošalje ili primi
+  prolazi kroz `GraphClient::redact()` prije spremanja (`publish_logs`, `post_metrics.raw`) — Graph
+  vraća Page token u svakom `paging.next` linku.
 - **Vremena**: DB u UTC; Filament pickeri i scheduler `Europe/Zagreb`. Automatika nikad ne bira vrijeme
   sama — `App\Support\PostingSchedule` vraća sljedeći termin unutar `brands.posting_windows`
   (lokalno vrijeme brenda), a batch se razmiče da ne padne sve u istu minutu.

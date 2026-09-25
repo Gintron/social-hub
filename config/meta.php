@@ -24,6 +24,9 @@ return [
         // the Meta dashboard too, then reconnect the accounts.
         'instagram_manage_insights',
         'read_insights',
+        // Reactions, comments and shares of a Page post (App\Metrics\FacebookMetrics): without it
+        // Graph answers "(#10) This endpoint requires the 'pages_read_user_content' permission".
+        'pages_read_user_content',
     ],
 
     /*
