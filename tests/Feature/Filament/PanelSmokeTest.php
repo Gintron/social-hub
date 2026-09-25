@@ -88,6 +88,22 @@ final class PanelSmokeTest extends TestCase
             ->assertSee('Format');
     }
 
+    public function test_a_draft_whose_every_channel_was_skipped_still_opens(): void
+    {
+        $this->actingAs($this->admin);
+
+        $brand = Brand::factory()->create();
+        $source = Source::factory()->for($brand)->create();
+        $item = ContentItem::factory()->for($source)->for($brand)->create();
+        $page = SocialAccount::factory()->for($brand)->create();
+        $draft = app(CreateDraft::class)->execute($item, [$page], render: false);
+        $draft->variants()->update(['status' => 'skipped', 'error_code' => 'dead_link']);
+        $draft->refreshStatusFromVariants();
+
+        $this->get(EditPostDraft::getUrl(['record' => $draft]))->assertOk()->assertSee('Preskočeno');
+        Livewire::test(ListPostDrafts::class)->set('activeTab', 'failed')->assertOk()->assertSee($draft->title);
+    }
+
     public function test_calendar_shows_scheduled_and_published_drafts(): void
     {
         $this->actingAs($this->admin);

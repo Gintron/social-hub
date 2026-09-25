@@ -60,6 +60,11 @@ php artisan filament:assets
 php artisan route:cache
 php artisan view:cache
 php artisan queue:restart
+
+# Opcache na ovom serveru ne provjerava datoteke: bez reloada PHP-FPM vrti stari kod dok CLI
+# (migracije, red) vrti novi. 25. 09. 2026. migracija je upisala novi status nacrta, a panel ga
+# sa starim enumom nije znao pročitati — 500 na svakoj stranici koja ga dotakne.
+echo "" | sudo -S service php8.4-fpm reload
 ```
 
 Ako ipak želiš `php artisan optimize`, onda **svaka** promjena u Environmentu traži i reload
