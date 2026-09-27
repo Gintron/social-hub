@@ -125,7 +125,8 @@ final class TemplateData
     }
 
     /**
-     * View-model for a digest cover: a headline over thumbnails of the items it collects.
+     * View-model for a digest cover: thumbnails for classic layouts, priced offer cards for
+     * direct 9:16 deal videos.
      *
      * @param  \Illuminate\Support\Collection<int, ContentItem>  $items
      * @param  array<string, mixed>  $overrides
@@ -135,6 +136,16 @@ final class TemplateData
     {
         // The deepest cut in the roundup, from the generic price field: "do −60 %" sells the swipe.
         $deepest = (int) $items->map(fn (ContentItem $item): int => (int) (($item->price ?? [])['discount_pct'] ?? 0))->max();
+        $offers = $items->take(3)->map(function (ContentItem $item): array {
+            $cents = ($item->price ?? [])['current_cents'] ?? null;
+
+            return [
+                'title' => self::excerpt($item->title, 58),
+                'image' => $this->images->dataUri($item->imageUrl('primary')),
+                'price' => is_numeric($cents) ? number_format((int) $cents / 100, 2, ',', '.').' €' : null,
+                'discount' => ! empty(($item->price ?? [])['discount_pct']) ? '−'.(int) $item->price['discount_pct'].' %' : null,
+            ];
+        })->values()->all();
 
         return array_replace([
             'kind' => 'digest',
@@ -152,6 +163,7 @@ final class TemplateData
             'provider' => $this->sharedProvider($items),
             'expires_at' => null,
             'badge' => $deepest > 0 ? "do −{$deepest} %" : null,
+            'offer_cards' => $items->every(fn (ContentItem $item): bool => $item->kind === ContentKind::Deal) ? $offers : [],
             // Items without a picture are left out rather than shown as empty tiles.
             'thumbnails' => $items
                 ->map(fn (ContentItem $item): ?string => $this->images->dataUri($item->imageUrl('primary')))
@@ -185,6 +197,7 @@ final class TemplateData
             'pitch' => filled(data_get($brand->voice, 'pitch')) ? (string) data_get($brand->voice, 'pitch') : null,
             'cta_note' => filled(data_get($brand->voice, 'cta_note')) ? (string) data_get($brand->voice, 'cta_note') : null,
             'activation' => filled(data_get($brand->voice, 'activation')) ? (string) data_get($brand->voice, 'activation') : null,
+            'video_style' => data_get($brand->voice, 'video_style'),
             // A mark on a transparent background goes white on the primary colour; a filled one
             // (a square with a tick) would become a blank block, so it keeps its colours.
             'logo_filter' => ($colors['logo_footer'] ?? 'white') === 'original' ? 'border-radius: 14px;' : 'filter: brightness(0) invert(1);',

@@ -11,6 +11,7 @@
     $hasProvider = ! empty($provider['logo']) || ! empty($provider['name']);
     // A square card has the least room under the picture, so the band there is the tight one.
     $square = $height <= 1080;
+    $directStory = $height > 1500 && ($brand['video_style'] ?? null) === 'direct';
 @endphp
 
 @section('styles')
@@ -27,6 +28,12 @@
   .body { padding-top: 36px; gap: 16px; }
   .title { font-size: 58px; -webkit-line-clamp: 2; }
   .price .now { font-size: 92px; }
+  @if($directStory)
+  .body { justify-content: center; padding-bottom: 60px; gap: 14px; }
+  .title { font-size: 56px; }
+  .price .now { font-size: 100px; }
+  .chain { padding-top: 14px; padding-bottom: 14px; }
+  @endif
 @endsection
 
 @section('card')
@@ -45,7 +52,7 @@
     @endif
   </div>
 
-  @if($hasDiscountCircle)
+  @if($hasDiscountCircle && ! $directStory)
     <div class="discount">−{{ $item['price']['discount_pct'] }}%</div>
   @endif
 

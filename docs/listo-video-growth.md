@@ -1,6 +1,7 @@
 # Listo: video kampanje usmjerene na prvu listu
 
-Pregled od 26. 9. 2026. Pripremljeni su lokalni videi i promjene huba; produkcija je samo pročitana.
+Početni pregled od 26. 9. 2026. Pripremljeni su lokalni videi i promjene huba. Naknadna
+iteracija automatskih serija opisana je niže.
 Video primjeri, scenariji i tekstovi su u `artifacts/listo-growth/`, pregled u `index.html`.
 
 ## Što je provjereno
@@ -160,3 +161,29 @@ licenca nije ponovno neovisno provjerena.
 
 Viralan doseg nije moguće jamčiti. Ako korisnik može snimiti svoj glas i stvarnu radnju u aplikaciji,
 sljedeći test treba usporediti tu snimku s ovim automatiziranim prikazima, s istom porukom.
+
+## Automatske serije: iteracija 27. 9. 2026.
+
+Ovo je zasebna promjena na postojeće automatske videe. Ne uključuje pripremljene ručne kampanje
+iznad i ne dodaje novu ovlast za automatsko objavljivanje.
+
+- Listov Social Feed v1 sada računa `priority` prema procijenjenoj korisnosti za redovitu kupnju:
+  hrana i kućanske potrepštine dobivaju prednost, uređaji/posuđe i ponude bez cijene padaju niže.
+  Popust i dalje odlučuje među sličnim proizvodima. Procjena se temelji na naslovu i cijeni;
+  nema pouzdane kategorije ni dovoljno podataka o navikama korisnika za osobnu preporuku.
+- Pregled 2.434 aktualne ponude pri pragu 20 % pokazao je raznovrsne jeftinije artikle koje prag
+  35 % isključuje. Primjeri izbora nakon novog bodovanja: Konzum — kruh, krumpir, tuna;
+  Plodine — pasirana rajčica, tjestenina, riža; Kaufland — špinat, maslinovo ulje, šećer.
+  To je provjera poretka, ne dokaz boljeg dosega ili konverzije.
+- Digest preskače isti proizvod kad je naslov identičan, drukčije poredan ili gotovo jednak
+  naslovu drugog pakiranja. Izbor pregledava do 100 kandidata da pritom ne ostane bez ponuda.
+- Izravni 9:16 naslovni kadar pokazuje tri proizvoda s cijenama i popustima, trgovinu i Listovu
+  korist u sigurnoj zoni. Slajd proizvoda uklanja veliki drugi znak popusta i centrira cijenu.
+  Ostali omjeri i brendovi zadržavaju dosadašnji predložak.
+- Svih sedam postojećih serija ostaje na 18:30. Naslov je kratak, s brojem stvarno izabranih
+  akcija; slajd ponude traje 2,5 s, pa pregled tri akcije traje približno 13,5 s.
+
+Pratiti 24 i 72 sata nakon svakog videa, odvojeno po mreži: dovršenost, prosječno gledanje,
+spremanja i dijeljenja, profil/poveznicu te nove instalacije i prve dodane proizvode. Usporedba
+sa starim videima nije kontrolirani eksperiment; mijenjaju se i ponude i vizual. Ako gledanje
+poraste bez prvog dodanog proizvoda, sljedeća iteracija treba popraviti put do aplikacije.

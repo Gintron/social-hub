@@ -221,4 +221,34 @@ final class SlideTemplatesTest extends TestCase
         $this->assertSame([], $params['thumbnails'], 'stavke bez slike ne ostavljaju prazne pločice');
         $this->assertStringNotContainsString('<div class="thumbs">', $cover);
     }
+
+    public function test_a_direct_story_cover_shows_three_real_offers_and_the_app_use_case(): void
+    {
+        Http::fake();
+
+        $brand = Brand::factory()->create([
+            'slug' => 'uselisto', 'name' => 'Listo', 'site_url' => 'https://uselisto.com',
+            'voice' => ['video_style' => 'direct', 'pitch' => 'Letak → tvoja lista.'],
+        ]);
+        $source = Source::factory()->for($brand)->create();
+        $items = collect(['Špinat', 'Maslinovo ulje', 'Tjestenina'])->map(fn (string $title, int $index): ContentItem => ContentItem::factory()->for($source)->for($brand)->create([
+            'kind' => ContentKind::Deal,
+            'title' => $title,
+            'price' => ['current_cents' => 99 + $index * 100, 'old_cents' => 299, 'discount_pct' => 50 - $index * 5, 'currency' => 'EUR', 'unit_label' => null],
+            'images' => [],
+        ]));
+
+        $params = app(TemplateData::class)->forDigest($items, $brand, '3 akcije za tvoj popis', 'Listo');
+        $cover = app(ImageRenderer::class)->html($brand, 'kinds/digest-cover-story', $params);
+
+        foreach (['Špinat', 'Maslinovo ulje', 'Tjestenina', '0,99 €', '1,99 €', '2,99 €', 'Letak → tvoja lista.'] as $text) {
+            $this->assertStringContainsString($text, $cover);
+        }
+        $this->assertSame(3, substr_count($cover, 'class="offer-card"'));
+        $this->assertStringNotContainsString('class="badge-deal"', $cover);
+        $this->assertStringNotContainsString('class="thumbs"', $cover);
+
+        $slide = app(ImageRenderer::class)->html($brand, 'kinds/deal-story', app(TemplateData::class)->forItem($items[0], $brand));
+        $this->assertStringNotContainsString('class="discount"', $slide, 'popust je već na naslovnici i često na samoj slici iz letka');
+    }
 }

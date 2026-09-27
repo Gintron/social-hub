@@ -221,6 +221,23 @@ final class DigestBuilderTest extends TestCase
         );
     }
 
+    public function test_a_roundup_does_not_repeat_the_same_deal_with_reordered_words_or_a_pack_variant(): void
+    {
+        $brand = $this->brand();
+        $this->deals($brand, [
+            ['LIKVI ALL IN ONE SUPREME Kapsule za strojno pranje posuđa', 90],
+            ['LIKVI Kapsule za strojno pranje posuđa ALL IN ONE SUPREME', 89],
+            ['LIKVI ALL IN ONE SUPREME MAXI PACK Kapsule za strojno pranje posuđa', 88],
+            ['PLIDENTA Bio vodica za usta', 70],
+            ['NIVEA Gel za tuširanje', 60],
+        ]);
+
+        $this->assertSame(
+            ['LIKVI ALL IN ONE SUPREME Kapsule za strojno pranje posuđa', 'PLIDENTA Bio vodica za usta', 'NIVEA Gel za tuširanje'],
+            app(DigestBuilder::class)->pick($brand, ContentKind::Deal, 3)->pluck('title')->all(),
+        );
+    }
+
     private function brand(): Brand
     {
         return Brand::factory()->create(['slug' => 'uselisto', 'name' => 'Listo', 'site_url' => 'https://uselisto.com']);

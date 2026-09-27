@@ -177,17 +177,25 @@ final class DigestBuilder
                 ->where('post_drafts.created_at', '>=', $since)))
             ->orderByDesc('priority')
             ->orderByDesc('published_at')
-            ->limit(min(self::CANDIDATE_POOL, $count * 8))
+            ->limit(self::CANDIDATE_POOL)
             ->get();
 
         $picked = [];
         $perTag = [];
         $alive = [];
+        $isRepeatedDeal = function (ContentItem $item) use ($kind, &$picked): bool {
+            return $kind === ContentKind::Deal
+                && array_any($picked, fn (ContentItem $selected): bool => self::sameDeal($selected->title, $item->title));
+        };
         $isAlive = function (ContentItem $item) use (&$alive): bool {
             return $alive[$item->id] ??= $this->links->isAlive($item);
         };
 
         foreach ($candidates as $item) {
+            if ($isRepeatedDeal($item)) {
+                continue;
+            }
+
             $tags = array_values(array_diff(array_map('strval', $item->tags ?? []), [(string) $tag]));
 
             if (array_any($tags, fn (string $other): bool => ($perTag[$other] ?? 0) >= self::MAX_PER_TAG)) {
@@ -214,13 +222,38 @@ final class DigestBuilder
                 break;
             }
 
-            if (! isset($picked[$item->id]) && $isAlive($item)) {
+            if (! isset($picked[$item->id]) && ! $isRepeatedDeal($item) && $isAlive($item)) {
                 $picked[$item->id] = $item;
             }
         }
 
         // Back into priority order: the roundup still reads from the best deal down.
         return $candidates->filter(fn (ContentItem $item): bool => isset($picked[$item->id]))->values();
+    }
+
+    /** Different catalogue rows can describe the same product with words in a different order. */
+    private static function sameDeal(string $first, string $second): bool
+    {
+        $tokens = static function (string $title): array {
+            preg_match_all('/[\p{L}\p{N}]+/u', mb_strtolower($title), $matches);
+            $words = array_values(array_unique($matches[0]));
+            sort($words);
+
+            return $words;
+        };
+
+        $left = $tokens($first);
+        $right = $tokens($second);
+
+        if ($left === $right) {
+            return true;
+        }
+
+        if (min(count($left), count($right)) < 4) {
+            return false;
+        }
+
+        return count(array_intersect($left, $right)) / count(array_unique([...$left, ...$right])) >= 0.82;
     }
 
     /**
