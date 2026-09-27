@@ -171,8 +171,10 @@ iznad i ne dodaje novu ovlast za automatsko objavljivanje.
   hrana i kućanske potrepštine dobivaju prednost, uređaji/posuđe i ponude bez cijene padaju niže.
   Popust i dalje odlučuje među sličnim proizvodima. Procjena se temelji na naslovu i cijeni;
   nema pouzdane kategorije ni dovoljno podataka o navikama korisnika za osobnu preporuku.
-- Pregled 2.434 aktualne ponude pri pragu 20 % pokazao je raznovrsne jeftinije artikle koje prag
-  35 % isključuje. Primjeri izbora nakon novog bodovanja: Konzum — kruh, krumpir, tuna;
+- Pregled 2.434 aktualne ponude pri pragu 20 % pokazao je da postoje i jeftiniji artikli ispod
+  sadašnjeg praga. Produkcijski prag ostao je **35 %** jer je i unutar njega dovoljno korisnih
+  ponuda, a njegovo snižavanje bi nepotrebno proširilo backlog automatskih objava. Primjeri
+  stvarnog izbora nakon novog bodovanja: Konzum — kruh, krumpir, tuna;
   Plodine — pasirana rajčica, tjestenina, riža; Kaufland — špinat, maslinovo ulje, šećer.
   To je provjera poretka, ne dokaz boljeg dosega ili konverzije.
 - Digest preskače isti proizvod kad je naslov identičan, drukčije poredan ili gotovo jednak
@@ -182,6 +184,11 @@ iznad i ne dodaje novu ovlast za automatsko objavljivanje.
   Ostali omjeri i brendovi zadržavaju dosadašnji predložak.
 - Svih sedam postojećih serija ostaje na 18:30. Naslov je kratak, s brojem stvarno izabranih
   akcija; slajd ponude traje 2,5 s, pa pregled tri akcije traje približno 13,5 s.
+
+Produkcija je preuzela `listo` commit `a994f89` i `social-hub` commit `d30aca9`.
+Jednokratni inline sync pri nepromijenjenom pragu od 35 % donio je 411 novih i osvježio 257
+postojećih stavki. Nije stvorio nijedan nacrt; postojeći limit pojedinačnih objava ostaje jedna
+dnevno po kanalu, a sedam digest serija zadržalo je svoje termine. `hub:doctor` je prošao.
 
 Pratiti 24 i 72 sata nakon svakog videa, odvojeno po mreži: dovršenost, prosječno gledanje,
 spremanja i dijeljenja, profil/poveznicu te nove instalacije i prve dodane proizvode. Usporedba
