@@ -109,14 +109,16 @@ Ako klikovi stižu bez prve stavke, provjeriti trgovinu aplikacija i prvo koriš
 
 ## Nakon pushanja koda
 
-Primijeniti uobičajeni [Ploi deploy](deploy-ploi.md) ako nije automatski pokrenut. Ova promjena nema
-migraciju baze. U postavkama brenda Listo može se uključiti `voice.video_style=direct` i upisati
-`voice.activation=Dodaj prvi proizvod s letka.` te poziv `Preuzmi Listo`; time će i budući
-automatski renderirani videi Lista dobiti kraći uvod i konkretnu radnju. Postavke se ne mijenjaju
-samim pushanjem. Gotovi MP4-ovi iz galerije predviđeni su za ljudski pregled i ručni upload kao
-TikTok i Instagram Reel. Scenariji ne stvaraju nacrte, ne uključuju nova `auto_publish_rules` i ne
-mijenjaju sedam postojećih dnevnih serija. Za dvotjedni test čovjek odabire i objavljuje termine;
-usporedba nakon 24 i 72 sata ide u predložak rezultata.
+Ploi je 27. 9. 2026. automatski preuzeo commit `affd0e4`; produkcijski `hub:doctor` prošao je.
+Promjena nema migraciju baze. Produkcijskom Listu postavljeni su `voice.video_style=direct`,
+`voice.cta=Preuzmi Listo`, `voice.pitch=Letak → tvoja lista.`, `voice.cta_note=20 dana bez kartice`
+i `voice.activation=Dodaj prvi proizvod s letka.` Ostale postavke brenda su sačuvane. Budući
+automatski renderirani videi Lista zato koriste izravne rezove, kraći uvod i poziv na prvi korak.
+
+Gotovi MP4-ovi iz galerije predviđeni su za ljudski pregled i ručni upload kao TikTok i Instagram
+Reel. Scenariji ne stvaraju nacrte, ne uključuju nova `auto_publish_rules` i ne mijenjaju sedam
+postojećih dnevnih serija. Za dvotjedni test čovjek odabire i objavljuje termine; usporedba nakon
+24 i 72 sata ide u predložak rezultata.
 
 ## Primjena u hubu
 
