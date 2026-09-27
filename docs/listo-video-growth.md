@@ -194,3 +194,29 @@ Pratiti 24 i 72 sata nakon svakog videa, odvojeno po mreži: dovršenost, prosje
 spremanja i dijeljenja, profil/poveznicu te nove instalacije i prve dodane proizvode. Usporedba
 sa starim videima nije kontrolirani eksperiment; mijenjaju se i ponude i vizual. Ako gledanje
 poraste bez prvog dodanog proizvoda, sljedeća iteracija treba popraviti put do aplikacije.
+
+## Košarica redovite kupnje: sljedeća iteracija
+
+Listo trenutačno ima približno deset korisnika. Njihovo ponašanje nije reprezentativan dokaz što
+hrvatski kupci često kupuju, pa algoritam ne uči iz njihovih lista ni kupnji. Kao **orijentir**
+služi [DZS-ova Anketa o potrošnji kućanstava u 2022.](https://podaci.dzs.hr/2023/hr/84175):
+hrana i bezalkoholna pića činili su 27 % izdataka, a u izdacima za hranu veliki su udjeli mesa,
+žitarica, mliječnih proizvoda i jaja te povrća. Iznos potrošnje nije učestalost kupnje, a podaci
+su stari nekoliko godina; izbor konkretnih proizvoda zato je urednička hipoteza za test, ne
+empirijski rang proizvoda ni obećanje boljeg dosega.
+
+Listov Social Feed v1 sada iz naziva proizvoda dodjeljuje opću oznaku košarice: meso/riba,
+pekarski proizvodi, mliječno/jaja, voće/povrće, osnovne namirnice, kućanstvo ili osobna njega.
+Prioritet unutar njih daje prednost kruhu, piletini, mlijeku/jajima/jogurtu, krumpiru/povrću,
+brašnu/tjestenini/riži i kućnim potrepštinama. Veći popust razlikuje slične ponude, ali ne može
+sam potisnuti redovitu kupnju u korist aparata, slatkiša ili specijaliteta. Ponuda bez cijene
+pada niže. To je samo metapodatak izvora; hub i dalje čita isti generički Social Feed v1 adapter.
+Digest za tri akcije prvo bira različite oznake i marke, zatim dopušta drugu iz iste grupe ako
+nema dovoljno izbora. Postojeći prag od 35 %, termin i odobrenja nisu promijenjeni.
+
+Simulacija na presjeku aktualnih ponuda pri postojećem pragu (27. 9. 2026.; ne uračunava već
+iskorištene stavke ni raspodjelu marke po poljima feeda) daje primjere: Konzum — kruh, krumpir, pileći file;
+Plodine — smrznuta mrkva, toaletni papir, tjestenina; Kaufland — jogurt, pecivo, deterdžent;
+Bipa — kapsule za posuđe, müsli, gel za tuširanje. Stvarni redoslijed ovisi o novim letcima,
+isteku ponuda i pravilima ponavljanja u hubu. Pregledati buduće objave i njihove metrike prije
+tvrdnje da je promjena poboljšala instalacije ili korištenje aplikacije.

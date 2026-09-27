@@ -221,6 +221,34 @@ final class DigestBuilderTest extends TestCase
         );
     }
 
+    public function test_a_short_deal_roundup_covers_different_shopping_groups_before_repeating_one(): void
+    {
+        $brand = $this->brand();
+        $deals = $this->deals($brand, [
+            ['Pileći file', 90], ['Pureći file', 89], ['Svinjski odrezak', 88],
+            ['Kruh', 70], ['Mlijeko', 60],
+        ]);
+        $deals->each(function (ContentItem $item): void {
+            $group = match ($item->title) {
+                'Kruh' => 'pekarski',
+                'Mlijeko' => 'mlijecno-jaja',
+                default => 'meso-riba',
+            };
+            $item->forceFill(['tags' => ['konzum', $group]])->save();
+        });
+
+        $builder = app(DigestBuilder::class);
+        $this->assertSame(
+            ['Pileći file', 'Kruh', 'Mlijeko'],
+            $builder->pick($brand, ContentKind::Deal, 3, tag: 'konzum')->pluck('title')->all(),
+        );
+        $this->assertSame(
+            ['Pileći file', 'Pureći file', 'Kruh', 'Mlijeko'],
+            $builder->pick($brand, ContentKind::Deal, 4, tag: 'konzum')->pluck('title')->all(),
+            'drugi prolaz smije ponoviti grupu kada nema četvrte',
+        );
+    }
+
     public function test_a_roundup_does_not_repeat_the_same_deal_with_reordered_words_or_a_pack_variant(): void
     {
         $brand = $this->brand();

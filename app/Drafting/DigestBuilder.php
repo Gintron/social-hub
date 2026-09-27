@@ -153,9 +153,9 @@ final class DigestBuilder
      * Freshest, highest-priority items that no draft has used yet — or, with $includePosted, that
      * no digest has used in the last REPEAT_AFTER_DAYS days.
      *
-     * No more than MAX_PER_TAG items share a tag other than $tag: seven blenders of one brand from
-     * the same catalog page is one post, not a roundup. When that leaves too few, the rest is filled
-     * by priority, so a roundup never comes out shorter than it could.
+     * Deals first take one per tag other than $tag, then up to MAX_PER_TAG: a short shopping
+     * roundup should cover different categories and brands before repeating either. When that
+     * leaves too few, the rest is filled by priority so a roundup never comes out shorter.
      *
      * An item whose page no longer answers is passed over for the next one. Checked at publish
      * time only, one such item used to cost the whole roundup on every channel.
@@ -191,29 +191,31 @@ final class DigestBuilder
             return $alive[$item->id] ??= $this->links->isAlive($item);
         };
 
-        foreach ($candidates as $item) {
-            if ($isRepeatedDeal($item)) {
-                continue;
-            }
+        foreach ($kind === ContentKind::Deal ? [1, self::MAX_PER_TAG] : [self::MAX_PER_TAG] as $tagLimit) {
+            foreach ($candidates as $item) {
+                if (count($picked) >= $count) {
+                    break 2;
+                }
 
-            $tags = array_values(array_diff(array_map('strval', $item->tags ?? []), [(string) $tag]));
+                if (isset($picked[$item->id]) || $isRepeatedDeal($item)) {
+                    continue;
+                }
 
-            if (array_any($tags, fn (string $other): bool => ($perTag[$other] ?? 0) >= self::MAX_PER_TAG)) {
-                continue;
-            }
+                $tags = array_values(array_diff(array_map('strval', $item->tags ?? []), [(string) $tag]));
 
-            if (! $isAlive($item)) {
-                continue;
-            }
+                if (array_any($tags, fn (string $other): bool => ($perTag[$other] ?? 0) >= $tagLimit)) {
+                    continue;
+                }
 
-            $picked[$item->id] = $item;
+                if (! $isAlive($item)) {
+                    continue;
+                }
 
-            foreach ($tags as $other) {
-                $perTag[$other] = ($perTag[$other] ?? 0) + 1;
-            }
+                $picked[$item->id] = $item;
 
-            if (count($picked) === $count) {
-                break;
+                foreach ($tags as $other) {
+                    $perTag[$other] = ($perTag[$other] ?? 0) + 1;
+                }
             }
         }
 
