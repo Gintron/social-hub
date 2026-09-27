@@ -39,4 +39,7 @@ return [
     'kinds/cta-square' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1080, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Poziv na akciju — kvadrat'],
     'kinds/cta-portrait' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1350, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Poziv na akciju — portret'],
     'kinds/cta-story' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1920, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Poziv na akciju — story 9:16'],
+    // A product feature uses a real screenshot and one instruction, for carousels and video alike.
+    'kinds/feature-portrait' => ['view' => 'templates.kinds.feature', 'width' => 1080, 'height' => 1350, 'kinds' => ['generic'], 'label' => 'Demonstracija — portret'],
+    'kinds/feature-story' => ['view' => 'templates.kinds.feature', 'width' => 1080, 'height' => 1920, 'kinds' => ['generic'], 'label' => 'Demonstracija — story 9:16'],
 ];

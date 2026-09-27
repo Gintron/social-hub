@@ -184,6 +184,7 @@ final class TemplateData
             // someone else's offer, so without these a viewer learns the price and never the reason.
             'pitch' => filled(data_get($brand->voice, 'pitch')) ? (string) data_get($brand->voice, 'pitch') : null,
             'cta_note' => filled(data_get($brand->voice, 'cta_note')) ? (string) data_get($brand->voice, 'cta_note') : null,
+            'activation' => filled(data_get($brand->voice, 'activation')) ? (string) data_get($brand->voice, 'activation') : null,
             // A mark on a transparent background goes white on the primary colour; a filled one
             // (a square with a tick) would become a blank block, so it keeps its colours.
             'logo_filter' => ($colors['logo_footer'] ?? 'white') === 'original' ? 'border-radius: 14px;' : 'filter: brightness(0) invert(1);',

@@ -65,6 +65,11 @@ final class BrandForm
                         Textarea::make('voice.rules')->label('Pravila')->rows(3)->placeholder('Ne izmišljaj brojke. Uvijek navedi lokaciju. Bez emotikona u naslovu.'),
                         TagsInput::make('voice.hashtags')->label('Fiksni hashtagovi')->placeholder('studentskiposao'),
                         TextInput::make('voice.cta')->label('Poziv na akciju')->placeholder('Prijavi se na studentski-poslovi.hr'),
+                        TextInput::make('voice.activation')->label('Prvi korak nakon preuzimanja')->maxLength(100)
+                            ->helperText('Jedna konkretna radnja, npr. „Dodaj prvi proizvod s letka“. Zamjenjuje poziv na spremanje i dijeljenje objave.'),
+                        Select::make('voice.video_style')->label('Ritam videa')
+                            ->options(['standard' => 'Blagi prijelazi', 'direct' => 'Izravni rezovi, kraći uvod'])
+                            ->helperText('Izravni rezovi: uvod do 2,5 s, ponude ostaju čitljive, završni poziv najmanje 3,5 s.'),
                         TextInput::make('voice.pitch')->label('Rečenica o brendu')
                             ->placeholder('Svi letci na jednom mjestu: dodirni proizvod i on je na listi, s cijenom.')
                             ->helperText('Što brend radi, u jednoj rečenici. Ide na završni slajd i u TikTok i Instagram tekst, gdje poveznica nije klikabilna i gledatelj inače vidi samo ponudu, a ne razlog da dođe. Bez iznosa: tekst smije navesti samo iznose iz podataka stavke.')

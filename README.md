@@ -36,6 +36,7 @@ Panel: http://localhost:8100/admin
 | `hub:publish-due` | Pošalji zakazane nacrte u red (svake minute iz schedulera) |
 | `hub:verify-accounts` | Provjeri Meta tokene, označi one koje treba ponovno povezati |
 | `hub:render-video [--brand=] [--kind=] [--count=] [--seconds=]` | Uspravni 9:16 slideshow (MP4) za Reels i TikTok |
+| `hub:render-storyboard {manifest} --brand= --output=` | Pregled videa iz JSON scenarija s trajanjima kadrova; ne stvara nacrt ni objavu |
 | `hub:refresh-tiktok-tokens` | Osvježi TikTok tokene prije isteka (satno iz schedulera) |
 | `hub:agent-draft [brend] [--limit=] [--dry-run]` | Claude piše tekstove za nove kandidate i ostavlja ih na odobrenje |
 | `hub:issue-mcp-token {email} --scope=` | Token za MCP servera (read / draft / approve / publish) |
@@ -57,6 +58,11 @@ app/Ai           agent koji piše tekstove (Claude) i validator koji brani izmi�
 app/Mcp          MCP server: hub kroz AI agenta (docs/mcp.md)
 docs/            social-feed-v1.md + schema, deploy-ploi.md, examples/laravel-social-feed
 ```
+
+Listo: [plan i raspored testa](docs/listo-video-growth.md), [galerija pet videa](artifacts/listo-growth/index.html)
+i [predložak za rezultate](artifacts/listo-growth/rezultati-predlozak.csv). Videi u galeriji služe
+za pregled i ručnu objavu; dodavanje njihova scenarija u repozitorij samo po sebi ne mijenja
+aktivne automatske serije.
 
 ## Kako sadržaj ulazi
 

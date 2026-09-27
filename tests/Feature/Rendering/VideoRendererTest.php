@@ -96,6 +96,45 @@ final class VideoRendererTest extends TestCase
         $this->assertGreaterThanOrEqual(3.0, (float) $video->durationSeconds());
     }
 
+    public function test_direct_cuts_preserve_every_scenes_reading_time_and_the_audio_duration(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+        $brand = Brand::factory()->create(['voice' => ['video_style' => 'direct']]);
+        $opening = $this->slide($brand);
+        $opening->update(['template_key' => 'kinds/digest-cover-story']);
+        $closing = $this->slide($brand);
+        $closing->update(['template_key' => 'kinds/cta-story']);
+
+        $video = app(VideoRenderer::class)->slideshow($brand, collect([$opening, $this->slide($brand), $closing]), audioPath: $this->track(seconds: 2));
+
+        $this->assertEquals([2.5, 3.0, 3.5], $video->params['slide_seconds']);
+        $this->assertEquals(0, $video->params['transition_seconds']);
+        $probe = $this->probe($video->absolutePath());
+        $this->assertEqualsWithDelta(9.0, (float) $this->duration($probe), 0.2);
+        $this->assertStringContainsString('codec_name=aac', $probe);
+        $this->assertStringContainsString('pix_fmt=yuv420p', $probe);
+    }
+
+    public function test_storyboard_can_give_the_demonstration_more_time_than_the_hook(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+        $brand = Brand::factory()->create();
+        $video = app(VideoRenderer::class)->slideshow($brand, collect([$this->slide($brand), $this->slide($brand)]), transitionSeconds: 0.0, motion: false, slideSeconds: [1.5, 4.0]);
+
+        $this->assertEqualsWithDelta(5.5, (float) $this->duration($this->probe($video->absolutePath())), 0.2);
+        $this->assertEquals([1.5, 4.0], $video->params['slide_seconds']);
+    }
+
+    public function test_a_storyboard_with_missing_timings_is_rejected(): void
+    {
+        Storage::fake('public');
+        $brand = Brand::factory()->create();
+        $this->expectException(RuntimeException::class);
+        app(VideoRenderer::class)->slideshow($brand, collect([$this->slide($brand), $this->slide($brand)]), slideSeconds: [2.0]);
+    }
+
     public function test_it_refuses_to_render_nothing(): void
     {
         $this->expectException(RuntimeException::class);

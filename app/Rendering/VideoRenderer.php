@@ -20,9 +20,8 @@ use Symfony\Component\Process\Process;
  * system, the slides are the existing templates rendered at 1080x1920 and stitched with a
  * crossfade. Everything happens with ffmpeg, which the container already carries.
  *
- * A still, silent slideshow is what these feeds push least, so by default every slide drifts in a
- * slow zoom and a brand track plays underneath. TikTok's API cannot attach a sound from TikTok's
- * own library; whatever plays is mixed in here.
+ * Slides drift in a slow zoom and a brand track can play underneath. A brand can choose direct
+ * cuts for a sharper rhythm; crossfades remain the default for existing campaigns.
  */
 final class VideoRenderer
 {
@@ -74,15 +73,17 @@ final class VideoRenderer
      *
      * @param  Collection<int, MediaAsset>  $slides  Rendered images, in the order they should play.
      * @param  string|null  $audioPath  Absolute path to a track to play underneath; null keeps a silent track.
+     * @param  list<float>|null  $slideSeconds  Explicit storyboard timings, one per slide.
      */
     public function slideshow(
         Brand $brand,
         Collection $slides,
         ?PostDraft $draft = null,
         float $secondsPerSlide = self::DEFAULT_SECONDS_PER_SLIDE,
-        float $transitionSeconds = self::DEFAULT_TRANSITION_SECONDS,
+        ?float $transitionSeconds = null,
         ?string $audioPath = null,
         bool $motion = true,
+        ?array $slideSeconds = null,
     ): MediaAsset {
         if ($slides->isEmpty()) {
             throw new RuntimeException('Video treba barem jedan slajd.');
@@ -93,17 +94,29 @@ final class VideoRenderer
         }
 
         $secondsPerSlide = max(1.5, $secondsPerSlide);
-        $transitionSeconds = min($transitionSeconds, $secondsPerSlide / 2);
+        $direct = data_get($brand->voice, 'video_style') === 'direct';
+        $transitionSeconds ??= $direct ? 0.0 : self::DEFAULT_TRANSITION_SECONDS;
 
         $count = $slides->count();
         $lastSlideSeconds = $this->templates->isClosing($slides->last()->template_key) ? self::END_CARD_SECONDS : null;
         $durations = $this->durations($count, $secondsPerSlide, $lastSlideSeconds);
+
+        if ($slideSeconds !== null) {
+            if (count($slideSeconds) !== $count || array_any($slideSeconds, fn ($seconds): bool => ! is_numeric($seconds) || ! is_finite((float) $seconds) || $seconds < 1.5 || $seconds > 10)) {
+                throw new RuntimeException('Svaki slajd treba trajanje od 1,5 do 10 sekundi.');
+            }
+
+            $durations = array_values(array_map('floatval', $slideSeconds));
+        } elseif ($direct && $count > 1 && preg_match('~^kinds/(hook|comparison-hook|digest-cover)-~', (string) $slides->first()->template_key)) {
+            $durations[0] = min(2.5, $secondsPerSlide);
+        }
+
+        $transitionSeconds = max(0.0, min($transitionSeconds, min($durations) / 2));
         $total = array_sum($durations) - ($count - 1) * $transitionSeconds;
 
         // A single slide would otherwise produce a 3-second clip only by accident; make the floor explicit.
         if ($total < self::MIN_TOTAL_SECONDS) {
-            $secondsPerSlide += (self::MIN_TOTAL_SECONDS - $total) / $count + 0.1;
-            $durations = $this->durations($count, $secondsPerSlide, $lastSlideSeconds);
+            $durations[$count - 1] += self::MIN_TOTAL_SECONDS - $total;
             $total = array_sum($durations) - ($count - 1) * $transitionSeconds;
         }
 
@@ -131,6 +144,7 @@ final class VideoRenderer
                     'slides' => $slides->pluck('id')->all(),
                     'seconds_per_slide' => $secondsPerSlide,
                     'last_slide_seconds' => end($durations),
+                    'slide_seconds' => $durations,
                     'transition_seconds' => $transitionSeconds,
                     'audio' => $audioPath === null ? null : basename($audioPath),
                     'motion' => $motion,
@@ -251,6 +265,12 @@ final class VideoRenderer
 
         if ($count === 1) {
             return implode(';', [...$parts, '[v0]null[out]']);
+        }
+
+        if ($transition === 0.0) {
+            $inputs = implode('', array_map(fn (int $i): string => "[v{$i}]", range(0, $count - 1)));
+
+            return implode(';', [...$parts, $inputs.'concat=n='.$count.':v=1:a=0[out]']);
         }
 
         $current = '[v0]';

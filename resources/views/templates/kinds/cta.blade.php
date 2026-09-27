@@ -21,6 +21,7 @@
                padding: 16px 36px; border-radius: 36px; max-width: 920px; }
   .end .where { font-size: {{ $story ? 50 : 42 }}px; font-weight: 800; background: rgba(255,255,255,.2); padding: 20px 44px; border-radius: 999px; }
   .end .share { font-size: {{ $story ? 40 : 34 }}px; font-weight: 600; opacity: .92; }
+  .end .activation { font-size: {{ $story ? 54 : 42 }}px; font-weight: 800; line-height: 1.2; }
 @endsection
 
 @section('card')
@@ -38,6 +39,10 @@
     @if(!empty($brand['cta_note']))
       <div class="note">{{ $brand['cta_note'] }}</div>
     @endif
-    <div class="share">Spremi objavu i pošalji je prijatelju <span class="emoji">📤</span></div>
+    @if(!empty($brand['activation']))
+      <div class="activation">{{ $brand['activation'] }}</div>
+    @else
+      <div class="share">Spremi objavu i pošalji je prijatelju <span class="emoji">📤</span></div>
+    @endif
   </div>
 @endsection

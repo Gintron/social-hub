@@ -145,7 +145,7 @@ final class CaptionBuilder
         }
 
         $host = TemplateData::displayUrl($item->url) ?? TemplateData::displayUrl($brand->site_url) ?? '';
-        $sections[] = '🔗 Link u biu → '.$host;
+        $sections[] = $this->socialCta($brand, $host);
 
         $hashtags = array_slice($this->hashtags($item, $brand), 0, self::FEW_HASHTAGS);
         if ($hashtags !== []) {
@@ -186,9 +186,11 @@ final class CaptionBuilder
             }
 
             $host = TemplateData::displayUrl($brand->site_url) ?? '';
-            $sections[] = "💾 Spremi popis i pošalji ga osobi s kojom kupuješ\n🔗 Link u biu → {$host}";
+            $sections[] = filled(data_get($brand->voice, 'activation'))
+                ? $this->socialCta($brand, $host)
+                : "💾 Spremi popis i pošalji ga osobi s kojom kupuješ\n🔗 Link u biu → {$host}";
 
-            $tags = $this->hashtags($items->first(), $brand);
+            $tags = array_slice($this->hashtags($items->first(), $brand), 0, self::FEW_HASHTAGS);
             if ($tags !== []) {
                 $sections[] = implode(' ', $tags);
             }
@@ -265,7 +267,9 @@ final class CaptionBuilder
         }
 
         $host = TemplateData::displayUrl($item->url) ?? TemplateData::displayUrl($brand->site_url) ?? '';
-        $sections[] = '🔗 Link u biu → '.$host."\n📤 Pošalji prijatelju kojem ovo treba";
+        $sections[] = filled(data_get($brand->voice, 'activation'))
+            ? $this->socialCta($brand, $host)
+            : '🔗 Link u biu → '.$host."\n📤 Pošalji prijatelju kojem ovo treba";
 
         $hashtags = array_slice($this->hashtags($item, $brand), 0, self::FEW_HASHTAGS);
         if ($hashtags !== []) {
@@ -318,6 +322,14 @@ final class CaptionBuilder
         $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
 
         return mb_trim($text);
+    }
+
+    private function socialCta(Brand $brand, string $host): string
+    {
+        $activation = mb_trim((string) data_get($brand->voice, 'activation', ''));
+        $cta = $activation !== '' ? mb_trim((string) data_get($brand->voice, 'cta', ''))."\n".$activation."\n" : '';
+
+        return mb_trim($cta.'🔗 Link u biu → '.$host);
     }
 
     private function isComparison(ContentItem $item): bool

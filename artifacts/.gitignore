@@ -1,0 +1,6 @@
+# Local production snapshot and machine-specific render metadata are not review assets.
+/listo-growth/baseline.json
+/listo-growth/*/render.json
+
+# An earlier local experiment supplies the audio copied into listo-growth/source.
+/listo-trial-reel/

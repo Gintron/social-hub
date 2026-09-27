@@ -1,0 +1,41 @@
+{
+  "audio": "source/background.mp3",
+  "voice": {
+    "cta": "Preuzmi Listo",
+    "pitch": "Letak → tvoja lista.",
+    "cta_note": "20 dana bez kartice",
+    "activation": "Dodaj prvi proizvod s letka."
+  },
+  "slides": [
+    {
+      "template": "kinds/feature-story",
+      "seconds": 2,
+      "image": "source/app-store-2.jpg",
+      "data": {
+        "title": "Iz letka na listu. Bez prepisivanja.",
+        "label": "Kupnja bez prepisivanja",
+        "theme": "light",
+        "image_position": 45,
+        "note": "Prikaz aplikacije · cijene su primjer"
+      }
+    },
+    {
+      "template": "kinds/feature-story",
+      "seconds": 3.5,
+      "image": "source/app-store-1.jpg",
+      "data": {
+        "title": "Lista sama zbraja.",
+        "label": "Kako radi",
+        "theme": "light",
+        "image_position": 48,
+        "note": "Prikaz aplikacije · cijene su primjer",
+        "excerpt": "Vidi procjenu prije blagajne."
+      }
+    },
+    {
+      "template": "kinds/cta-story",
+      "seconds": 3.5,
+      "data": {}
+    }
+  ]
+}
