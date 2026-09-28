@@ -14,7 +14,7 @@ Schedule::command('hub:verify-accounts')->dailyAt('06:00')->timezone($tz)->witho
 Schedule::command('hub:auto-publish-backlog')->dailyAt('06:30')->timezone($tz)->withoutOverlapping();
 
 // Recurring digests (brands.digest); the command builds only those whose day and hour have come.
-Schedule::command('hub:auto-digest')->hourly()->withoutOverlapping();
+Schedule::command('hub:auto-digest')->everyThirtyMinutes()->withoutOverlapping();
 
 // Views and interactions of published posts; the command itself decides which are due.
 Schedule::command('hub:collect-metrics')->hourly()->withoutOverlapping();
