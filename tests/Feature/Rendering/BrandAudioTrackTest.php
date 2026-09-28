@@ -31,6 +31,16 @@ final class BrandAudioTrackTest extends TestCase
         $this->assertNull(Brand::factory()->create(['audio_tracks' => null])->audioTrackPath('auto', 7));
     }
 
+    public function test_the_job_brand_uses_its_bundled_track_only_for_auto_without_a_library(): void
+    {
+        $brand = Brand::factory()->create(['slug' => 'studentski-poslovi', 'audio_tracks' => null]);
+
+        $this->assertStringEndsWith('studentski-pulse.m4a', (string) $brand->audioTrackPath('auto'));
+        $this->assertFileExists((string) $brand->audioTrackPath('auto'));
+        $this->assertNull($brand->audioTrackPath('none'));
+        $this->assertNull($brand->audioTrackPath('0'));
+    }
+
     public function test_auto_rotates_by_seed_so_posts_vary_but_a_rerender_keeps_its_track(): void
     {
         $brand = $this->brand();

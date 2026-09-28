@@ -30,6 +30,11 @@ return [
         'chrome_path' => env('HUB_CHROME_PATH'),
         'timeout' => (int) env('HUB_RENDER_TIMEOUT', 90),
         'jpeg_quality' => 90,
+        // An original, bundled loop gives the job brand audible videos out of the box. A track
+        // uploaded in the panel still takes precedence; --audio=none still forces silence.
+        'default_audio' => [
+            'studentski-poslovi' => resource_path('audio/studentski-pulse.m4a'),
+        ],
     ],
 
     /*

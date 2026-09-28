@@ -116,8 +116,12 @@ final class Brand extends Model
     {
         $tracks = $this->audioTracks();
 
-        if ($choice === 'none' || $tracks === []) {
+        if ($choice === 'none') {
             return null;
+        }
+
+        if ($tracks === []) {
+            return $choice === 'auto' ? $this->defaultAudioPath() : null;
         }
 
         $track = match (true) {
@@ -132,7 +136,7 @@ final class Brand extends Model
 
         $path = Storage::disk(self::AUDIO_DISK)->path($track['path']);
 
-        return is_file($path) ? $path : null;
+        return is_file($path) ? $path : ($choice === 'auto' ? $this->defaultAudioPath() : null);
     }
 
     protected function casts(): array
@@ -144,5 +148,12 @@ final class Brand extends Model
             'audio_tracks' => 'array',
             'digests' => 'array',
         ];
+    }
+
+    private function defaultAudioPath(): ?string
+    {
+        $path = config("hub.render.default_audio.{$this->slug}");
+
+        return is_string($path) && is_file($path) ? $path : null;
     }
 }

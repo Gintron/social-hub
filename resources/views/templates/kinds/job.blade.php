@@ -1,49 +1,84 @@
 @extends('templates._layout')
 
+@php
+  $story = $height > 1500;
+  $square = $height <= 1080;
+  $job = $item['job_display'] ?? [];
+  $title = $job['title'] ?? $item['title'];
+  $extras = array_slice($job['extras'] ?? [], 0, $square ? 1 : 2);
+@endphp
+
 @section('styles')
-  @if(! $item['primary_image'])
-    /* Without a photo the hero is only an emoji on a gradient; it gives the facts the room instead. */
-    .hero { flex-basis: {{ (int) round($height * 0.26) }}px; }
-    .hero .placeholder { font-size: {{ $height > 1500 ? 200 : 140 }}px; }
-  @endif
-  .fact .value { font-size: 44px; }
-  @if($height > 1500)
-    /* 9:16: the card fills the middle band (the footer partial keeps the bottom for the app's UI),
-       facts stack in one column and the right edge stays clear of the like/share buttons. */
-    @if(! $item['primary_image'])
-      .hero { flex-basis: {{ (int) round($height * 0.18) }}px; }
-      .hero .placeholder { font-size: 170px; }
-    @endif
-    .body { padding: 56px 150px 40px 72px; gap: 28px; justify-content: safe center; }
-    .title { font-size: 72px; }
-    .subtitle { font-size: 44px; }
-    .facts { grid-template-columns: 1fr; gap: 24px; }
-    .fact .label { font-size: 28px; }
-    .fact .value { font-size: 56px; white-space: normal; }
-    .excerpt { font-size: 38px; -webkit-line-clamp: 4; }
-  @endif
+  .job-card { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; overflow: hidden;
+    padding: {{ $story ? '240px 180px 410px 72px' : ($square ? '48px 64px' : '65px 72px') }};
+    background: {{ $brand['surface'] }}; }
+  .job-card::before { content: ''; position: absolute; width: 760px; height: 760px; border-radius: 50%;
+    background: {{ $brand['accent'] }}; opacity: .12; top: -470px; right: -350px; }
+  .job-card .content { position: relative; width: 100%; display: flex; flex-direction: column;
+    gap: {{ $story ? 35 : ($square ? 22 : 30) }}px; }
+  .job-card .topline { display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    font-size: {{ $story ? 28 : 25 }}px; font-weight: 900; letter-spacing: 1px; }
+  .job-card .topline .label { color: {{ $brand['primary'] }}; }
+  .job-card .topline .site { color: {{ $brand['muted'] }}; letter-spacing: 0; text-align: right; }
+  .job-card .headline { font-size: {{ $story ? (mb_strlen($title) > 55 ? 62 : 72) : ($square ? 56 : 66) }}px;
+    font-weight: 900; line-height: 1.07; letter-spacing: -1.5px; overflow: hidden; display: -webkit-box;
+    -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  .job-card .employer { display: flex; align-items: center; gap: 16px; min-width: 0;
+    font-size: {{ $story ? 38 : 33 }}px; font-weight: 700; color: {{ $brand['muted'] }}; line-height: 1.18; }
+  .job-card .employer img { flex: 0 0 auto; width: 64px; height: 64px; object-fit: contain;
+    background: #fff; border-radius: 12px; padding: 5px; }
+  .job-card .employer span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  .job-card .rule { width: 100%; height: 6px; border-radius: 99px; background: {{ $brand['primary'] }}; }
+  .job-card .details { display: flex; flex-direction: column; gap: {{ $story ? 18 : 14 }}px; }
+  .job-card .detail { background: #fff; border-radius: 22px; padding: {{ $story ? '23px 28px' : '18px 24px' }};
+    border-left: 10px solid {{ $brand['accent'] }}; box-shadow: 0 8px 24px rgba(22,28,45,.06); }
+  .job-card .detail--pay { background: {{ $brand['primary'] }}; color: #fff; border-left-color: {{ $brand['accent'] }}; }
+  .job-card .detail-label { font-size: {{ $story ? 25 : 22 }}px; font-weight: 900; letter-spacing: 1.5px;
+    text-transform: uppercase; color: {{ $brand['muted'] }}; }
+  .job-card .detail--pay .detail-label { color: #fff; opacity: .86; }
+  .job-card .detail-value { margin-top: 7px; font-size: {{ $story ? 45 : ($square ? 37 : 42) }}px;
+    font-weight: 800; line-height: 1.15; overflow: hidden; display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  .job-card .badges { position: static; max-width: 100%; }
+  .job-card .badge { background: #fff; color: {{ $brand['primary'] }}; border: 2px solid {{ $brand['primary'] }};
+    font-size: {{ $story ? 26 : 23 }}px; }
 @endsection
 
 @section('card')
-  @include('templates.partials.hero')
-  <div class="body">
-    <div class="title"><span class="emoji">{{ $item['emoji'] }}</span> {{ $item['title'] }}</div>
-    @if($item['subtitle'])
-      <div class="subtitle">{{ $item['subtitle'] }}</div>
-    @endif
-    @if(!empty($item['facts']))
-      <div class="facts">
-        @foreach(array_slice($item['facts'], 0, 4) as $fact)
-          <div class="fact">
-            <div class="label">{{ $fact['label'] }}</div>
-            <div class="value">{{ $fact['value'] }}</div>
-          </div>
+  <div class="job-card">
+    <div class="content">
+      <div class="topline">
+        <span class="label">DETALJI POSLA</span>
+        <span class="site">{{ $brand['site'] ?? $brand['name'] }}</span>
+      </div>
+      <div class="headline">{{ $title }}</div>
+      @if($item['subtitle'])
+        <div class="employer">
+          @if(!empty($item['provider']['logo']))<img src="{{ $item['provider']['logo'] }}" alt="">@endif
+          <span>{{ $item['subtitle'] }}</span>
+        </div>
+      @endif
+      <div class="rule"></div>
+      <div class="details">
+        @if(!empty($job['pay']))
+          <div class="detail detail--pay"><div class="detail-label">{{ $job['pay_label'] }}</div><div class="detail-value">{{ $job['pay'] }}</div></div>
+        @endif
+        @if(!empty($job['location']))
+          <div class="detail"><div class="detail-label">LOKACIJA</div><div class="detail-value">{{ $job['location'] }}</div></div>
+        @endif
+        @foreach($extras as $fact)
+          <div class="detail"><div class="detail-label">{{ $fact['label'] }}</div><div class="detail-value">{{ $fact['value'] }}</div></div>
         @endforeach
       </div>
-    @endif
-    @if($item['excerpt'] && $height > 1100)
-      <div class="excerpt">{{ $item['excerpt'] }}</div>
-    @endif
+      @if(!empty($item['badges']))
+        <div class="badges">
+          @foreach(array_slice($item['badges'], 0, 2) as $badge)<span class="badge">{{ $badge }}</span>@endforeach
+        </div>
+      @endif
+    </div>
   </div>
-  @include('templates.partials.footer', ['cta' => 'Prijave: '.($item['url_display'] ?? '')])
+  @unless($story)
+    @include('templates.partials.footer', ['cta' => $item['cta_label'] ?? null])
+  @endunless
 @endsection

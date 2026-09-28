@@ -94,7 +94,12 @@ final class VideoRenderer
         }
 
         $secondsPerSlide = max(1.5, $secondsPerSlide);
-        $direct = data_get($brand->voice, 'video_style') === 'direct';
+        // Job cards contain compact facts and a single action. Let each complete card arrive at
+        // once, instead of fading one block of text across another during the short read time.
+        $jobVideo = $slides->every(fn (MediaAsset $slide): bool => in_array($slide->template_key, [
+            'kinds/job-hook-story', 'kinds/job-story', 'kinds/job-cta-story', 'kinds/job-digest-cover-story',
+        ], true));
+        $direct = data_get($brand->voice, 'video_style') === 'direct' || $jobVideo;
         $transitionSeconds ??= $direct ? 0.0 : self::DEFAULT_TRANSITION_SECONDS;
 
         $count = $slides->count();
@@ -107,8 +112,11 @@ final class VideoRenderer
             }
 
             $durations = array_values(array_map('floatval', $slideSeconds));
-        } elseif ($direct && $count > 1 && preg_match('~^kinds/(hook|comparison-hook|digest-cover)-~', (string) $slides->first()->template_key)) {
-            $durations[0] = min(2.5, $secondsPerSlide);
+        } elseif ($direct && $count > 1 && preg_match('~^kinds/(hook|comparison-hook|digest-cover|job-hook|job-digest-cover)-~', (string) $slides->first()->template_key)) {
+            // A roundup shows several roles at once; its cover needs the whole default hold.
+            $durations[0] = $slides->first()->template_key === 'kinds/job-digest-cover-story'
+                ? max(3.0, $secondsPerSlide)
+                : min($jobVideo ? 2.4 : 2.5, $secondsPerSlide);
         }
 
         $transitionSeconds = max(0.0, min($transitionSeconds, min($durations) / 2));

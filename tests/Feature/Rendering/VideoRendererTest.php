@@ -116,6 +116,43 @@ final class VideoRendererTest extends TestCase
         $this->assertStringContainsString('pix_fmt=yuv420p', $probe);
     }
 
+    public function test_job_slides_get_direct_cuts_and_a_shorter_opening_by_default(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+        $brand = Brand::factory()->create();
+        $opening = $this->slide($brand);
+        $opening->update(['template_key' => 'kinds/job-hook-story']);
+        $details = $this->slide($brand);
+        $details->update(['template_key' => 'kinds/job-story']);
+        $closing = $this->slide($brand);
+        $closing->update(['template_key' => 'kinds/job-cta-story']);
+
+        $video = app(VideoRenderer::class)->slideshow($brand, collect([$opening, $details, $closing]), motion: false);
+
+        $this->assertSame([2.4, 3, 3.5], $video->params['slide_seconds']);
+        $this->assertSame(0, $video->params['transition_seconds']);
+        $this->assertEqualsWithDelta(8.9, (float) $video->durationSeconds(), 0.05);
+    }
+
+    public function test_a_job_roundup_cover_keeps_three_seconds_to_scan_its_rows(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+        $brand = Brand::factory()->create();
+        $cover = $this->slide($brand);
+        $cover->update(['template_key' => 'kinds/job-digest-cover-story']);
+        $details = $this->slide($brand);
+        $details->update(['template_key' => 'kinds/job-story']);
+        $closing = $this->slide($brand);
+        $closing->update(['template_key' => 'kinds/job-cta-story']);
+
+        $video = app(VideoRenderer::class)->slideshow($brand, collect([$cover, $details, $closing]), secondsPerSlide: 2.0, motion: false);
+
+        $this->assertSame([3, 2, 3.5], $video->params['slide_seconds']);
+        $this->assertSame(0, $video->params['transition_seconds']);
+    }
+
     public function test_storyboard_can_give_the_demonstration_more_time_than_the_hook(): void
     {
         Storage::fake('public');

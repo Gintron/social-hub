@@ -9,7 +9,7 @@ declare(strict_types=1);
  * item's own card, then the brand's call to action.
  */
 return [
-    'job' => ['hook', 'job', 'cta'],
+    'job' => ['job-hook', 'job', 'job-cta'],
     'deal' => ['hook', 'deal', 'cta'],
     'comparison' => ['comparison-hook', 'comparison', 'cta'],
     'default' => ['generic', 'cta'],

@@ -119,6 +119,7 @@ final class TemplateData
                 'figure_old' => $figure['old'] ?? null,
                 'points' => Highlights::points($item, 2),
             ],
+            'job_display' => $item->kind === ContentKind::Job ? self::jobDisplay($item, $figure) : null,
             'cta_label' => $item->cta['label'] ?? null,
             'rows' => $comparison ? $this->rows($item, $facts) : [],
         ], $overrides);
@@ -164,6 +165,9 @@ final class TemplateData
             'expires_at' => null,
             'badge' => $deepest > 0 ? "do −{$deepest} %" : null,
             'offer_cards' => $items->every(fn (ContentItem $item): bool => $item->kind === ContentKind::Deal) ? $offers : [],
+            'job_cards' => $items->every(fn (ContentItem $item): bool => $item->kind === ContentKind::Job)
+                ? $items->take(3)->map(fn (ContentItem $item): array => self::jobDisplay($item, Highlights::figure($item)))->values()->all()
+                : [],
             // Items without a picture are left out rather than shown as empty tiles.
             'thumbnails' => $items
                 ->map(fn (ContentItem $item): ?string => $this->images->dataUri($item->imageUrl('primary')))
@@ -201,6 +205,61 @@ final class TemplateData
             // A mark on a transparent background goes white on the primary colour; a filled one
             // (a square with a tick) would become a blank block, so it keeps its colours.
             'logo_filter' => ($colors['logo_footer'] ?? 'white') === 'original' ? 'border-radius: 14px;' : 'filter: brightness(0) invert(1);',
+        ];
+    }
+
+    /**
+     * A small, source-grounded hierarchy for job slides. The title may arrive with the same emoji
+     * that the feed sends separately; printing both made some videos start with two megaphones.
+     * The pay keeps the source's wording, including ranges, instead of deriving a new claim.
+     *
+     * @param  array{value: string, label: string|null, fact: string|null, old: string|null}|null  $figure
+     * @return array{title: string, pay: string|null, pay_label: string, location: string|null, extras: list<array{label: string, value: string}>}
+     */
+    private static function jobDisplay(ContentItem $item, ?array $figure): array
+    {
+        $title = (string) $item->title;
+        $withoutLeadingSymbols = mb_trim(preg_replace('/^[^\p{L}\p{N}]+/u', '', $title) ?? $title);
+        $facts = $item->facts ?? [];
+        $pay = $figure['value'] ?? null;
+        $payLabel = $figure['fact'] ?? null;
+        $location = null;
+        $extras = [];
+
+        foreach ($facts as $fact) {
+            $label = mb_trim((string) ($fact['label'] ?? ''));
+            $value = mb_trim((string) ($fact['value'] ?? ''));
+            if ($label === '' || $value === '') {
+                continue;
+            }
+
+            $normalised = mb_strtoupper($label);
+            if ($location === null && (str_contains($normalised, 'LOKACIJA') || str_contains($normalised, 'MJESTO RADA'))) {
+                $location = Highlights::tidy($value);
+
+                continue;
+            }
+
+            if (str_contains($normalised, 'SATNICA') || str_contains($normalised, 'PLAĆA') || str_contains($normalised, 'NAKNADA')) {
+                if ($pay === null) {
+                    $pay = $value;
+                }
+                $payLabel ??= $label;
+
+                continue;
+            }
+
+            if (count($extras) < 2) {
+                $extras[] = ['label' => $label, 'value' => Highlights::tidy($value)];
+            }
+        }
+
+        return [
+            'title' => $withoutLeadingSymbols !== '' ? $withoutLeadingSymbols : $title,
+            'pay' => $pay,
+            'pay_label' => $payLabel ?? 'NAKNADA',
+            'location' => $location,
+            'extras' => $extras,
         ];
     }
 

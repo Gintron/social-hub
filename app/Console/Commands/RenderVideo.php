@@ -57,10 +57,22 @@ final class RenderVideo extends Command
 
         try {
             // One item is told as its slide set, the same video a Reel of that item gets (RenderVideoJob).
-            $slides = $items->count() === 1
-                ? collect($templates->slidesFor($items->first()->kind, 'story'))
-                    ->map(fn (string $key) => $images->render($brand, $key, $data->forItem($items->first(), $brand)))
-                : $items->map(fn (ContentItem $item) => $images->render($brand, $templates->storyFor($item->kind), $data->forItem($item, $brand)));
+            if ($items->count() === 1) {
+                $slides = collect($templates->slidesFor($items->first()->kind, 'story'))
+                    ->map(fn (string $key) => $images->render($brand, $key, $data->forItem($items->first(), $brand)));
+            } elseif ((string) $this->option('kind') === 'job') {
+                $headline = $items->count().' '.TemplateData::plural($items->count(), 'posao', 'posla', 'poslova');
+                $cover = $data->forDigest($items, $brand, $headline, $brand->name);
+                $slides = collect([$images->render($brand, 'kinds/job-digest-cover-story', $cover)]);
+
+                foreach ($items as $item) {
+                    $slides->push($images->render($brand, $templates->storyFor($item->kind), $data->forItem($item, $brand)));
+                }
+
+                $slides->push($images->render($brand, 'kinds/job-cta-story', $cover));
+            } else {
+                $slides = $items->map(fn (ContentItem $item) => $images->render($brand, $templates->storyFor($item->kind), $data->forItem($item, $brand)));
+            }
             $asset = $video->slideshow(
                 $brand,
                 $slides,

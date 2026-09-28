@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Actions\PrepareVariantMedia;
 use App\Enums\ContentFormat;
+use App\Enums\ContentKind;
 use App\Models\ContentItem;
 use App\Models\MediaAsset;
 use App\Models\PostDraft;
@@ -111,14 +112,16 @@ final class RenderVideoJob implements ShouldQueue
                 ->map(fn (string $key): MediaAsset => $images->render($brand, $key, $params, $draft));
         }
 
+        $jobs = $items->every(fn (ContentItem $item): bool => $item->kind === ContentKind::Job);
         $cover = $data->forDigest($items, $brand, (string) $draft->title, $brand->name);
-        $slides = collect([$images->render($brand, PrepareVariantMedia::digestCover('story'), $cover, $draft)]);
+        $coverTemplate = $jobs ? 'kinds/job-digest-cover-story' : PrepareVariantMedia::digestCover('story');
+        $slides = collect([$images->render($brand, $coverTemplate, $cover, $draft)]);
 
         foreach ($items as $item) {
             $slides->push($images->render($brand, $templates->storyFor($item->kind), $data->forItem($item, $brand), $draft));
         }
 
-        $closing = $templates->closingFor('story');
+        $closing = $jobs ? 'kinds/job-cta-story' : $templates->closingFor('story');
 
         if ($closing !== null) {
             $slides->push($images->render($brand, $closing, $cover, $draft));

@@ -40,7 +40,8 @@ final class SlideTemplatesTest extends TestCase
             }
         }
 
-        $this->assertSame(['kinds/hook-story', 'kinds/job-story', 'kinds/cta-story'], $registry->slidesFor(ContentKind::Job, 'story'));
+        $this->assertSame(['kinds/job-hook-story', 'kinds/job-story', 'kinds/job-cta-story'], $registry->slidesFor(ContentKind::Job, 'story'));
+        $this->assertSame(['kinds/job-hook-square', 'kinds/job-square', 'kinds/job-cta-square'], $registry->slidesFor(ContentKind::Job, 'square'));
         // The hook and end card come after the kinds, so a kind's own card stays its default.
         $this->assertSame('kinds/job-portrait', $registry->defaultFor(ContentKind::Job, 'portrait'));
     }
@@ -67,20 +68,65 @@ final class SlideTemplatesTest extends TestCase
         $renderer = app(ImageRenderer::class);
         $params = app(TemplateData::class)->forItem($item, $brand);
 
-        $hook = $renderer->html($brand, 'kinds/hook-story', $params);
+        $hook = $renderer->html($brand, 'kinds/job-hook-story', $params);
         $this->assertStringContainsString('7.00 - 8.00 €/H', $hook);
         $this->assertStringContainsString('SATNICA', $hook);
         $this->assertStringContainsString('Lovran', $hook);
-        $this->assertStringContainsString('Smještaj', $hook);
         $this->assertStringNotContainsString('class="footer"', $hook, 'na 9:16 dno pokriva sučelje aplikacije');
 
-        $this->assertStringContainsString('class="footer"', $renderer->html($brand, 'kinds/hook-portrait', $params));
+        $this->assertStringNotContainsString('class="footer"', $renderer->html($brand, 'kinds/job-hook-portrait', $params));
 
-        $end = $renderer->html($brand, 'kinds/cta-portrait', $params);
-        $this->assertStringContainsString('Prijavi se na studentski-poslovi.hr', $end);
+        $end = $renderer->html($brand, 'kinds/job-cta-portrait', $params);
+        $this->assertStringContainsString('Tvoj sljedeći posao?', $end);
         $this->assertStringContainsString('studentski-poslovi.hr', $end);
-        $this->assertStringNotContainsString('class="pitch"', $end, 'brend bez rečenice ne dobiva prazan redak');
-        $this->assertStringNotContainsString('class="note"', $end);
+        $this->assertStringNotContainsString('Spremi objavu', $end, 'završetak ima samo jednu radnju');
+    }
+
+    public function test_job_slides_use_only_provided_pay_and_do_not_repeat_a_title_emoji(): void
+    {
+        Http::fake();
+        $brand = Brand::factory()->create(['site_url' => 'https://studentski-poslovi.hr']);
+        $item = ContentItem::factory()->for(Source::factory()->for($brand))->for($brand)->create([
+            'kind' => ContentKind::Job,
+            'title' => '📢 Predstavnik/ca na terenu',
+            'facts' => [['label' => 'LOKACIJA', 'value' => 'RIJEKA'], ['label' => 'SATNICA', 'value' => '7.00 - 14.00 €/H']],
+            'price' => null,
+            'images' => [],
+        ]);
+
+        $params = app(TemplateData::class)->forItem($item, $brand);
+        $this->assertSame('Predstavnik/ca na terenu', $params['job_display']['title']);
+        $this->assertSame('7.00 - 14.00 €/H', $params['job_display']['pay']);
+        $this->assertSame('Rijeka', $params['job_display']['location']);
+        $hook = app(ImageRenderer::class)->html($brand, 'kinds/job-hook-story', $params);
+        $this->assertStringNotContainsString('📢', $hook);
+        $this->assertStringContainsString('7.00 - 14.00 €/H', $hook);
+    }
+
+    public function test_a_job_roundup_cover_shows_actual_roles_and_pay(): void
+    {
+        Http::fake();
+        $brand = Brand::factory()->create(['site_url' => 'https://studentski-poslovi.hr']);
+        $source = Source::factory()->for($brand)->create();
+        $items = collect([
+            ['Konobar/ica', '7.00 €/H', 'SPLIT'],
+            ['Asistent/ica', '8.50 €/H', 'ZAGREB'],
+        ])->map(fn (array $values): ContentItem => ContentItem::factory()->for($source)->for($brand)->create([
+            'kind' => ContentKind::Job,
+            'title' => $values[0],
+            'facts' => [['label' => 'SATNICA', 'value' => $values[1]], ['label' => 'LOKACIJA', 'value' => $values[2]]],
+            'price' => null,
+            'images' => [],
+        ]));
+
+        $params = app(TemplateData::class)->forDigest($items, $brand, '2 posla za tebe');
+        $cover = app(ImageRenderer::class)->html($brand, 'kinds/job-digest-cover-story', $params);
+
+        foreach (['Konobar/ica', 'Asistent/ica', '7.00 €/H', '8.50 €/H', 'Split', 'Zagreb'] as $text) {
+            $this->assertStringContainsString($text, $cover);
+        }
+        $this->assertSame(2, mb_substr_count($cover, 'class="row"'));
+        $this->assertSame([], $params['offer_cards']);
     }
 
     public function test_the_end_card_says_what_the_brand_does_and_where_to_get_it(): void
@@ -244,7 +290,7 @@ final class SlideTemplatesTest extends TestCase
         foreach (['Špinat', 'Maslinovo ulje', 'Tjestenina', '0,99 €', '1,99 €', '2,99 €', 'Letak → tvoja lista.'] as $text) {
             $this->assertStringContainsString($text, $cover);
         }
-        $this->assertSame(3, substr_count($cover, 'class="offer-card"'));
+        $this->assertSame(3, mb_substr_count($cover, 'class="offer-card"'));
         $this->assertStringNotContainsString('class="badge-deal"', $cover);
         $this->assertStringNotContainsString('class="thumbs"', $cover);
 

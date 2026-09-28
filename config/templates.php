@@ -9,6 +9,8 @@ declare(strict_types=1);
  */
 return [
     'kinds/job-square' => ['view' => 'templates.kinds.job', 'width' => 1080, 'height' => 1080, 'kinds' => ['job'], 'label' => 'Oglas — kvadrat'],
+    'kinds/job-hook-square' => ['view' => 'templates.kinds.job-hook', 'width' => 1080, 'height' => 1080, 'kinds' => ['job'], 'label' => 'Oglas — uvod (kvadrat)'],
+    'kinds/job-cta-square' => ['view' => 'templates.kinds.job-cta', 'width' => 1080, 'height' => 1080, 'kinds' => ['job'], 'label' => 'Oglas — prijava (kvadrat)'],
     'kinds/job-portrait' => ['view' => 'templates.kinds.job', 'width' => 1080, 'height' => 1350, 'kinds' => ['job'], 'label' => 'Oglas — portret'],
     'kinds/deal-square' => ['view' => 'templates.kinds.deal', 'width' => 1080, 'height' => 1080, 'kinds' => ['deal'], 'label' => 'Akcija — kvadrat'],
     'kinds/deal-portrait' => ['view' => 'templates.kinds.deal', 'width' => 1080, 'height' => 1350, 'kinds' => ['deal'], 'label' => 'Akcija — portret'],
@@ -19,6 +21,8 @@ return [
 
     // Vertikalni format 9:16 za Reels i TikTok; isti pogledi, druga visina.
     'kinds/job-story' => ['view' => 'templates.kinds.job', 'width' => 1080, 'height' => 1920, 'kinds' => ['job'], 'label' => 'Oglas — story 9:16'],
+    'kinds/job-hook-story' => ['view' => 'templates.kinds.job-hook', 'width' => 1080, 'height' => 1920, 'kinds' => ['job'], 'label' => 'Oglas — uvod 9:16'],
+    'kinds/job-cta-story' => ['view' => 'templates.kinds.job-cta', 'width' => 1080, 'height' => 1920, 'kinds' => ['job'], 'label' => 'Oglas — prijava 9:16'],
     'kinds/deal-story' => ['view' => 'templates.kinds.deal', 'width' => 1080, 'height' => 1920, 'kinds' => ['deal'], 'label' => 'Akcija — story 9:16'],
     'kinds/generic-story' => ['view' => 'templates.kinds.generic', 'width' => 1080, 'height' => 1920, 'kinds' => ['article', 'event', 'generic'], 'label' => 'Općenito — story 9:16'],
     'kinds/comparison-story' => ['view' => 'templates.kinds.comparison', 'width' => 1080, 'height' => 1920, 'kinds' => ['comparison'], 'label' => 'Usporedba — story 9:16'],
@@ -27,11 +31,14 @@ return [
     'kinds/digest-cover' => ['view' => 'templates.kinds.digest-cover', 'width' => 1080, 'height' => 1080, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Digest — naslovnica'],
     'kinds/digest-cover-portrait' => ['view' => 'templates.kinds.digest-cover', 'width' => 1080, 'height' => 1350, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Digest — naslovnica (portret)'],
     'kinds/digest-cover-story' => ['view' => 'templates.kinds.digest-cover', 'width' => 1080, 'height' => 1920, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Digest — naslovnica 9:16'],
+    'kinds/job-digest-cover-story' => ['view' => 'templates.kinds.job-digest-cover', 'width' => 1080, 'height' => 1920, 'kinds' => ['job'], 'label' => 'Poslovi — pregled 9:16'],
 
     // Set slajdova jedne stavke (config/template_sets.php): udica prije kartice, poziv na akciju poslije.
     // Namjerno iza vrsta: defaultFor() uzima prvi ključ koji odgovara, a to mora ostati kartica stavke.
     'kinds/hook-square' => ['view' => 'templates.kinds.hook', 'width' => 1080, 'height' => 1080, 'kinds' => ['job', 'deal', 'article', 'event', 'generic'], 'label' => 'Udica — kvadrat'],
     'kinds/hook-portrait' => ['view' => 'templates.kinds.hook', 'width' => 1080, 'height' => 1350, 'kinds' => ['job', 'deal', 'article', 'event', 'generic'], 'label' => 'Udica — portret'],
+    'kinds/job-hook-portrait' => ['view' => 'templates.kinds.job-hook', 'width' => 1080, 'height' => 1350, 'kinds' => ['job'], 'label' => 'Oglas — uvod (portret)'],
+    'kinds/job-cta-portrait' => ['view' => 'templates.kinds.job-cta', 'width' => 1080, 'height' => 1350, 'kinds' => ['job'], 'label' => 'Oglas — prijava (portret)'],
     'kinds/hook-story' => ['view' => 'templates.kinds.hook', 'width' => 1080, 'height' => 1920, 'kinds' => ['job', 'deal', 'article', 'event', 'generic'], 'label' => 'Udica — story 9:16'],
     'kinds/comparison-hook-square' => ['view' => 'templates.kinds.comparison-hook', 'width' => 1080, 'height' => 1080, 'kinds' => ['comparison'], 'label' => 'Usporedba, udica — kvadrat'],
     'kinds/comparison-hook-portrait' => ['view' => 'templates.kinds.comparison-hook', 'width' => 1080, 'height' => 1350, 'kinds' => ['comparison'], 'label' => 'Usporedba, udica — portret'],

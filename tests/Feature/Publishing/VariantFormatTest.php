@@ -99,7 +99,7 @@ final class VariantFormatTest extends TestCase
         $this->assertSame(ContentFormat::Video, $tiktok->format(), 'TikTok je uvijek video');
         Queue::assertPushed(RenderSlidesJob::class, 1);
         Queue::assertPushed(RenderSlidesJob::class, fn (RenderSlidesJob $job): bool => $job->variantIds === [$instagram->id]
-            && $job->templateKeys === ['kinds/hook-portrait', 'kinds/job-portrait', 'kinds/cta-portrait']);
+            && $job->templateKeys === ['kinds/job-hook-portrait', 'kinds/job-portrait', 'kinds/job-cta-portrait']);
         Queue::assertPushed(RenderVideoJob::class, fn (RenderVideoJob $job): bool => $job->variantIds === [$tiktok->id]);
         Queue::assertNotPushed(RenderMediaJob::class);
     }

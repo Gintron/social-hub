@@ -92,7 +92,9 @@ final class TemplateRegistry
      */
     public function isClosing(?string $key): bool
     {
-        return $key !== null && str_starts_with($key, 'kinds/cta-') && is_array(config("templates.{$key}"));
+        return $key !== null
+            && (str_starts_with($key, 'kinds/cta-') || str_starts_with($key, 'kinds/job-cta-'))
+            && is_array(config("templates.{$key}"));
     }
 
     public function defaultFor(ContentKind $kind, string $orientation = 'square'): string
