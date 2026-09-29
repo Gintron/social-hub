@@ -41,7 +41,7 @@ final class ScenePlannerTest extends TestCase
         $deal = app(ScenePlanner::class)->forDraft($this->draft([$this->item(ContentKind::Deal)]));
         $comparison = app(ScenePlanner::class)->forDraft($this->draft([$this->item(ContentKind::Comparison)]));
 
-        $this->assertSame(['kinds/hook-story', 'kinds/deal-story', 'kinds/cta-story'], array_map(fn (Scene $scene): string => $scene->templateKey, $deal));
+        $this->assertSame(['kinds/deal-hook-story', 'kinds/deal-story', 'kinds/cta-story'], array_map(fn (Scene $scene): string => $scene->templateKey, $deal));
         $this->assertSame([Scene::HOOK, Scene::CARD, Scene::CLOSING], array_map(fn (Scene $scene): string => $scene->role, $deal));
         $this->assertSame(['kinds/comparison-hook-story', 'kinds/comparison-story', 'kinds/cta-story'], array_map(fn (Scene $scene): string => $scene->templateKey, $comparison));
         $this->assertSame([Scene::HOOK, Scene::CARD, Scene::CLOSING], array_map(fn (Scene $scene): string => $scene->role, $comparison));
@@ -87,6 +87,7 @@ final class ScenePlannerTest extends TestCase
         $this->assertSame(Scene::COVER, $registry->roleOf('kinds/digest-cover-story'));
         $this->assertSame(Scene::COVER, $registry->roleOf('kinds/job-digest-cover-portrait'));
         $this->assertSame(Scene::HOOK, $registry->roleOf('kinds/hook-story'));
+        $this->assertSame(Scene::HOOK, $registry->roleOf('kinds/deal-hook-story'));
         $this->assertSame(Scene::HOOK, $registry->roleOf('kinds/job-hook-story'));
         $this->assertSame(Scene::HOOK, $registry->roleOf('kinds/comparison-hook-story'));
         $this->assertSame(Scene::CLOSING, $registry->roleOf('kinds/cta-story'));

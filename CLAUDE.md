@@ -23,6 +23,14 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   logotip **nikad** ne uskače umjesto tuđeg (`provider.logo` nema fallback): hub prenosi ponudu, ne
   prodaje je, i svoj znak nosi u podnožju. Pregled dobije logo lanca samo ako su **sve** stavke istog
   lanca (`TemplateData::sharedProvider`) — inače je to naš izbor, ne njihova kampanja.
+- **Slika akcije je pločica iz letka, ne fotografija proizvoda.** Izvor šalje isječak kataloga: nosi trgovčevu
+  vlastitu cijenu, sitni tisak, rubne linije i na dnu ostatke *susjedne* pločice (plavu traku, vrhove crvenih
+  brojki), a široka je tek 470–640 px. Zato `deal-hook` i `deal` prikazuju cijelu pločicu kao predmet (`.leaflet`),
+  nikad razvučenu preko kadra: dno joj se odreže i zafadea (`TemplateData::LEAFLET_CUT`), a neobičan oblik (vrlo
+  visok ili širok) ide cijel na zamućenu kopiju sebe (`TemplateData::tileShape`). Naziv i cijena su jedan žuti
+  blok, popust je pečat na uglu pločice; raspored po formatu je u `App\Rendering\DealFrame` (pločica dobije
+  visinu koja preostane iza trgovine, bloka i činjenica), ne u CSS-u. Uz `video_style=direct` kartica ne pečati
+  popust drugi put, a ključ hooka mora ostati u regexu u `VideoRenderer` (uvod 2,5 s).
 - **Sve mutacije nacrta idu kroz `App\Actions\*`** — Filament, MCP alati i agent zovu iste klase.
 - **Objavljivanje je idempotentno**: `PostVariant::claimForPublishing()` (atomski queued→publishing),
   skip kad `external_post_id` postoji, `ShouldBeUnique` jobovi. Draft status se **postavlja prije**

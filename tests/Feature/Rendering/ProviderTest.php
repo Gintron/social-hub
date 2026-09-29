@@ -70,7 +70,7 @@ final class ProviderTest extends TestCase
         $this->assertStringContainsString('<img src="'.$params['provider']['logo'].'" alt="Spar">', $card);
         // A wide mark (SPAR and Konzum are about 5:1) has to grow sideways, not be boxed into a square.
         $this->assertStringContainsString('.provider img { height: 84px; width: auto;', $card);
-        $this->assertStringContainsString('<div class="provider provider--lg">', $card);
+        $this->assertStringContainsString('<div class="provider">', $card);
         // With a wordmark the plaque does not also spell the name out: the mark already is the name.
         $this->assertStringNotContainsString('<div class="name">Spar</div>', $card);
     }
@@ -84,7 +84,7 @@ final class ProviderTest extends TestCase
 
         $this->assertSame(1.0, $params['provider']['logo_ratio']);
         // At a wordmark's height a badge covers a fifth of the area, so it gets the taller box…
-        $this->assertStringContainsString('class="provider provider--lg provider--compact"', $card);
+        $this->assertStringContainsString('class="provider provider--compact"', $card);
         $this->assertStringContainsString('.provider--compact img { height: 116px;', $card);
         // … and the name beside it, the way a shop locks its own badge up with its name.
         $this->assertStringContainsString('<div class="name">Lidl</div>', $card);

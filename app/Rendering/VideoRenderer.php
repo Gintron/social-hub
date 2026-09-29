@@ -145,7 +145,7 @@ final class VideoRenderer
             }
 
             $durations = array_values(array_map('floatval', $slideSeconds));
-        } elseif ($direct && $count > 1 && preg_match('~^kinds/(hook|comparison-hook|digest-cover|job-hook|job-digest-cover)-~', (string) $slides->first()->template_key)) {
+        } elseif ($direct && $count > 1 && preg_match('~^kinds/(hook|deal-hook|comparison-hook|digest-cover|job-hook|job-digest-cover)-~', (string) $slides->first()->template_key)) {
             // A roundup shows several roles at once; its cover needs the whole default hold.
             $durations[0] = $slides->first()->template_key === 'kinds/job-digest-cover-story'
                 ? max(3.0, $secondsPerSlide)

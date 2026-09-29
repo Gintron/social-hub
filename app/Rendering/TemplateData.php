@@ -17,7 +17,61 @@ final class TemplateData
     /** How many rows of a comparison fit on a slide and in a first glance. */
     public const COMPARISON_ROWS = 5;
 
+    /**
+     * How much of a leaflet crop's bottom is cut away. A crop is a tile of a catalogue page, and what
+     * sits under it is the next tile's fragments (a blue bar, the tops of red digits), never the product.
+     */
+    public const LEAFLET_CUT = 0.08;
+
     public function __construct(private readonly RemoteImageCache $images) {}
+
+    /**
+     * A shouted title ("TRE MULINI NOODLES YAKISOBA") reads as a title on a slide; one that mixes cases
+     * already means what it says ("DOLCIANDO Sladoled") and is left alone.
+     */
+    public static function displayTitle(string $title): string
+    {
+        $title = mb_trim($title);
+
+        if ($title === '' || preg_match('/\p{L}/u', $title) !== 1 || mb_strtoupper($title) !== $title) {
+            return $title;
+        }
+
+        return mb_convert_case(mb_strtolower($title), MB_CASE_TITLE);
+    }
+
+    /**
+     * The shape a product picture is shown in. A crop of ordinary proportions is fitted to its own width
+     * with the bottom cut away (`cut`); an odd one (very tall, very wide) is fitted whole on a blurred copy
+     * of itself, so it never leaves empty bars and is never stretched. `ratio` is the frame's width ÷ height.
+     *
+     * @return array{ratio: float, cut: bool}
+     */
+    public static function tileShape(?float $ratio): array
+    {
+        $ratio ??= 1.3;
+
+        if ($ratio >= 0.95 && $ratio <= 1.6) {
+            return ['ratio' => round($ratio / (1 - self::LEAFLET_CUT), 4), 'cut' => true];
+        }
+
+        return ['ratio' => min(max($ratio, 0.8), 1.5), 'cut' => false];
+    }
+
+    /**
+     * A headline price in the parts a slide sets apart ("13,19 €" → 13,19 and the unit). Null when the
+     * wording is more than a price ("od 1,99 €"): the slide then prints it as it came.
+     *
+     * @return array{whole: string, cents: string, unit: string}|null
+     */
+    public static function priceParts(?string $figure): ?array
+    {
+        if ($figure === null || preg_match('/^(\d[\d.]*),(\d{2})\s*(.*)$/u', mb_trim($figure), $m) !== 1) {
+            return null;
+        }
+
+        return ['whole' => $m[1], 'cents' => $m[2], 'unit' => $m[3] !== '' ? $m[3] : '€'];
+    }
 
     public static function defaultEmoji(ContentKind $kind): string
     {
@@ -106,6 +160,7 @@ final class TemplateData
             'kind' => $item->kind->value,
             'emoji' => $raw['emoji'] ?? self::defaultEmoji($item->kind),
             'title' => $item->title,
+            'title_display' => self::displayTitle((string) $item->title),
             'subtitle' => $item->subtitle,
             'facts' => $facts,
             'badges' => array_slice($item->badges ?? [], 0, 4),
@@ -113,6 +168,7 @@ final class TemplateData
             'excerpt' => self::excerpt($item->body_text, 220),
             'url_display' => self::displayUrl($item->url),
             'primary_image' => $this->images->dataUri($item->imageUrl('primary')),
+            'primary_shape' => self::tileShape($this->images->aspectRatio($item->imageUrl('primary'))),
             // Whose offer this is: the chain, the employer, the publisher. The contract carries it
             // the same way for every kind (`subtitle` + `images[role=logo]`), so no template has to
             // know what a retailer is. Deliberately without a fallback to the brand's own logo: the
@@ -129,6 +185,7 @@ final class TemplateData
                 'figure_label' => in_array($figure['label'] ?? null, $item->badges ?? [], true) ? null : ($figure['label'] ?? null),
                 'figure_old' => $figure['old'] ?? null,
                 'points' => Highlights::points($item, 2),
+                'price_parts' => self::priceParts($figure['value'] ?? null),
             ],
             'job_display' => $item->kind === ContentKind::Job ? self::jobDisplay($item, $figure) : null,
             'cta_label' => $item->cta['label'] ?? null,

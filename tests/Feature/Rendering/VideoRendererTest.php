@@ -116,6 +116,23 @@ final class VideoRendererTest extends TestCase
         $this->assertStringContainsString('pix_fmt=yuv420p', $probe);
     }
 
+    public function test_a_direct_deal_opens_on_its_hook_for_two_and_a_half_seconds(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+        $brand = Brand::factory()->create(['voice' => ['video_style' => 'direct']]);
+        $hook = $this->slide($brand);
+        $hook->update(['template_key' => 'kinds/deal-hook-story']);
+        $card = $this->slide($brand);
+        $card->update(['template_key' => 'kinds/deal-story']);
+        $closing = $this->slide($brand);
+        $closing->update(['template_key' => 'kinds/cta-story']);
+
+        $video = app(VideoRenderer::class)->slideshow($brand, collect([$hook, $card, $closing]), audioPath: $this->track(seconds: 2));
+
+        $this->assertEquals([2.5, 3.0, 3.5], $video->params['slide_seconds']);
+    }
+
     public function test_job_slides_get_direct_cuts_and_a_shorter_opening_by_default(): void
     {
         Storage::fake('public');

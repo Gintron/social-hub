@@ -10,7 +10,7 @@ declare(strict_types=1);
  */
 return [
     'job' => ['job-hook', 'job', 'job-cta'],
-    'deal' => ['hook', 'deal', 'cta'],
+    'deal' => ['deal-hook', 'deal', 'cta'],
     'comparison' => ['comparison-hook', 'comparison', 'cta'],
     'default' => ['generic', 'cta'],
 ];
