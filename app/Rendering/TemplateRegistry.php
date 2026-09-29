@@ -97,6 +97,20 @@ final class TemplateRegistry
             && is_array(config("templates.{$key}"));
     }
 
+    /**
+     * What a slide is for in the story it belongs to: the roundup's `cover`, an item's `hook`, its
+     * `card`, or the brand's `closing` call to action. A voice-over says something different on each.
+     */
+    public function roleOf(string $key): string
+    {
+        return match (true) {
+            str_contains($key, 'digest-cover') => Scene::COVER,
+            str_contains($key, 'hook') => Scene::HOOK,
+            $this->isClosing($key) => Scene::CLOSING,
+            default => Scene::CARD,
+        };
+    }
+
     public function defaultFor(ContentKind $kind, string $orientation = 'square'): string
     {
         foreach ($this->all() as $key => $template) {
