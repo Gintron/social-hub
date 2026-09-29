@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources\SocialAccounts\Pages;
 
 use App\Filament\Resources\SocialAccounts\SocialAccountResource;
+use App\Filament\Support\MetaConnectNotices;
 use App\Models\Brand;
-use App\Models\SocialAccount;
 use App\Publishing\Exceptions\PublishException;
 use App\Publishing\Meta\MetaAssetDiscovery;
 use Filament\Actions\Action;
@@ -29,7 +29,7 @@ final class ListSocialAccounts extends ListRecords
                 ->label('Poveži preko Facebooka')
                 ->icon(Heroicon::OutlinedLink)
                 ->color('primary')
-                ->modalDescription('Otvara Facebook dijalog za pristanak. Nakon potvrde hub sprema Page tokene (ne istječu) i Instagram Business račune povezane s tim stranicama.')
+                ->modalDescription('Otvara Facebook dijalog za pristanak. Nakon potvrde hub sprema Page tokene i Instagram Business račune povezane s tim stranicama. Facebook drži jedno odobrenje za cijelu aplikaciju i svako povezivanje zamjenjuje prethodno: u dijalogu označi SVE stranice i Instagram račune svih brendova, ne samo ovog.')
                 ->modalSubmitActionLabel('Nastavi na Facebook')
                 ->visible(fn (): bool => filled(config('meta.app_id')))
                 ->schema([
@@ -72,14 +72,17 @@ final class ListSocialAccounts extends ListRecords
                     $brand = Brand::query()->findOrFail((int) $data['brand_id']);
 
                     try {
-                        $accounts = app(MetaAssetDiscovery::class)->discover($brand, mb_trim((string) $data['token']));
+                        $result = app(MetaAssetDiscovery::class)->discover($brand, mb_trim((string) $data['token']));
                     } catch (PublishException $e) {
                         Notification::make()->title('Graph API je odbio token')->body($e->getMessage())->danger()->persistent()->send();
 
                         return;
                     }
 
-                    $names = implode("\n", array_map(fn (SocialAccount $account): string => '• '.$account->platform->label().': '.$account->name, $accounts));
+                    $accounts = $result->accounts;
+                    $names = MetaConnectNotices::lines($accounts);
+
+                    MetaConnectNotices::lostAccess($result->lostAccess);
 
                     Notification::make()
                         ->title(count($accounts) > 0 ? count($accounts).' račun(a) spremljeno' : 'Token ne upravlja nijednim Pageom')

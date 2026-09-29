@@ -141,8 +141,12 @@ briše tokene, isključuje račune i vraća potvrdni kod sa statusnom stranicom.
    (npr. `query.country` = `hr`, `query.min_discount` = `40`). Bez toga veliki katalog probije
    granicu od 50 stranica po sinkronizaciji i sinkronizacija odustane.
 3. Postavke → Društveni računi → **Poveži preko Facebooka**: odaberi brend, prođi kroz Facebook
-   dijalog i hub sprema Page tokene (ne istječu) i Instagram Business račune povezane s tim
-   stranicama. Alternativa bez preglednika: **Zalijepi token ručno** (System User token).
+   dijalog i hub sprema Page tokene i Instagram Business račune povezane s tim stranicama.
+   **U dijalogu označi sve stranice i Instagram račune svih brendova odjednom**: Facebook drži jedno
+   odobrenje za cijelu aplikaciju i svako povezivanje zamjenjuje prethodno, pa token stranice koja
+   nije označena prestaje raditi (`(#190) … must be granted before impersonating a user's page`).
+   Hub osvježi sve poznate stranice koje odobrenje pokriva, a one koje ne pokriva odmah označi
+   „Treba ponovno povezati" i javi u panelu. Alternativa bez preglednika: **Zalijepi token ručno** (System User token).
    Za Facebook grupe → **Dodaj ručno** (platforma Facebook grupa, URL grupe).
 4. Sadržaj → Kandidati → **Napravi objavu**; pregled, odobrenje i objava u Sadržaj → Objave,
    raspored u Sadržaj → Kalendar.

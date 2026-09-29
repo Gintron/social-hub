@@ -15,6 +15,8 @@ use RuntimeException;
  *
  * The long-lived *user* token lasts ~60 days, but the Page tokens derived from it (see
  * MetaAssetDiscovery) do not expire at all, which is why the hub stores those and not this one.
+ * "Do not expire" is about time only: a Page token stops working the moment the user's grant no
+ * longer covers that Page, and every login replaces the grant.
  */
 final class MetaOAuth
 {

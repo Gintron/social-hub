@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Meta;
 
 use App\Filament\Resources\SocialAccounts\SocialAccountResource;
+use App\Filament\Support\MetaConnectNotices;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
-use App\Models\SocialAccount;
 use App\Publishing\Meta\MetaAssetDiscovery;
 use App\Publishing\Meta\MetaOAuth;
 use Filament\Notifications\Notification;
@@ -74,10 +74,16 @@ final class MetaOAuthController extends Controller
 
         try {
             $token = $this->oauth->exchangeCode((string) $request->query('code'));
-            $accounts = app(MetaAssetDiscovery::class)->discover($brand, $token['token']);
+            $result = app(MetaAssetDiscovery::class)->discover($brand, $token['token']);
         } catch (Throwable $e) {
             return $this->fail($back, 'Spajanje nije uspjelo', $e->getMessage());
         }
+
+        $accounts = $result->accounts;
+
+        // Reported even when nothing was connected: a login that ticked the wrong Page has replaced
+        // the grant all the same.
+        MetaConnectNotices::lostAccess($result->lostAccess);
 
         if ($accounts === []) {
             return $this->fail(
@@ -90,11 +96,9 @@ final class MetaOAuthController extends Controller
             );
         }
 
-        $names = collect($accounts)->map(fn (SocialAccount $account): string => '• '.$account->platform->label().': '.$account->name)->implode("\n");
-
         Notification::make()
-            ->title(count($accounts).' račun(a) povezano za '.$brand->name)
-            ->body($names)
+            ->title(count($accounts).' račun(a) povezano')
+            ->body(MetaConnectNotices::lines($accounts))
             ->success()
             ->send();
 

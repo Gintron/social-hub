@@ -8,23 +8,29 @@ use App\Enums\AccountStatus;
 use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\SocialAccount;
+use App\Publishing\Exceptions\TokenInvalidException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
  * Given a user (or system user) token, lists the Pages it manages and stores a Page account plus the
  * linked Instagram Business account for each. IG publishing through Facebook Login uses the Page token.
+ *
+ * Facebook keeps ONE grant per user and app, and every login replaces the set of Pages it covers. A Page
+ * token is only as good as that grant: connect brand B while ticking only B's Page and brand A's stored
+ * token dies with "(#190) … permission(s) must be granted before impersonating a user's page", weeks
+ * before anything would have expired. So a login refreshes every known Page the grant still covers
+ * (whatever brand it belongs to) and reports the ones it did not, instead of leaving them to fail at
+ * publish time.
  */
 final class MetaAssetDiscovery
 {
     public function __construct(private readonly GraphClient $graph) {}
 
     /**
-     * @return list<SocialAccount>
-     *
      * @throws \App\Publishing\Exceptions\PublishException
      */
-    public function discover(Brand $brand, string $userToken): array
+    public function discover(Brand $brand, string $userToken): DiscoveryResult
     {
         $fields = 'id,name,access_token,instagram_business_account{id,username,name}';
 
@@ -41,21 +47,38 @@ final class MetaAssetDiscovery
             ->filter(fn (mixed $page): bool => is_array($page) && filled($page['id'] ?? null))
             ->keyBy(fn (array $page): string => (string) $page['id']);
 
-        // Facebook Login for Business can grant a token granular access to a Page owned by a
-        // business portfolio while omitting that Page from /me/accounts. On reconnect we already
-        // know the Page that belongs to this brand, so ask Graph for it directly. A user token that
-        // was not actually granted that asset still fails safely here.
-        $knownPageIds = SocialAccount::query()
-            ->where('brand_id', $brand->id)
+        $known = SocialAccount::query()
             ->where('platform', Platform::FacebookPage->value)
-            ->pluck('external_id')
+            ->get(['id', 'brand_id', 'external_id', 'status'])
+            // Plain collection: an empty Eloquent one stays Eloquent through map(), and its merge() wants models.
+            ->toBase();
+
+        $ownPageIds = $known
+            ->filter(fn (SocialAccount $account): bool => (int) $account->brand_id === $brand->id)
+            ->map(fn (SocialAccount $account): string => (string) $account->external_id)
             ->filter()
-            ->map(fn (mixed $id): string => (string) $id)
             ->values();
 
+        // Pages of the other brands ride on the same grant. A disabled one stays that way: it was
+        // switched off (or its data deleted) on purpose, and another brand's login must not undo it.
+        $siblingPageIds = $known
+            ->filter(fn (SocialAccount $account): bool => (int) $account->brand_id !== $brand->id && $account->status !== AccountStatus::Disabled)
+            ->map(fn (SocialAccount $account): string => (string) $account->external_id)
+            ->filter()
+            ->values();
+
+        $disabledElsewhere = $known
+            ->filter(fn (SocialAccount $account): bool => (int) $account->brand_id !== $brand->id && $account->status === AccountStatus::Disabled)
+            ->map(fn (SocialAccount $account): string => (string) $account->external_id)
+            ->values();
+
+        // Facebook Login for Business can grant a token granular access to a Page owned by a
+        // business portfolio while omitting that Page from /me/accounts. On reconnect we already
+        // know the Pages that exist, so ask Graph for them directly. A user token that was not
+        // actually granted that asset still fails safely here.
         $directPages = collect();
 
-        foreach ($knownPageIds as $pageId) {
+        foreach ($ownPageIds->merge($siblingPageIds)->unique() as $pageId) {
             if ($returnedPages->has($pageId)) {
                 continue;
             }
@@ -70,6 +93,7 @@ final class MetaAssetDiscovery
                 Log::warning('meta.discover_known_page_failed', [
                     'brand' => $brand->slug,
                     'page_id' => $pageId,
+                    'sibling' => ! $ownPageIds->containsStrict($pageId),
                     'error' => mb_substr($e->getMessage(), 0, 300),
                 ]);
             }
@@ -77,11 +101,13 @@ final class MetaAssetDiscovery
 
         $allPages = $returnedPages->union($directPages);
 
-        // Once a brand has a Page assigned, reconnecting that brand must not overwrite a sibling
-        // brand with an unrelated (and potentially unusable) Page token returned by Facebook.
-        $pages = $knownPageIds->isNotEmpty()
-            ? $allPages->only($knownPageIds)->values()->all()
-            : $allPages->values()->all();
+        // Once a brand has a Page assigned, reconnecting that brand must not pull in unrelated Pages
+        // Facebook happens to return: only this brand's Pages and the ones already known under
+        // other brands are taken. A brand without a Page yet takes what the login offers.
+        $pages = ($ownPageIds->isNotEmpty() ? $allPages->only($ownPageIds->merge($siblingPageIds)->all()) : $allPages)
+            ->reject(fn (array $page): bool => $disabledElsewhere->containsStrict((string) ($page['id'] ?? '')))
+            ->values()
+            ->all();
 
         // GraphClient only logs calls that belong to a post variant, and discovery has none — yet
         // this is the call that fails first when a Page is owned by a business portfolio or the
@@ -92,7 +118,8 @@ final class MetaAssetDiscovery
             'page_count' => count($pages),
             'returned_page_count' => $returnedPages->count(),
             'direct_page_count' => $directPages->count(),
-            'known_page_ids' => $knownPageIds->all(),
+            'known_page_ids' => $ownPageIds->all(),
+            'sibling_page_ids' => $siblingPageIds->all(),
             'pages' => array_map(
                 fn (array $page): array => [
                     'id' => $page['id'] ?? null,
@@ -166,7 +193,49 @@ final class MetaAssetDiscovery
             }
         }
 
-        return $accounts;
+        return new DiscoveryResult($accounts, $this->lostAccess($accounts));
+    }
+
+    /**
+     * Accounts this login did not touch but whose stored token it may have killed. Asked, not assumed:
+     * a token that still answers is left alone, and an answer that is not a clear "token invalid"
+     * (Graph down, a timeout) flags nothing.
+     *
+     * @param  list<SocialAccount>  $refreshed
+     * @return list<SocialAccount>
+     */
+    private function lostAccess(array $refreshed): array
+    {
+        $untouched = SocialAccount::query()->with('brand')->active()
+            ->whereIn('platform', [Platform::FacebookPage->value, Platform::InstagramBusiness->value])
+            ->whereNotNull('access_token')
+            ->whereNotIn('id', array_map(fn (SocialAccount $account): int => $account->id, $refreshed))
+            ->get();
+
+        $lost = [];
+
+        foreach ($untouched as $account) {
+            try {
+                $this->graph->get($account->external_id, ['fields' => 'id'], (string) $account->access_token, 'discover.sibling_check');
+            } catch (TokenInvalidException $e) {
+                $account->forceFill(['status' => AccountStatus::NeedsReconnect])->save();
+                $lost[] = $account;
+
+                Log::warning('meta.lost_access', [
+                    'account' => $account->id,
+                    'platform' => $account->platform->value,
+                    'external_id' => $account->external_id,
+                    'error' => mb_substr($e->getMessage(), 0, 300),
+                ]);
+            } catch (Throwable $e) {
+                Log::warning('meta.sibling_check_failed', [
+                    'account' => $account->id,
+                    'error' => mb_substr($e->getMessage(), 0, 300),
+                ]);
+            }
+        }
+
+        return $lost;
     }
 
     /**
