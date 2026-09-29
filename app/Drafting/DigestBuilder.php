@@ -94,7 +94,7 @@ final class DigestBuilder
         }
 
         $count = max(2, min($count, self::MAX_ITEMS));
-        $items = $this->pick($brand, $kind, $count, $includePosted, $tag);
+        $items = $this->pick($brand, $kind, $count, $includePosted, $tag, $scheduledAt);
 
         if ($items->count() < 2) {
             $scope = $tag !== null ? " s oznakom {$tag}" : '';
@@ -160,16 +160,19 @@ final class DigestBuilder
      * An item whose page no longer answers is passed over for the next one. Checked at publish
      * time only, one such item used to cost the whole roundup on every channel.
      *
+     * An offer must still be valid a few days after the roundup goes out (`hub.min_days_valid`),
+     * so the shopper can act on every item in it. `$postedAt` is when that is; null = now.
+     *
      * @return Collection<int, ContentItem>
      */
-    public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false, ?string $tag = null): Collection
+    public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false, ?string $tag = null, ?CarbonImmutable $postedAt = null): Collection
     {
         $since = CarbonImmutable::now()->subDays(self::REPEAT_AFTER_DAYS);
 
         $candidates = ContentItem::query()
             ->where('brand_id', $brand->id)
             ->where('kind', $kind->value)
-            ->live()
+            ->postableAt($postedAt ?? CarbonImmutable::now())
             ->when($tag !== null, fn ($query) => $query->whereJsonContains('tags', $tag))
             ->when(! $includePosted, fn ($query) => $query->notDrafted())
             ->when($includePosted, fn ($query) => $query->whereDoesntHave('postDrafts', fn ($drafts) => $drafts

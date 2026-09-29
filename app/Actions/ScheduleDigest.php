@@ -12,6 +12,7 @@ use App\Models\AutoPublishRule;
 use App\Models\Brand;
 use App\Models\PostDraft;
 use App\Models\SocialAccount;
+use App\Support\DailyPostLimit;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -31,6 +32,7 @@ final class ScheduleDigest
     public function __construct(
         private readonly DigestBuilder $builder,
         private readonly PostingSchedule $schedule,
+        private readonly DailyPostLimit $dailyLimit,
     ) {}
 
     /**
@@ -95,6 +97,14 @@ final class ScheduleDigest
         $earliest = $at->greaterThan($now) ? $at->utc() : $now->utc();
         // Two series on the same evening queue one behind the other, like any automated post.
         $scheduledAt = $this->schedule->nextSlot($brand, $this->schedule->queueAfter($brand, $earliest));
+
+        // Both days: the series' own, so a full day does not push its roundup into tomorrow's
+        // budget an hour later, and the one the slot lands on.
+        if (! $this->dailyLimit->hasRoom($brand, $at) || ! $this->dailyLimit->hasRoom($brand, $scheduledAt)) {
+            Log::info('hub.digest.skipped', ['brand' => $brand->slug, 'series' => $series->name, 'reason' => 'daily_post_limit']);
+
+            return null;
+        }
 
         try {
             return $this->builder->build(

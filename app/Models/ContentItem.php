@@ -50,6 +50,19 @@ final class ContentItem extends Model
         'source_updated_at', 'checksum', 'first_seen_at', 'last_seen_at',
     ];
 
+    /**
+     * Days an item of each kind must remain valid after its post goes out.
+     *
+     * @return array<string, int>
+     */
+    public static function minDaysValid(): array
+    {
+        return array_filter(
+            array_map('intval', (array) config('hub.min_days_valid', [])),
+            fn (int $days): bool => $days > 0,
+        );
+    }
+
     public function source(): BelongsTo
     {
         return $this->belongsTo(Source::class);
@@ -75,6 +88,49 @@ final class ContentItem extends Model
         $query->whereNull('link_dead_at')->where(function (Builder $q): void {
             $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
         });
+    }
+
+    /**
+     * Live, and — for the kinds that are offers to buy (`hub.min_days_valid`) — still valid a few
+     * days after `$postedAt`, so the shopper has time to act on it. An item with no `expires_at`
+     * is not known to end.
+     *
+     * @param  Builder<ContentItem>  $query
+     */
+    public function scopePostableAt(Builder $query, CarbonImmutable $postedAt): void
+    {
+        $query->live()->where(function (Builder $q) use ($postedAt): void {
+            $margins = self::minDaysValid();
+
+            $q->whereNotIn('kind', array_keys($margins));
+
+            foreach ($margins as $kind => $days) {
+                $needed = $postedAt->addDays($days)->utc();
+
+                $q->orWhere(fn (Builder $offers) => $offers
+                    ->where('kind', $kind)
+                    ->where(fn (Builder $ends) => $ends->whereNull('expires_at')->orWhere('expires_at', '>=', $needed)));
+            }
+        });
+    }
+
+    /**
+     * The same rule as scopePostableAt(), for an item already in hand.
+     */
+    public function isPostableAt(CarbonImmutable $postedAt): bool
+    {
+        if ($this->link_dead_at !== null) {
+            return false;
+        }
+
+        if ($this->expires_at === null) {
+            return true;
+        }
+
+        $days = self::minDaysValid()[$this->kind->value] ?? null;
+
+        return $this->expires_at->isFuture()
+            && ($days === null || $this->expires_at->greaterThanOrEqualTo($postedAt->addDays($days)));
     }
 
     /**

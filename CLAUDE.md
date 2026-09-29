@@ -66,6 +66,18 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   **format i postavke kanala** (`format`, `settings`); kampanja se slaže u panelu, ne u kodu.
   `daily_cap` je **po kanalu**: stavke idu po prioritetu, pa kanal s malim limitom (2 Reela) dobije
   najbolje, a kanal bez limita (grupe) sve. Nove objave se slažu iza već zakazanih (`PostingSchedule::queueAfter`).
+- **Ponuda mora nadživjeti objavu.** `config/hub.php` → `min_days_valid` (`deal` i `comparison`: 3 dana) —
+  kupac treba stići kupiti. Mjeri se od **termina kad objava izlazi**, ne od danas: `ContentItem::scopePostableAt()` /
+  `isPostableAt()`. `ApplyAutoPublishRules` drži svaku stavku uz termin koji će stvarno dobiti (stavka na rubu
+  prođe za 12:00, a za 12:45 ne), `DigestBuilder::pick` uz `scheduledAt`. Oglasi, članci i događaji nisu pod tim
+  pravilom (samo `live()`). Agent i MCP ga mjere od sada, jer vrijeme objave određuje čovjek; ručno odabranu
+  stavku pravilo ne blokira. Usporedba istječe s prvom ponudom (`expires_at` = najraniji `valid_to`).
+- **Dnevni limit brenda** (`brands.daily_post_limit`, `App\Support\DailyPostLimit`): koliko objava automatika smije
+  staviti na jedan lokalni dan brenda, **zajedno** — pojedinačne stavke svih izvora i pregledi. `daily_cap` pravila
+  to ne može obećati (po kanalu je, a pregledi mu ne podliježu). Broje se nacrti koji izlaze ili su izašli
+  (`Approved`…`PartiallyPublished`) po `scheduled_at`, i one koje je napravio čovjek; zaustavlja samo automatiku.
+  Kad je dan pun, `ApplyAutoPublishRules` staje, a `ScheduleDigest` preskoči seriju (danas i dan na koji pada
+  termin). Prazno = bez limita.
 - **Pregledi su automatika, ne novi kanal**: `brands.digests` je lista serija (`App\Drafting\DigestSeries`:
   dani, vrijeme, broj, vrsta, **oznaka**, format FB/IG; TikTok je uvijek video). Gradi ih `hub:auto-digest` (satno, sat
   unaprijed) kroz `App\Actions\ScheduleDigest` — svaku seriju jednom na dan (`post_drafts.digest_series`),

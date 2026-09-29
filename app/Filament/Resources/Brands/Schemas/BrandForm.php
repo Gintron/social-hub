@@ -147,6 +147,8 @@ final class BrandForm
                 Section::make('Termini objave')
                     ->description('Auto-publish raspoređuje objave unutar ovih prozora (lokalno vrijeme brenda).')
                     ->schema([
+                        TextInput::make('daily_post_limit')->label('Najviše automatskih objava dnevno')->numeric()->minValue(1)->maxValue(50)
+                            ->helperText('Ukupno za brend, po lokalnom danu objave: pojedinačne stavke i pregledi zajedno, sa svih izvora. Kad je dan pun, automatika čeka idući. Ručne objave se broje, ali ih limit ne zaustavlja. Prazno = bez limita.'),
                         Repeater::make('posting_windows')->label('')
                             ->schema([
                                 TimePicker::make('from')->label('Od')->seconds(false)->required(),

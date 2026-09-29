@@ -161,6 +161,33 @@ final class ScheduleDigestTest extends TestCase
         $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand), 'svaka serija jednom na dan');
     }
 
+    public function test_a_full_day_holds_the_digest_back_and_a_freed_place_lets_it_through(): void
+    {
+        $this->brand->forceFill(['daily_post_limit' => 2])->save();
+        $earlier = collect([1, 2])->map(fn (int $n): PostDraft => PostDraft::factory()->create([
+            'brand_id' => $this->brand->id,
+            'status' => DraftStatus::Scheduled,
+            'scheduled_at' => CarbonImmutable::parse("2026-09-14 0{$n}:00", 'UTC'),
+        ]));
+
+        $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand->refresh()));
+        $this->assertSame(0, PostDraft::query()->where('kind', PostDraft::KIND_DIGEST)->count());
+
+        $earlier->first()->forceFill(['status' => DraftStatus::Discarded])->save();
+
+        $this->assertCount(1, app(ScheduleDigest::class)->execute($this->brand->refresh()));
+    }
+
+    public function test_the_limit_is_shared_by_the_series_of_one_day(): void
+    {
+        $this->brand->forceFill([
+            'daily_post_limit' => 1,
+            'digests' => [$this->series('weekly'), $this->series('second', ['name' => 'Druga'])],
+        ])->save();
+
+        $this->assertCount(1, app(ScheduleDigest::class)->execute($this->brand->refresh()));
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>

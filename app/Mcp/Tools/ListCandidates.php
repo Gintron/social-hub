@@ -8,6 +8,7 @@ use App\Enums\ContentKind;
 use App\Mcp\Support\Ability;
 use App\Mcp\Support\Present;
 use App\Models\ContentItem;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -35,7 +36,7 @@ final class ListCandidates extends Tool
             ->with(['brand', 'source'])
             ->when(filled($validated['brand'] ?? null), fn ($query) => $query->whereHas('brand', fn ($q) => $q->where('slug', $validated['brand'])))
             ->when(filled($validated['kind'] ?? null), fn ($query) => $query->where('kind', $validated['kind']))
-            ->live()
+            ->postableAt(CarbonImmutable::now())
             ->when(! ($validated['include_drafted'] ?? false), fn ($query) => $query->notDrafted())
             ->orderByDesc('priority')
             ->orderByDesc('published_at')

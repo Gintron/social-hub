@@ -12,6 +12,7 @@ use App\Models\PostDraft;
 use App\Models\SocialAccount;
 use App\Models\Source;
 use App\Publishing\LinkPreflight;
+use App\Support\DailyPostLimit;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -47,6 +48,7 @@ final class ApplyAutoPublishRules
         private readonly CreateDraft $createDraft,
         private readonly PostingSchedule $schedule,
         private readonly LinkPreflight $links,
+        private readonly DailyPostLimit $dailyLimit,
     ) {}
 
     /**
@@ -80,27 +82,28 @@ final class ApplyAutoPublishRules
             return 0;
         }
 
-        $items = ContentItem::query()
-            ->where('source_id', $source->id)
-            ->live()
-            ->notDrafted()
-            ->orderByDesc('priority')
-            ->orderByDesc('published_at')
-            ->limit(min(self::CANDIDATE_POOL, $most * self::CANDIDATES_PER_POST))
-            ->get()
-            ->lazy()
-            ->filter(fn (ContentItem $item): bool => $this->links->isAlive($item))
-            ->take($most)
-            ->values()
-            ->collect();
+        $delay = (int) $rules->max('delay_minutes');
+        $after = $this->schedule->queueAfter($source->brand, CarbonImmutable::now()->addMinutes($delay));
+        $slots = $this->schedule->slots($source->brand, $after, $most);
+
+        // Postable at the first slot narrows the pool in the database; each item is then held to
+        // the slot it will actually get, so an offer that ends soon never lands on a late one.
+        $items = collect();
+
+        foreach ($this->candidates($source, $slots[0], $most) as $item) {
+            if ($items->count() >= $most) {
+                break;
+            }
+
+            if ($item->isPostableAt($slots[$items->count()]) && $this->links->isAlive($item)) {
+                $items->push($item);
+            }
+        }
 
         if ($items->isEmpty()) {
             return 0;
         }
 
-        $delay = (int) $rules->max('delay_minutes');
-        $after = $this->schedule->queueAfter($source->brand, CarbonImmutable::now()->addMinutes($delay));
-        $slots = $this->schedule->slots($source->brand, $after, $items->count());
         $options = $rules->mapWithKeys(fn (AutoPublishRule $rule): array => [$rule->platform->value => $rule->channelOptions()])->all();
 
         $created = 0;
@@ -109,6 +112,13 @@ final class ApplyAutoPublishRules
             $open = array_keys(array_filter($remaining, fn (int $left): bool => $left > 0));
 
             if ($open === []) {
+                break;
+            }
+
+            // The brand's own limit for the day this post would go out, on top of each rule's cap.
+            if (! $this->dailyLimit->hasRoom($source->brand, $slots[$created])) {
+                Log::info('hub.autopublish.daily_post_limit', ['source' => $source->name, 'slot' => $slots[$created]->toIso8601String()]);
+
                 break;
             }
 
@@ -151,6 +161,24 @@ final class ApplyAutoPublishRules
         }
 
         return $this->execute($source);
+    }
+
+    /**
+     * The best items of the source that are still worth posting when the first slot comes, highest
+     * priority first. More are read than are needed: some will be passed over.
+     *
+     * @return Collection<int, ContentItem>
+     */
+    private function candidates(Source $source, CarbonImmutable $firstSlot, int $needed): Collection
+    {
+        return ContentItem::query()
+            ->where('source_id', $source->id)
+            ->postableAt($firstSlot)
+            ->notDrafted()
+            ->orderByDesc('priority')
+            ->orderByDesc('published_at')
+            ->limit(min(self::CANDIDATE_POOL, $needed * self::CANDIDATES_PER_POST))
+            ->get();
     }
 
     /**

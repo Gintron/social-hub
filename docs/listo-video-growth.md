@@ -220,3 +220,36 @@ Plodine — smrznuta mrkva, toaletni papir, tjestenina; Kaufland — jogurt, pec
 Bipa — kapsule za posuđe, müsli, gel za tuširanje. Stvarni redoslijed ovisi o novim letcima,
 isteku ponuda i pravilima ponavljanja u hubu. Pregledati buduće objave i njihove metrike prije
 tvrdnje da je promjena poboljšala instalacije ili korištenje aplikacije.
+
+## Reel usporedbe: uključivanje (29. 9. 2026.)
+
+Listov feed već vraća usporedbe (`GET /v1/social-feed?kind=comparison`, `kind: comparison` u Social Feed v1):
+najjeftiniji proizvod po kg/l u letku svakog lanca, s udicom, rangom i pozivom na akciju. Hub ih crta
+istim setom slajdova kao i sve ostalo, pa je **Reel usporedbe zaseban izvor s vlastitim pravilima**, ne kod:
+
+1. **Brendovi → Listo → Termini objave → „Najviše automatskih objava dnevno“ = 3.** Limit je za cijeli brend
+   (pojedinačne stavke svih izvora i pregledi zajedno), po lokalnom danu objave. Prije toga treba proći deploy
+   s migracijom `2026_09_29_000004`.
+2. **Izvori → novi izvor** `listo-usporedbe`: brend Listo, vrsta Social Feed v1, isti URL feeda i isti ključ kao
+   postojeći izvor `listo`; u „Napredno → Postavke“ ključ `query.kind` = `comparison`. „Testiraj vezu“ mora
+   vratiti stavke vrste Usporedba.
+3. **Automatska objava** na tom izvoru, po jedno pravilo za Facebook stranicu i Instagram: format **Reel**,
+   „Najviše dnevno“ = 1, uključeno. TikTok je uvijek video: pravilo s isporukom „izravno“ i „Najviše dnevno“ = 1.
+   Uključi i „Objavi i ono što je dnevni limit zadržao“: identitet usporedbe je tema + ISO tjedan, pa ona koja
+   stigne kad je dan pun inače nikad ne izađe.
+4. Zbroj po danu: jutarnje pravilo izvora `listo` (1 po kanalu) + večernji pregled (1) + usporedba (1) = 3.
+   Ako je u panelu više jutarnjih objava ili više serija istog dana, limit ne dopušta četvrtu; redoslijed
+   popunjavanja je redoslijed stvaranja (jutarnje stavke, usporedba, pa pregledi koji se grade sat prije
+   termina), pa u tom slučaju **pregledi gube mjesto prvi**. Prije uključivanja provjeri u panelu koliko
+   serija je stvarno na istim danima.
+
+### Rok valjanosti ponude
+
+Ponuda smije u sadržaj samo ako vrijedi još **3 dana nakon objave** (`config/hub.php` → `min_days_valid`, za
+vrste `deal` i `comparison`). Rok se mjeri od termina u kojem će objava izaći: usporedba čija prva ponuda
+istječe u srijedu ne ide u ponedjeljak u 18:30, jer ponuda s `expires_at` u srijedu 23:59 UTC ne doseže četvrtak
+u 18:30. Usporedba istječe s najranijom ponudom u retcima (`expires_at` = najraniji `valid_to`), pa jedna
+ponuda pred istekom zadržava cijelu temu do sljedećeg tjedna.
+Pravilo vrijedi za pojedinačne objave, preglede (svaku stavku posebno) i kandidate koje vide agent i MCP
+alati (od trenutka upita, jer vrijeme objave tada određuje čovjek). Ručno zakazan nacrt ne blokira: čovjek
+odlučuje. Već zakazane objave se ne provjeravaju iznova.

@@ -17,6 +17,7 @@ use App\Models\SocialAccount;
 use App\Notifications\DraftsAwaitingApproval;
 use App\Rendering\TemplateRegistry;
 use App\Support\AdminNotifier;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -200,7 +201,7 @@ final class AgentDrafter
         return ContentItem::query()
             ->where('brand_id', $brand->id)
             ->when($kind !== null, fn ($query) => $query->where('kind', $kind->value))
-            ->live()
+            ->postableAt(CarbonImmutable::now())
             ->notDrafted()
             ->orderByDesc('priority')
             ->orderByDesc('published_at')

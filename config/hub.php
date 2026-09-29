@@ -19,6 +19,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Shelf life of an offer
+    |--------------------------------------------------------------------------
+    | How many days after the day of posting an item of this kind must still be valid, or
+    | automation passes over it (App\Models\ContentItem::scopePostableAt). A shopper needs time
+    | to act on an offer; a post about one that ends tomorrow sends them to a closed page.
+    | Kinds that are not listed (jobs, articles, events) are only kept from being expired.
+    */
+    'min_days_valid' => [
+        'deal' => 3,
+        'comparison' => 3,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Media rendering (spatie/browsershot)
     |--------------------------------------------------------------------------
     */
