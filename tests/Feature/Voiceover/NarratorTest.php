@@ -15,10 +15,12 @@ use App\Voiceover\Narrator;
 use App\Voiceover\VoiceoverException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use Tests\Support\FakeOpenAi;
 use Tests\Support\FakeSpeech;
 use Tests\TestCase;
 
@@ -230,6 +232,90 @@ final class NarratorTest extends TestCase
             $this->assertSame('quota_exceeded', $e->errorCode);
             $this->assertTrue($e->needsAttention());
         }
+    }
+
+    public function test_the_stress_is_marked_before_anything_is_spoken(): void
+    {
+        config()->set('openai.api_key', 'test-key');
+        config()->set('openai.model', 'gpt-6-sol');
+        Http::fake(['api.openai.com/*' => Http::response(FakeOpenAi::answer(['marks' => [
+            ['line' => 0, 'word' => 3, 'marked' => 'gráma'],
+            ['line' => 0, 'word' => 6, 'marked' => 'Kónzum'],
+        ]]))]);
+        $draft = $this->draft(voiceover: ['accents' => 'acute']);
+
+        $narration = app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
+
+        // The voice gets the line with the marks, and everything else in it as it was.
+        $this->assertSame('Kruh bijeli petsto gráma u trgovini Kónzum za jedan euro i četrdeset devet centi.', $this->requests[0]['text']);
+        $this->assertSame('Popust dvadeset pet posto. Vrijedi do tridesetog rujna.', $this->requests[1]['text']);
+
+        // One question to OpenAI for the three slides, not one for each.
+        $this->assertCount(1, Http::recorded(fn (Request $request): bool => str_contains($request->url(), 'api.openai.com')));
+
+        // What the voice was given is kept with the video, where a person who knows Croatian can check it.
+        $this->assertSame($this->requests[0]['text'], $narration->describe()['clips'][0]['spoken']);
+        $this->assertSame('Kruh bijeli 500 g u trgovini Konzum za 1,49 €.', $narration->describe()['script'][0]['text'], 'the script is still the text as written');
+    }
+
+    public function test_the_second_video_with_the_same_words_asks_openai_nothing_and_speaks_nothing(): void
+    {
+        config()->set('openai.api_key', 'test-key');
+        Http::fake(['api.openai.com/*' => Http::sequence()->push(FakeOpenAi::answer(['marks' => [['line' => 0, 'word' => 6, 'marked' => 'Kónzum']]]))]);
+        $draft = $this->draft(voiceover: ['accents' => 'acute']);
+        $scenes = app(ScenePlanner::class)->forDraft($draft);
+
+        app(Narrator::class)->narrate($draft, $scenes);
+        app(Narrator::class)->narrate($draft, $scenes);
+
+        $this->assertCount(3, $this->requests, 'three slides, said once');
+        $this->assertCount(1, Http::recorded(fn (Request $request): bool => str_contains($request->url(), 'api.openai.com')));
+    }
+
+    public function test_a_voice_is_not_made_without_the_marks(): void
+    {
+        config()->set('openai.api_key', 'test-key');
+        Http::fake(['api.openai.com/*' => Http::response(['error' => ['message' => 'Incorrect API key', 'type' => 'invalid_request_error', 'code' => 'invalid_api_key']], 401)]);
+        $draft = $this->draft(voiceover: ['accents' => 'acute']);
+
+        try {
+            app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
+            $this->fail('A line that could not be checked for stress must not be spoken.');
+        } catch (VoiceoverException $e) {
+            $this->assertSame('accents_invalid_key', $e->errorCode);
+            $this->assertTrue($e->needsAttention());
+        }
+
+        $this->assertSame([], $this->requests, 'nothing was paid for at ElevenLabs');
+        $this->assertSame(0, Voiceover::query()->count());
+    }
+
+    public function test_a_brand_that_turns_the_stress_off_needs_no_openai_at_all(): void
+    {
+        config()->set('openai.api_key', null);
+        $draft = $this->draft(voiceover: ['accents' => 'off']);
+
+        $narration = app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
+
+        $this->assertNotNull($narration);
+        $this->assertSame('Kruh bijeli petsto grama u trgovini Konzum za jedan euro i četrdeset devet centi.', $this->requests[0]['text']);
+        Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'api.openai.com'));
+    }
+
+    public function test_a_brand_that_wants_the_stress_marked_cannot_speak_without_a_key_for_it(): void
+    {
+        config()->set('openai.api_key', null);
+        $draft = $this->draft(voiceover: ['accents' => 'acute']);
+
+        try {
+            app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
+            $this->fail('Marking the stress needs OpenAI.');
+        } catch (VoiceoverException $e) {
+            $this->assertSame('not_configured', $e->errorCode);
+            $this->assertStringContainsString('OPENAI_API_KEY', $e->getMessage());
+        }
+
+        $this->assertSame([], $this->requests);
     }
 
     private function roundup(string $headline): PostDraft

@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use PHPUnit\Framework\Attributes\Group;
+use stdClass;
+use Tests\Support\FakeOpenAi;
 use Tests\Support\FakeSpeech;
 use Tests\Support\MakesVideoFixtures;
 use Tests\TestCase;
@@ -155,17 +157,65 @@ final class RenderVideoJobVoiceoverTest extends TestCase
         $this->assertSame(['Pogledaj ovu akciju.', '', 'Preuzmi Listo.'], array_column($asset->params['voiceover']['script'], 'text'));
     }
 
+    public function test_the_stress_marks_reach_the_voice_and_what_it_was_given_is_kept_with_the_video(): void
+    {
+        config()->set('openai.api_key', 'test-key');
+        FakeSpeech::fake($this->requests);
+        Http::fake([
+            'api.openai.com/*' => Http::response(FakeOpenAi::answer(['marks' => [['line' => 0, 'word' => 6, 'marked' => 'Kónzum']]])),
+            '*' => Http::response('', 404),
+        ]);
+
+        [$draft, $variant] = $this->draft(voiceover: ['accents' => 'acute']);
+
+        RenderVideoJob::dispatchSync($draft->id, [$variant->id], voiceover: true);
+
+        $asset = $variant->refresh()->media()->firstOrFail();
+        $this->assertSame('ok', $asset->params['voiceover']['status']);
+        $this->assertStringContainsString('u trgovini Kónzum za', $this->requests[0]['text']);
+        $this->assertSame($this->requests[0]['text'], $asset->params['voiceover']['clips'][0]['spoken']);
+        $this->assertSame('Kruh bijeli 500 g u trgovini Konzum za 1,49 €.', $asset->params['voiceover']['script'][0]['text'], 'the script stays as written');
+    }
+
+    public function test_when_the_stress_cannot_be_marked_the_video_comes_out_without_a_voice_and_nothing_is_paid_for(): void
+    {
+        Notification::fake();
+        config()->set('openai.api_key', 'test-key');
+        FakeSpeech::fake($this->requests);
+        Http::fake([
+            'api.openai.com/*' => Http::response(['error' => ['message' => 'You exceeded your current quota', 'type' => 'insufficient_quota', 'code' => 'insufficient_quota']], 429),
+            '*' => Http::response('', 404),
+        ]);
+
+        [$draft, $variant] = $this->draft(voiceover: ['accents' => 'acute']);
+
+        RenderVideoJob::dispatchSync($draft->id, [$variant->id], voiceover: true);
+
+        $asset = $variant->refresh()->media()->firstOrFail();
+        $this->assertTrue($asset->isVideo(), 'a post never waits for its voice');
+        $this->assertSame('failed', $asset->params['voiceover']['status']);
+        $this->assertSame('accents_quota_exceeded', $asset->params['voiceover']['code']);
+        $this->assertStringContainsString('Naglasci', $asset->params['voiceover']['error']);
+        $this->assertSame([], $this->requests, 'a line that could not be checked for stress is not spoken, so nothing is spent at ElevenLabs');
+        $this->assertEqualsWithDelta(8.8, (float) $asset->durationSeconds(), 0.1);
+
+        // The alert names OpenAI, not ElevenLabs: one cause cannot hide the other.
+        Notification::assertSentOnDemand(VoiceoverUnavailable::class, fn (VoiceoverUnavailable $notification): bool => $notification->errorCode === 'accents_quota_exceeded'
+            && str_contains(implode(' ', $notification->toMail(new stdClass)->introLines), 'OpenAI'));
+    }
+
     /**
+     * @param  array<string, mixed>  $voiceover
      * @return array{0: PostDraft, 1: PostVariant}
      */
-    private function draft(?Brand $brand = null): array
+    private function draft(?Brand $brand = null, array $voiceover = []): array
     {
         $brand ??= Brand::factory()->create([
             'slug' => 'uselisto',
             'name' => 'Listo',
             'site_url' => 'https://uselisto.com',
             'voice' => ['cta' => 'Preuzmi Listo', 'activation' => 'Dodaj prvi proizvod s letka.'],
-            'voiceover' => ['enabled' => true, 'voice_id' => 'voice-1'],
+            'voiceover' => ['enabled' => true, 'voice_id' => 'voice-1', ...$voiceover],
         ]);
 
         $item = ContentItem::factory()->for(Source::factory()->for($brand))->for($brand)->create([

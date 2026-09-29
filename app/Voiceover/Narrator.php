@@ -12,8 +12,8 @@ use Illuminate\Support\Collection;
 
 /**
  * A video's voice from start to finish: write what it says (or take what a person wrote), check it,
- * spell it out, have every line spoken — from the cache where it has been said before — and hand the
- * renderer the clips.
+ * spell it out, have the stress marked, have every line spoken — from the cache where it has been said
+ * before — and hand the renderer the clips.
  *
  * It throws VoiceoverException when it cannot. The caller decides what that costs; for a render it
  * costs the voice, never the video.
@@ -24,6 +24,7 @@ final class Narrator
         private readonly ScriptBuilder $builder,
         private readonly ScriptGuard $guard,
         private readonly SpokenCroatian $spoken,
+        private readonly Accenter $accents,
         private readonly Synthesizer $synthesizer,
     ) {}
 
@@ -93,8 +94,8 @@ final class Narrator
     {
         $settings = $brand->voiceoverSettings();
 
-        if (! $settings->canSpeak()) {
-            throw new VoiceoverException('Brend nema odabran glas ili ELEVENLABS_API_KEY nije postavljen.', 'not_configured');
+        if (($reason = $settings->whyNot()) !== null) {
+            throw new VoiceoverException("Voice-over nije moguć: {$reason}.", 'not_configured');
         }
 
         $violations = $this->guard->check($script, $items ?? [], amounts: $items !== null, trusted: $trusted);
@@ -108,6 +109,10 @@ final class Narrator
         if (array_all($spoken, fn (string $text): bool => $text === '')) {
             return null;
         }
+
+        // Asked for the whole video at once: one request, and a model that sees the roundup marks the same
+        // name the same way on every slide. Nothing is spoken (or paid for) until this has answered.
+        $spoken = $this->accents->prepare($spoken, $settings->accents);
 
         $clips = [];
 

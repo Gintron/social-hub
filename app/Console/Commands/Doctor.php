@@ -134,20 +134,29 @@ final class Doctor extends Command
             $client = app(OpenAiClient::class);
 
             if (! $client->configured()) {
-                throw new RuntimeException('OPENAI_API_KEY not set (hub:agent-draft ne može pisati objave)');
+                throw new RuntimeException('OPENAI_API_KEY not set (hub:agent-draft ne može pisati objave, a voice-over s naglascima ne može nastati)');
             }
 
-            $model = (string) config('openai.model');
+            $captions = (string) config('openai.model');
+            $accents = (string) (config('openai.accents.model') ?: $captions);
 
             // Asking for the model is free and answers the two things that go wrong: a key that does not work
             // and a model name that is not (or no longer) there.
             try {
-                $client->model($model);
+                foreach (array_unique([$captions, $accents]) as $model) {
+                    $client->model($model);
+                }
             } catch (OpenAiException $e) {
                 throw new RuntimeException($e->getMessage());
             }
 
-            return sprintf('tekstovi: %s (%s)', $model, config('openai.effort') ?: 'bez razmišljanja');
+            return sprintf(
+                'tekstovi: %s (%s), naglasci: %s (%s)',
+                $captions,
+                config('openai.effort') ?: 'bez razmišljanja',
+                $accents,
+                config('openai.accents.effort') ?: config('openai.effort') ?: 'bez razmišljanja',
+            );
         }, $ok, fatal: false);
 
         $rows[] = $this->check('ffmpeg (voice-over)', function (): string {
@@ -198,7 +207,9 @@ final class Doctor extends Command
             $silent = $enabled->reject(fn (Brand $brand): bool => $brand->voiceoverSettings()->canSpeak());
 
             if ($silent->isNotEmpty()) {
-                throw new RuntimeException('uključen, ali bez glasa ili ključa (videi ostaju bez glasa): '.$silent->pluck('slug')->implode(', '));
+                throw new RuntimeException('uključen, ali bez glasa ili ključa (videi ostaju bez glasa): '.$silent
+                    ->map(fn (Brand $brand): string => $brand->slug.' ('.$brand->voiceoverSettings()->whyNot().')')
+                    ->implode(', '));
             }
 
             return $enabled->pluck('slug')->implode(', ');

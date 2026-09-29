@@ -23,6 +23,14 @@ return [
 
     'output_format' => 'mp3_44100_128',
 
+    /*
+     * How the stress that OpenAI marks in a line (App\Voiceover\Accenter) is told to the voice: `acute` puts an
+     * acute on the stressed vowel ("kúća"), `caps` makes it a capital ("kUća" — the trick ElevenLabs suggests
+     * for models without phoneme tags), `off` sends the text as it is and asks nothing of OpenAI. A brand
+     * may choose for itself. What a voice makes of either is heard, not read: hub:voiceover-test --compare.
+     */
+    'accents' => env('VOICEOVER_ACCENTS', 'acute'),
+
     'http_timeout' => (int) env('ELEVENLABS_HTTP_TIMEOUT', 45),
 
     /*

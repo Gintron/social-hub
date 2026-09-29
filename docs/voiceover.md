@@ -1,13 +1,15 @@
-# Voice-over (ElevenLabs)
+# Voice-over (ElevenLabs, naglasci OpenAI)
 
 Videi koje hub sam slaže (Reels i TikTok) mogu imati glas koji izgovara ono što je na slajdovima:
 što je ponuda ili posao, koliko košta, koliki je popust, do kada vrijedi i što brend traži od
 gledatelja. Uključuje se jednom, na brendu; dalje hub sve radi sam — od pisanja teksta do miksa —
-i urednik ne mora ništa dirati.
+i urednik ne mora ništa dirati. Dva davatelja: **ElevenLabs** izgovara, a **OpenAI** prije toga
+označi naglaske u onome što glas treba pročitati (vidi *Naglasci*).
 
 ## Uključivanje
 
-1. **Ključ.** U okolinu poslužitelja (Ploi → Environment) dodaj `ELEVENLABS_API_KEY`. Ključ smije
+1. **Ključevi.** U okolinu poslužitelja (Ploi → Environment) dodaj `ELEVENLABS_API_KEY` i
+   `OPENAI_API_KEY` (isti OpenAI ključ piše i tekstove objava, `hub:agent-draft`). ElevenLabs ključ smije
    biti ograničen: treba mu pravo za text-to-speech, a za popis glasova i pregled potrošnje u panelu i
    pravo čitanja glasova i korisnika (bez toga hub radi, samo ID glasa zalijepiš ručno).
    Deploy skripta već radi `queue:restart`, pa novi ključ stiže do workera.
@@ -19,10 +21,13 @@ i urednik ne mora ništa dirati.
    ```bash
    ./vendor/bin/sail artisan hub:voiceover-test --brand=uselisto
    ./vendor/bin/sail artisan hub:voiceover-test "Kruh 500 g za 1,49 €" --voice=<ID>
+   ./vendor/bin/sail artisan hub:voiceover-test --brand=uselisto --compare
    ./vendor/bin/sail artisan hub:voiceover-test --list-voices
    ```
-4. **Provjera.** `hub:doctor` javlja ima li ključa, koliko je plana ostalo i koji brend traži glas koji
-   ne može imati.
+   `--compare` izgovori istu rečenicu bez oznaka naglaska i sa svakim načinom njihova zapisa, da se čuje
+   koji glas najbolje razumije (vidi *Naglasci*).
+4. **Provjera.** `hub:doctor` javlja ima li ključeva (OpenAI pita za modele koje će koristiti, ElevenLabs za
+   plan), koliko je plana ostalo i koji brend traži glas koji ne može imati.
 
 Od tog trenutka svaki novi video tog brenda — pojedinačna objava, pregled („Top 3 akcije“), serija —
 dobiva glas. Već izrađeni videi ostaju kakvi jesu dok ih netko ne renderira ponovno.
@@ -81,6 +86,51 @@ ime; kratice (`TV`, `PDV`, `USB`) čita slovima.
 glas čita krivo; prazan redak ostavlja slajd uz glazbu. Ako ništa ne izmijeniš, tekst se ponovno piše
 iz stavke (pa se promijenjena cijena na izvoru ne zamrzne). Ispod videa stoji što je glas rekao.
 
+## Naglasci
+
+Glas koji čita hrvatski tu i tamo krivo naglasi riječ: rijetku, ime, posuđenicu, riječ koja se piše
+jednako kao neka druga. To nije pravilo koje bi hub mogao zapisati; to zna model koji poznaje jezik.
+Zato **svaki redak prije izgovora prolazi kroz OpenAI** (`Accenter`), koji u riječima koje bi glas mogao
+naglasiti krivo označi naglašeni samoglasnik. Prolaze svi retci koji će se izgovoriti: napisani iz stavke,
+izmijenjeni u dijalogu, završna rečenica brenda, probni zapis u panelu.
+
+- **Model smije samo dodati oznaku.** Dobije redak već raspisan riječima i popis riječi koje smije označiti
+  (najmanje dva samoglasnika, samo slova hrvatske abecede), svaku s rednim brojem. Za riječ koju označi vrati
+  istu riječ s jednim naglaskom. Kod svaku oznaku provjerava (`Stress::position`): mora biti ista riječ, ista
+  slova i ista veličina slova, jedan naglasak, na samoglasniku. Što nije, odbaci se i riječ se izgovara kakva
+  je bila. Model ne može promijeniti što se govori: ni iznos, ni ime.
+- **Bolje ništa nego krivo.** Uputa traži da se riječ ne označi ako model nije siguran u naglasak. Označava
+  se rijetko: riječi koje se pišu jednako a naglašavaju različito (prema smislu rečenice), imena, nazivi
+  trgovina i marki, posuđenice, rjeđi oblici s naglaskom koji nije na prvom slogu.
+- **Označava se jednom.** Odgovor se sprema (`voiceover_accents`; ključ: redak, model i verzija upute), pa
+  isti redak u svakom videu dobiva iste oznake i već plaćeni isječak se ponovno nalazi. Model koji razmišlja
+  ne odgovori dvaput isto, a redak s drugačijim oznakama je za ElevenLabs drugi tekst. Cijeli video ide
+  jednim zahtjevom, i to samo s recima koje još nitko nije označio.
+- **Načini zapisa** (Brendovi → Voice-over → *Naglasci*; zadano `VOICEOVER_ACCENTS`):
+
+  | Način | Što glas dobije |
+  |---|---|
+  | `acute` | akut na naglašenom samoglasniku, „kúća“ (kako se naglasak piše u rječniku) |
+  | `caps` | veliko slovo na naglašenom samoglasniku, „kUća“ (trik koji ElevenLabs navodi za modele bez phoneme tagova, `trapezIi`) |
+  | `off` | tekst kakav jest; OpenAI se ne pita i njegov ključ nije potreban |
+
+  Oznaka se sprema kao mjesto (koja riječ, koji samoglasnik), ne kao znak, pa promjena načina ne pita model
+  ponovno.
+- **Što glas s oznakom napravi, čuje se; ne čita.** ElevenLabs za hrvatski ne navodi kako čita oznake
+  naglaska: `eleven_multilingual_v2` nema phoneme tagova, a `eleven_v4` prima IPA između kosih crta
+  (`"/ˈkuːtʃa/"`, u dokumentaciji samo engleski primjeri). Zato prije uključivanja pokreni
+  `hub:voiceover-test --brand=uselisto --compare "…rečenica s imenom ili riječi koju glas griješi…"`:
+  izgovori se bez oznaka, s akutom i s velikim slovom (jedan upit OpenAI-ju, tri isječka), pa odaberi način
+  koji zvuči najbolje, a ako nijedan nije bolji od `off`, ostavi `off`. Oznake u tekstu vidi i tko zna
+  hrvatski: naredba ih ispisuje, a ispod svakog videa piše *Glas čita: …* za svaki redak.
+- **Model i razmišljanje.** Zadano isti kao za tekstove (`OPENAI_MODEL`, `OPENAI_EFFORT`); naglasci mogu imati
+  svoje: `OPENAI_ACCENT_MODEL`, `OPENAI_ACCENT_EFFORT`. Poznavanje naglaska je prije znanje nego račun, pa
+  bi ovdje jači model trebao pomoći više od dužeg razmišljanja (pretpostavka: provjeri na svojim recima). Zahtjev je kratak (nekoliko stotina tokena), pa je cijena reda
+  veličine centa po videu, i to samo za nove retke.
+- **Bez naglasaka nema glasa.** Redak koji se nije mogao provjeriti ne izgovara se (ni ne plaća na ElevenLabsu):
+  video izlazi bez glasa i razlog piše na kanalu (`accents_*`, tablica dolje). Ako to nije željeno, na brendu
+  postavi *Naglasci: Isključeno* (ili `VOICEOVER_ACCENTS=off` za sve) i glas se izgovara bez pomoći OpenAI-ja.
+
 ## Zvuk i vrijeme
 
 - **Slajd čeka riječi.** Slajd ostaje dok se njegov redak ne izgovori (0,2 s prije, 0,4 s poslije, uz
@@ -100,7 +150,8 @@ ElevenLabs naplaćuje po znaku. Svaki izgovoreni redak sprema se u `voiceovers` 
 postavke → sha256) i **isti tekst istim glasom ne plaća se dvaput**: završna rečenica brenda izgovori se
 jednom i koristi u svakom idućem videu; ponovni render, prebacivanje kanala s Reela na TikTok ili
 isključivanje i uključivanje glasa ne koštaju ništa. Tablica je i knjiga: što je rečeno, kojim glasom,
-koliko znakova.
+koliko znakova. Ključ je tekst **s oznakama naglasaka**, pa se izmjena načina zapisa naglasaka plaća kao
+novi tekst (samo za retke koji se ponovno izgovaraju).
 
 Procjena: oko 250 znakova po videu, 10 videa dnevno ≈ 75 000 znakova mjesečno. Gornja granica po videu
 je `ELEVENLABS_MAX_CHARACTERS_PER_VIDEO` (800; oko minute govora, a Facebook Reel smije 90 s).
@@ -110,8 +161,8 @@ ista rečenica, ako zatreba, izgovori se ponovno pod istim zapisom.
 ## Kad glas ne uspije
 
 Glas je dodatak videu, nikad njegov uvjet. Nema ključa, plan je potrošen, glas više ne postoji,
-ElevenLabs je nedostupan ili je tekst odbijen — video se renderira **bez glasa** (uz glazbu, ako je
-ima) i izlazi na vrijeme. Razlog se sprema uz video (`params.voiceover`) i piše na kanalu u pregledu
+ElevenLabs ili OpenAI (naglasci) nisu dostupni ili je tekst odbijen — video se renderira **bez glasa**
+(uz glazbu, ako je ima) i izlazi na vrijeme. Razlog se sprema uz video (`params.voiceover`) i piše na kanalu u pregledu
 (*Video je bez voice-overa: …*); admin dobiva **jedan** e-mail po uzroku na 12 sati.
 
 | Šifra | Znači | Što napraviti |
@@ -122,16 +173,29 @@ ima) i izlazi na vrijeme. Razlog se sprema uz video (`params.voiceover`) i piše
 | `voice_not_found` | Glas je obrisan | Odaberi glas ponovno |
 | `unavailable`, `rate_limited` | ElevenLabs zapinje | Hub sam pokuša četiri puta (do oko 20 s čekanja); ništa |
 | `script_rejected` | Redak ne prolazi provjeru | Ispravi redak u dijalogu |
+| `accents_not_configured` | Naglasci su uključeni, a nema `OPENAI_API_KEY` | Postavi ključ ili na brendu isključi naglaske |
+| `accents_invalid_key` / `accents_forbidden` | OpenAI ključ ne vrijedi ili projekt ne smije koristiti model | Novi ključ; dopusti model u OpenAI projektu |
+| `accents_quota_exceeded` | Na OpenAI računu nema kredita | Dopuni Billing |
+| `accents_model_not_found` | Ime modela ne postoji | `OPENAI_ACCENT_MODEL` / `OPENAI_MODEL`, provjeri s `hub:doctor` |
+| `accents_unavailable`, `accents_rate_limited` | OpenAI zapinje | Hub sam pokuša četiri puta; ništa |
+| `accents_incomplete`, `accents_invalid_output`, `accents_refused`, `accents_rejected` | Model nije vratio upotrebljiv odgovor | Renderiraj ponovno; ako se ponavlja, drugi model ili naglasci isključeni |
 
 Kad se uzrok ukloni, *Renderiraj ponovno* dodaje glas (video bez glasa se ne koristi ponovno za kanal koji
 ga traži).
 
 ## Ograničenja i što provjeriti
 
-- **Poziv prema ElevenLabsu nije isproban živim ključem u razvoju.** Zahtjev je napisan po njihovoj
-  dokumentaciji (`POST /v1/text-to-speech/{voice_id}`, zaglavlje `xi-api-key`, `voice_settings`, `mp3_44100_128`)
-  i pokriven testovima s lažnim odgovorom koji je pravi MP3. Prvo što treba napraviti s pravim ključem
-  je `hub:voiceover-test`.
+- **Pozivi prema ElevenLabsu i OpenAI-ju nisu isprobani živim ključem u razvoju.** ElevenLabs zahtjev je
+  napisan po njihovoj dokumentaciji (`POST /v1/text-to-speech/{voice_id}`, zaglavlje `xi-api-key`,
+  `voice_settings`, `mp3_44100_128`) i pokriven testovima s lažnim odgovorom koji je pravi MP3. OpenAI zahtjev
+  je Responses API sa strogom JSON shemom (`text.format` `json_schema`, `strict`) i isto je pokriven lažnim
+  odgovorima. Prvo što treba napraviti s pravim ključevima je `hub:doctor` i `hub:voiceover-test --compare`.
+- **Nije provjereno da glas oznake naglaska čita kako treba.** To je pretpostavka iza cijele te značajke
+  (vidi *Naglasci*), i jedino što je može potvrditi je uho. Ako ni akut ni veliko slovo ne pomažu,
+  `off` vraća ono što je bilo prije, a treći način zapisa (IPA između kosih crta, samo `eleven_v4`) je moguće
+  nadopuniti u `Stress::render` bez ponovnog pitanja modela.
+- **Točnost naglaska je točnost modela.** Kod provjerava da je riječ ista, ne da je naglasak dobar; to znanje
+  je modelovo. Zato je uputa oprezna (ne označuj ako nisi siguran) i zato se označeno vidi ispod videa.
 - **Kvaliteta hrvatskog ovisi o glasu i modelu.** Zadano je `eleven_multilingual_v2` (hrvatski
   naveden, bolji s brojevima). `eleven_v4` i `eleven_v3` navode hrvatski, ali ih treba preslušati prije
   uključivanja (v3 ima samo tri razine stabilnosti pa ih hub zaokružuje); Flash v2.5 hrvatski ne navodi.
@@ -148,9 +212,12 @@ ga traži).
 app/Voiceover/SpokenCroatian   brojevi, iznosi, postoci, jedinice, datumi → riječi
 app/Voiceover/ScriptBuilder    piše tekst po slajdu iz stavke (Highlights, price, facts)
 app/Voiceover/ScriptGuard      iznosi i poveznice moraju biti iz stavke (CaptionValidator)
+app/Voiceover/Accenter         redak → OpenAI → provjerene oznake naglaska, spremljene u `voiceover_accents`
+app/Voiceover/Stress           mjesto naglaska kao podatak: koje riječi, provjera oznake, zapis (akut, veliko slovo)
+app/Ai/OpenAiClient            Responses API sa strogom JSON shemom; zajednički klijent za tekstove i naglaske
 app/Voiceover/ElevenLabsClient HTTP klijent, mapiranje grešaka, popis glasova, potrošnja
 app/Voiceover/Synthesizer      jedan redak → jedan isječak, keš u `voiceovers`, trajanje i glasnoća
-app/Voiceover/Narrator         tekst → provjera → izgovor → isječci po slajdu
+app/Voiceover/Narrator         tekst → provjera → izgovor → naglasci → isječci po slajdu
 app/Rendering/ScenePlanner     slajdovi videa prije renderiranja (uloga: naslovnica, udica, kartica, završni)
 app/Rendering/VideoRenderer    slajd čeka redak, redak na svom mjestu, glazba se stišava (`narration:`)
 app/Jobs/RenderVideoJob        glas nikad ne ruši render; razlog se sprema na video

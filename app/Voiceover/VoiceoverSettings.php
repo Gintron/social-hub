@@ -11,7 +11,7 @@ use App\Models\Brand;
  *
  * Everything that changes how a clip *sounds* — the voice, the model, the voice settings — goes into
  * the cache key of a spoken clip; everything that only changes what is *said* (the closing line, the
- * pronunciation list) is applied before the text is hashed, so it needs no place there.
+ * pronunciation list, the stress marks) is applied before the text is hashed, so it needs no place there.
  */
 final readonly class VoiceoverSettings
 {
@@ -26,6 +26,7 @@ final readonly class VoiceoverSettings
 
     /**
      * @param  array<string, string>  $pronunciations  Written => spoken, for this brand's names.
+     * @param  string  $accents  How the stress a model marks is told to the voice (Stress::STYLES); `off` speaks the text as it is.
      */
     public function __construct(
         public bool $enabled,
@@ -36,6 +37,7 @@ final readonly class VoiceoverSettings
         public ?string $outro,
         public array $pronunciations,
         public string $music,
+        public string $accents = Stress::ACUTE,
     ) {}
 
     /**
@@ -67,7 +69,18 @@ final readonly class VoiceoverSettings
             outro: filled($data['outro'] ?? null) ? mb_trim((string) $data['outro']) : null,
             pronunciations: $pronunciations,
             music: array_key_exists((string) ($data['music'] ?? ''), self::MUSIC_LEVELS) ? (string) $data['music'] : self::DEFAULT_MUSIC,
+            accents: in_array($data['accents'] ?? null, Stress::STYLES, true) ? (string) $data['accents'] : self::defaultAccents(),
         );
+    }
+
+    /**
+     * What a brand that has not chosen gets (`VOICEOVER_ACCENTS`).
+     */
+    public static function defaultAccents(): string
+    {
+        $default = config('elevenlabs.accents', Stress::ACUTE);
+
+        return in_array($default, Stress::STYLES, true) ? (string) $default : Stress::ACUTE;
     }
 
     public static function forBrand(Brand $brand): self
@@ -76,11 +89,25 @@ final readonly class VoiceoverSettings
     }
 
     /**
-     * A voice is chosen and there is a key to speak it with.
+     * A voice is chosen, there is a key to speak it with and — unless the brand has stress marking off —
+     * a key for the model that marks it.
      */
     public function canSpeak(): bool
     {
-        return $this->voiceId !== null && filled(config('elevenlabs.api_key'));
+        return $this->whyNot() === null;
+    }
+
+    /**
+     * What is missing for this brand to have a voice, in words for a person; null when nothing is.
+     */
+    public function whyNot(): ?string
+    {
+        return match (true) {
+            $this->voiceId === null => 'brend nema odabran glas',
+            blank(config('elevenlabs.api_key')) => 'ELEVENLABS_API_KEY nije postavljen',
+            $this->accents !== Stress::OFF && blank(config('openai.api_key')) => 'OPENAI_API_KEY nije postavljen (označuje naglaske; ili ih isključi na brendu: Voice-over → Naglasci)',
+            default => null,
+        };
     }
 
     /**

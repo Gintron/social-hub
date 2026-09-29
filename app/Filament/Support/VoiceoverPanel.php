@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Support;
 
+use App\Ai\OpenAiClient;
 use App\Models\Brand;
 use App\Models\Voiceover;
+use App\Voiceover\Accenter;
 use App\Voiceover\ElevenLabsClient;
 use App\Voiceover\SpokenCroatian;
+use App\Voiceover\Stress;
 use App\Voiceover\Synthesizer;
 use App\Voiceover\VoiceoverException;
 use App\Voiceover\VoiceoverSettings;
@@ -58,9 +61,54 @@ final class VoiceoverPanel
     }
 
     /**
-     * One line on whether the hub can speak at all and how much of the plan is left.
+     * Whether the hub can speak at all, how much of the plan is left, and whether the stress can be marked.
+     *
+     * @param  string|null  $accents  What the form has chosen for the stress; null or blank is the default.
      */
-    public static function status(): string
+    public static function status(?string $accents = null): string
+    {
+        $accents = in_array($accents, Stress::STYLES, true) ? $accents : VoiceoverSettings::defaultAccents();
+
+        return self::speech().' '.match (true) {
+            $accents === Stress::OFF => 'Naglasci su isključeni: glas čita tekst kakav jest.',
+            ! app(OpenAiClient::class)->configured() => 'OpenAI nije spojen: postavi OPENAI_API_KEY — bez njega glas ne nastaje, osim ako se naglasci isključe.',
+            default => 'OpenAI je spojen: naglaske označuje '.(config('openai.accents.model') ?: config('openai.model')).'.',
+        };
+    }
+
+    /**
+     * A sample of the voice as the brand form has it now — before it is saved — and the words as the voice
+     * receives them, so the way numbers are spelled can be checked by ear and by eye.
+     *
+     * @param  array<string, mixed>  $state  The form's `voiceover` values.
+     * @return array{clip: Voiceover, spoken: string}
+     *
+     * @throws VoiceoverException
+     */
+    public static function sample(array $state, string $text, ?Brand $brand = null): array
+    {
+        $settings = VoiceoverSettings::fromArray($state);
+
+        if (($reason = $settings->whyNot()) !== null) {
+            throw new VoiceoverException("Glas se ne može preslušati: {$reason}.", 'not_configured');
+        }
+
+        $spoken = app(SpokenCroatian::class)->speak($text, $settings->pronunciations);
+
+        if ($spoken === '') {
+            throw new VoiceoverException('Nema što izgovoriti.', 'empty_script');
+        }
+
+        // The way a video's lines go: with the stress marked, so what is heard here is what will be heard there.
+        [$spoken] = app(Accenter::class)->prepare([$spoken], $settings->accents);
+
+        return ['clip' => app(Synthesizer::class)->clip($spoken, $settings, $brand), 'spoken' => $spoken];
+    }
+
+    /**
+     * The ElevenLabs half of the status line.
+     */
+    private static function speech(): string
     {
         $client = app(ElevenLabsClient::class);
 
@@ -96,31 +144,5 @@ final class VoiceoverPanel
             number_format((int) $subscription['character_limit'], 0, ',', '.'),
             $reset,
         );
-    }
-
-    /**
-     * A sample of the voice as the brand form has it now — before it is saved — and the words as the voice
-     * receives them, so the way numbers are spelled can be checked by ear and by eye.
-     *
-     * @param  array<string, mixed>  $state  The form's `voiceover` values.
-     * @return array{clip: Voiceover, spoken: string}
-     *
-     * @throws VoiceoverException
-     */
-    public static function sample(array $state, string $text, ?Brand $brand = null): array
-    {
-        $settings = VoiceoverSettings::fromArray($state);
-
-        if (! $settings->canSpeak()) {
-            throw new VoiceoverException('Odaberi glas i postavi ELEVENLABS_API_KEY da bi se glas mogao preslušati.', 'not_configured');
-        }
-
-        $spoken = app(SpokenCroatian::class)->speak($text, $settings->pronunciations);
-
-        if ($spoken === '') {
-            throw new VoiceoverException('Nema što izgovoriti.', 'empty_script');
-        }
-
-        return ['clip' => app(Synthesizer::class)->clip($spoken, $settings, $brand), 'spoken' => $spoken];
     }
 }

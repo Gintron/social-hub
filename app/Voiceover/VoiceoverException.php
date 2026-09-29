@@ -13,7 +13,10 @@ use Throwable;
  *
  * `errorCode` is stable — `not_configured`, `invalid_key`, `missing_permissions`, `quota_exceeded`,
  * `voice_not_found`, `rate_limited`, `unavailable`, `rejected`, `empty_audio`, `script_rejected`,
- * `too_long` — so an alert can be throttled per cause and a panel can say what to do about it.
+ * `too_long` — so an alert can be throttled per cause and a panel can say what to do about it. What went
+ * wrong with the stress marks (OpenAI) has the code of the cause behind `accents_`: `accents_invalid_key`,
+ * `accents_quota_exceeded`, `accents_unavailable` … — the same word for two providers would let one alert
+ * hide the other.
  */
 final class VoiceoverException extends RuntimeException
 {
@@ -31,6 +34,9 @@ final class VoiceoverException extends RuntimeException
      */
     public function needsAttention(): bool
     {
-        return in_array($this->errorCode, ['invalid_key', 'missing_permissions', 'quota_exceeded', 'voice_not_found', 'not_configured'], true);
+        return in_array($this->errorCode, [
+            'invalid_key', 'missing_permissions', 'quota_exceeded', 'voice_not_found', 'not_configured',
+            'accents_not_configured', 'accents_invalid_key', 'accents_forbidden', 'accents_quota_exceeded', 'accents_model_not_found',
+        ], true);
     }
 }

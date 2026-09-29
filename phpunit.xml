@@ -27,7 +27,8 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
-        <!-- The tests fake OpenAI; a key from a developer's .env must never reach it. -->
+        <!-- Stress marking asks OpenAI; the tests that are about it turn it on and fake the answer. -->
+        <env name="VOICEOVER_ACCENTS" value="off"/>
         <env name="OPENAI_API_KEY" value=""/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

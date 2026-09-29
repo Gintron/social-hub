@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * What `hub:doctor` says about OpenAI: whether there is a key and whether the model the hub will use is
+ * What `hub:doctor` says about OpenAI: whether there is a key and whether the models the hub will use are
  * there for it. It asks for the models, which is free, instead of finding out on the first caption.
  */
 final class DoctorOpenAiTest extends TestCase
@@ -26,19 +26,22 @@ final class DoctorOpenAiTest extends TestCase
         config()->set('hub.media_disk', 'public');
     }
 
-    public function test_the_doctor_asks_openai_for_the_model_it_will_use(): void
+    public function test_the_doctor_asks_openai_for_the_models_it_will_use(): void
     {
         config()->set('openai.api_key', 'test-key');
         config()->set('openai.model', 'gpt-6-sol');
         config()->set('openai.effort', 'medium');
+        config()->set('openai.accents.model', 'gpt-6-astra');
+        config()->set('openai.accents.effort', 'low');
         Http::fake([
             'api.openai.com/v1/models/gpt-6-sol' => Http::response(['id' => 'gpt-6-sol']),
+            'api.openai.com/v1/models/gpt-6-astra' => Http::response(['id' => 'gpt-6-astra']),
             '*' => Http::response('', 200),
         ]);
 
-        $this->artisan('hub:doctor', ['--skip-render' => true])->expectsOutputToContain('tekstovi: gpt-6-sol (medium)');
+        $this->artisan('hub:doctor', ['--skip-render' => true])->expectsOutputToContain('tekstovi: gpt-6-sol (medium), naglasci: gpt-6-astra (low)');
 
-        Http::assertSent(fn ($request): bool => $request->url() === 'https://api.openai.com/v1/models/gpt-6-sol');
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://api.openai.com/v1/models/gpt-6-astra');
     }
 
     public function test_the_doctor_says_when_openai_has_no_key_or_no_such_model(): void

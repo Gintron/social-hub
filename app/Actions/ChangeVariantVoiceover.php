@@ -31,8 +31,11 @@ final class ChangeVariantVoiceover
 
         $variant->loadMissing('draft.brand');
 
-        if ($voiceover && ! $variant->draft?->brand?->voiceoverSettings()->canSpeak()) {
-            throw new InvalidArgumentException('Brend nema odabran glas ili ELEVENLABS_API_KEY nije postavljen (Brendovi → Voice-over).');
+        $settings = $variant->draft?->brand?->voiceoverSettings();
+        $reason = $settings === null ? 'nacrt nema brend' : $settings->whyNot();
+
+        if ($voiceover && $reason !== null) {
+            throw new InvalidArgumentException("Voice-over nije moguć: {$reason} (Brendovi → Voice-over).");
         }
 
         $variant->putSettings(['voiceover' => $voiceover ? 'on' : 'off']);

@@ -10,6 +10,7 @@ use App\Enums\ContentKind;
 use App\Filament\Support\VoiceoverPanel;
 use App\Models\Brand;
 use App\Rendering\VideoRenderer;
+use App\Voiceover\Stress;
 use App\Voiceover\VoiceoverException;
 use App\Voiceover\VoiceoverSettings;
 use Filament\Actions\Action;
@@ -28,6 +29,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
@@ -116,10 +118,10 @@ final class BrandForm
                     ->collapsible(),
 
                 Section::make('Voice-over (ElevenLabs)')
-                    ->description('Videi (Reels i TikTok) dobivaju glas koji izgovara ono što je na slajdovima: proizvod, cijenu, popust i poziv brenda. Tekst se piše iz podataka stavke, iznosi se provjeravaju kao i u tekstu objave, a glas se plaća samo jednom po rečenici. Kanal ili pravilo automatske objave mogu voice-over uključiti ili isključiti za sebe.')
+                    ->description('Videi (Reels i TikTok) dobivaju glas koji izgovara ono što je na slajdovima: proizvod, cijenu, popust i poziv brenda. Tekst se piše iz podataka stavke, iznosi se provjeravaju kao i u tekstu objave, OpenAI mu prije glasa označi naglaske, a glas se plaća samo jednom po rečenici. Kanal ili pravilo automatske objave mogu voice-over uključiti ili isključiti za sebe.')
                     ->schema([
                         Placeholder::make('voiceover_status')->label('Veza')
-                            ->content(fn (): string => VoiceoverPanel::status())
+                            ->content(fn (Get $get): string => VoiceoverPanel::status((string) $get('voiceover.accents')))
                             ->columnSpanFull(),
                         Toggle::make('voiceover.enabled')->label('Videi ovog brenda dobivaju voice-over')
                             ->default(false)
@@ -139,6 +141,18 @@ final class BrandForm
                             ->options((array) config('elevenlabs.models', []))
                             ->placeholder(fn (): string => 'Zadano ('.(config('elevenlabs.models')[config('elevenlabs.model')] ?? config('elevenlabs.model')).')')
                             ->helperText('Novi model isprobaj preslušavanjem prije nego ga uključiš.'),
+                        Select::make('voiceover.accents')->label('Naglasci')
+                            ->options([
+                                Stress::ACUTE => 'Akut na naglašenom samoglasniku (kúća)',
+                                Stress::CAPS => 'Veliko slovo na naglašenom samoglasniku (kUća)',
+                                Stress::OFF => 'Isključeno: glas čita tekst kakav jest',
+                            ])
+                            ->placeholder(fn (): string => 'Zadano ('.match (VoiceoverSettings::defaultAccents()) {
+                                Stress::CAPS => 'veliko slovo',
+                                Stress::OFF => 'isključeno',
+                                default => 'akut',
+                            }.')')
+                            ->helperText('OpenAI svaku rečenicu prije glasa pregleda i označi naglasak u riječima koje bi glas mogao krivo naglasiti (imena, posuđenice, riječi koje se pišu jednako). Ne mijenja nijednu riječ. Traži OPENAI_API_KEY. Što glas s oznakom napravi čuje se samo na uho: „Preslušaj glas“.'),
                         TextInput::make('voiceover.speed')->label('Brzina')->numeric()
                             ->minValue(VoiceoverSettings::MIN_SPEED)->maxValue(VoiceoverSettings::MAX_SPEED)->step(0.05)
                             ->placeholder('1,05')

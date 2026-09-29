@@ -172,9 +172,16 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Slajd čeka riječi, ne obrnuto.** `VideoRenderer::fitNarration` produžuje slajd na trajanje njegovog retka (nikad
   kraće nego bez glasa); glazba se ispod glasa stišava `sidechaincompress`-om. Ne rezati retke da stanu u zadano
   trajanje: Facebook Reel smije 90 s, proračun znakova (`elevenlabs.max_characters_per_video`) je ograda za to.
-- **Jedan AI provider: OpenAI.** Tekstove objava (`OpenAiCaptionWriter`) traži `App\Ai\OpenAiClient` (Responses API, stroga
-  JSON shema, `store: false`). Postavke su u `config/openai.php` (`OPENAI_*`), ime modela nikad u kodu. Novi AI poziv ide
-  kroz taj klijent i hvata `OpenAiException`. Anthropic je maknut (Marijan, 29. 09. 2026.); ne uvoditi ga natrag kao drugi put.
+- **Jedan AI provider: OpenAI.** Tekstove objava (`OpenAiCaptionWriter`) i naglaske za voice-over (`Accenter`) traži isti
+  klijent, `App\Ai\OpenAiClient` (Responses API, stroga JSON shema, `store: false`). Postavke su u `config/openai.php`
+  (`OPENAI_*`), ime modela nikad u kodu. Novi AI poziv ide kroz taj klijent i hvata `OpenAiException`. Anthropic je
+  maknut (Marijan, 29. 09. 2026.); ne uvoditi ga natrag kao drugi put.
+- **Model smije označiti naglasak, ne promijeniti riječ.** Svaki redak koji glas čita prolazi kroz `Accenter` prije
+  ElevenLabsa. Odgovor je mjesto oznake (riječ, samoglasnik), a `Stress::position` odbacuje sve što nije ista riječ s
+  jednim naglaskom na samoglasniku. Odgovor se sprema (`voiceover_accents`): model ne odgovori dvaput isto, a redak s
+  drugim oznakama je za ElevenLabs novi tekst i novi račun. OpenAI koji ne odgovori znači video bez glasa
+  (`accents_*`), ne glas bez naglasaka; jedini put bez OpenAI-ja je *Naglasci: Isključeno* na brendu. Kako glas čita
+  oznaku (akut ili veliko slovo) nije provjereno, već se bira uhom: `hub:voiceover-test --compare`.
 
 ## Rad
 

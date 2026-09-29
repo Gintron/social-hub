@@ -274,7 +274,7 @@ final class PostDraftForm
     {
         return self::canSpeak($variant)
             ? 'Glas izgovara slajdove; iznosi su iz stavke. Promjena renderira video ponovno (ranije izrađen video se ne troši).'
-            : 'Brend nema odabran glas ili nedostaje ELEVENLABS_API_KEY (Brendovi → Voice-over).';
+            : 'Voice-over nije moguć: '.($variant->draft?->brand?->voiceoverSettings()->whyNot() ?? 'nacrt nema brend').' (Brendovi → Voice-over).';
     }
 
     private static function changeVoiceover(int $id, string $path, bool $state, Set $set): void

@@ -13,6 +13,7 @@ use App\Filament\Pages\PostPerformance;
 use App\Filament\Resources\Brands\Pages\EditBrand;
 use App\Filament\Resources\PostDrafts\Pages\EditPostDraft;
 use App\Filament\Resources\Sources\Pages\EditSource;
+use App\Filament\Support\VoiceoverPanel;
 use App\Jobs\RenderVideoJob;
 use App\Models\Brand;
 use App\Models\ContentItem;
@@ -24,6 +25,7 @@ use App\Models\SocialAccount;
 use App\Models\Source;
 use App\Models\User;
 use App\Models\Voiceover;
+use App\Voiceover\Stress;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -32,6 +34,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use Livewire\Livewire;
+use Tests\Support\FakeOpenAi;
 use Tests\Support\FakeSpeech;
 use Tests\TestCase;
 
@@ -125,6 +128,7 @@ final class VoiceoverPanelTest extends TestCase
                 'voiceover.speed' => 1.1,
                 'voiceover.music' => 'quiet',
                 'voiceover.outro' => 'Preuzmi Listo besplatno.',
+                'voiceover.accents' => 'caps',
                 'voiceover.pronunciations' => [['find' => 'SPAR', 'say' => 'Spar'], ['find' => 'DM', 'say' => 'de em']],
             ])
             ->call('save')
@@ -133,6 +137,7 @@ final class VoiceoverPanelTest extends TestCase
         $settings = $brand->refresh()->voiceoverSettings();
         $this->assertSame('eleven_v4', $settings->model);
         $this->assertSame(1.1, $settings->speed);
+        $this->assertSame('caps', $settings->accents);
         $this->assertSame(-20.0, $settings->musicGainDb());
         $this->assertSame('Preuzmi Listo besplatno.', $settings->outro);
         $this->assertSame(['SPAR' => 'Spar', 'DM' => 'de em'], $settings->pronunciations);
@@ -158,6 +163,64 @@ final class VoiceoverPanelTest extends TestCase
         // The sample is reached through the panel's login, not from a public disk.
         $clip = Voiceover::query()->firstOrFail();
         $this->get(route('voiceovers.audio', $clip))->assertOk()->assertHeader('Content-Type', 'audio/mpeg');
+    }
+
+    public function test_a_voice_is_heard_the_way_a_video_would_hear_it_with_the_stress_marked(): void
+    {
+        config()->set('elevenlabs.api_key', 'test-key');
+        config()->set('openai.api_key', 'test-key');
+        $requests = [];
+        FakeSpeech::fake($requests);
+        Http::fake([
+            'api.openai.com/*' => Http::response(FakeOpenAi::answer(['marks' => [['line' => 0, 'word' => 2, 'marked' => 'Kónzumu']]])),
+            '*' => Http::response('', 404),
+        ]);
+        $brand = Brand::factory()->create();
+
+        Livewire::test(EditBrand::class, ['record' => $brand->getRouteKey()])
+            ->fillForm(['voiceover.voice_id' => 'voice-unsaved', 'voiceover.accents' => 'acute'])
+            ->callAction(TestAction::make('previewVoiceover')->schemaComponent('voiceoverActions'), ['text' => 'Kruh u Konzumu.'])
+            ->assertNotified('Probni zapis je spreman');
+
+        // The sample is spoken from the line as a video's would be: the marks are in it.
+        $this->assertCount(1, $requests);
+        $this->assertSame('Kruh u Kónzumu.', $requests[0]['text']);
+    }
+
+    public function test_a_voice_cannot_be_heard_with_the_stress_on_and_no_key_for_it_and_the_form_says_so(): void
+    {
+        config()->set('elevenlabs.api_key', 'test-key');
+        config()->set('openai.api_key', null);
+        Http::fake(['*' => Http::response('', 404)]);
+        $brand = Brand::factory()->create();
+
+        Livewire::test(EditBrand::class, ['record' => $brand->getRouteKey()])
+            ->fillForm(['voiceover.voice_id' => 'voice-unsaved', 'voiceover.accents' => 'acute'])
+            ->assertSee('Naglasci')
+            ->callAction(TestAction::make('previewVoiceover')->schemaComponent('voiceoverActions'), ['text' => 'Bok'])
+            ->assertNotified('Glas nije izgovoren');
+
+        // The form itself looks at ElevenLabs (voices, plan); a sample is neither asked for nor spoken.
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'text-to-speech') || str_contains($request->url(), 'api.openai.com'));
+    }
+
+    public function test_the_status_line_says_whether_the_stress_can_be_marked(): void
+    {
+        config()->set('elevenlabs.api_key', null);
+        config()->set('openai.api_key', null);
+        config()->set('openai.model', 'gpt-6-sol');
+        config()->set('openai.accents.model', null);
+
+        $this->assertStringContainsString('Naglasci su isključeni', VoiceoverPanel::status(Stress::OFF));
+        $this->assertStringContainsString('OPENAI_API_KEY', VoiceoverPanel::status(Stress::ACUTE));
+        $this->assertStringContainsString('OPENAI_API_KEY', VoiceoverPanel::status(Stress::CAPS));
+
+        config()->set('openai.api_key', 'test-key');
+        config()->set('openai.accents.model', 'gpt-6-astra');
+
+        $this->assertStringContainsString('OpenAI je spojen: naglaske označuje gpt-6-astra', VoiceoverPanel::status(Stress::ACUTE));
+        // What the form has not chosen is what the environment says (off in the tests).
+        $this->assertStringContainsString('Naglasci su isključeni', VoiceoverPanel::status(''));
     }
 
     public function test_only_a_hub_admin_can_listen_to_a_clip(): void
@@ -233,7 +296,7 @@ final class VoiceoverPanelTest extends TestCase
         [$draft, $tiktok] = $this->draft(['enabled' => true, 'voice_id' => null]);
 
         Livewire::test(EditPostDraft::class, ['record' => $draft->getRouteKey()])
-            ->assertSee('Brend nema odabran glas')
+            ->assertSee('brend nema odabran glas')
             ->assertSet("data.channels.v{$tiktok->id}.voiceover", false);
 
         Queue::assertNothingPushed();
@@ -333,13 +396,18 @@ final class VoiceoverPanelTest extends TestCase
 
         $asset->update(['params' => ['voiceover' => ['status' => 'ok', 'characters' => 96, 'script' => [
             ['role' => 'hook', 'text' => 'Kruh bijeli za 1,49 €.'], ['role' => 'card', 'text' => ''], ['role' => 'closing', 'text' => 'Preuzmi Listo.'],
+        ], 'clips' => [
+            ['voiceover_id' => 1, 'seconds' => 3.1, 'spoken' => 'Kruh bijeli za jedan euro i četrdeset devet centi.'], null, ['voiceover_id' => 2, 'seconds' => 2.0, 'spoken' => 'Preuzmi Lísto.'],
         ]]]]);
 
         Livewire::test(EditPostDraft::class, ['record' => $draft->getRouteKey()])
             ->assertDontSee('Video je bez voice-overa')
             ->assertSee('Voice-over · 96 znakova')
             ->assertSee('Kruh bijeli za 1,49 €.')
-            ->assertSee('slajd samo uz glazbu');
+            ->assertSee('slajd samo uz glazbu')
+            // What the voice was given, with its numbers spelled out and its stress marked: where a wrong mark is caught.
+            ->assertSee('Glas čita: Preuzmi Lísto.')
+            ->assertSee('Glas čita: Kruh bijeli za jedan euro i četrdeset devet centi.');
     }
 
     public function test_the_performance_page_compares_narrated_and_plain_videos_once_there_is_something_to_compare(): void

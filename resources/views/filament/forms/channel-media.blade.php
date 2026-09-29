@@ -100,7 +100,13 @@
             <summary style="cursor:pointer;font-weight:600">🎙 Voice-over · {{ $voice['characters'] ?? 0 }} znakova</summary>
             <ol style="margin:6px 0 0 18px;padding:0">
               @foreach((array) ($voice['script'] ?? []) as $line)
-                <li style="{{ ($line['text'] ?? '') === '' ? 'opacity:.5' : '' }}">{{ ($line['text'] ?? '') !== '' ? $line['text'] : '(slajd samo uz glazbu)' }}</li>
+                {{-- What the voice was given, with numbers spelled out and the stress marked: the place to catch a wrong mark. --}}
+                @php($said = data_get($voice, 'clips.'.$loop->index.'.spoken'))
+                <li style="{{ ($line['text'] ?? '') === '' ? 'opacity:.5' : '' }}">{{ ($line['text'] ?? '') !== '' ? $line['text'] : '(slajd samo uz glazbu)' }}
+                  @if(filled($said))
+                    <div style="opacity:.6;font-size:11px">Glas čita: {{ $said }}</div>
+                  @endif
+                </li>
               @endforeach
             </ol>
           </details>

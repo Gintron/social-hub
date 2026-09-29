@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
+use Tests\Support\FakeOpenAi;
 use Tests\Support\FakeSpeech;
 use Tests\TestCase;
 
@@ -57,6 +58,63 @@ final class VoiceoverCommandsTest extends TestCase
 
         $this->assertCount(1, $requests);
         $this->assertSame(1.1, $requests[0]['voice_settings']['speed']);
+    }
+
+    public function test_compare_speaks_the_line_in_every_style_of_stress_marking_and_asks_openai_once(): void
+    {
+        config()->set('elevenlabs.api_key', 'test-key');
+        config()->set('openai.api_key', 'test-key');
+        $requests = [];
+        FakeSpeech::fake($requests);
+        Http::fake(['api.openai.com/*' => Http::sequence()->push(FakeOpenAi::answer(['marks' => [['line' => 0, 'word' => 5, 'marked' => 'Kónzum']]]))]);
+        Brand::factory()->create(['slug' => 'uselisto', 'voiceover' => ['enabled' => true, 'voice_id' => 'voice-1']]);
+
+        $this->artisan('hub:voiceover-test', ['text' => 'Kruh 500 g u trgovini Konzum.', '--brand' => 'uselisto', '--compare' => true])
+            ->expectsOutputToContain('Glas čita (off): Kruh petsto grama u trgovini Konzum.')
+            ->expectsOutputToContain('Glas čita (acute): Kruh petsto grama u trgovini Kónzum.')
+            ->expectsOutputToContain('Glas čita (caps): Kruh petsto grama u trgovini KOnzum.')
+            ->assertSuccessful();
+
+        // Three clips to compare by ear; the question to OpenAI was asked once.
+        $this->assertSame(
+            ['Kruh petsto grama u trgovini Konzum.', 'Kruh petsto grama u trgovini Kónzum.', 'Kruh petsto grama u trgovini KOnzum.'],
+            array_column($requests, 'text'),
+        );
+        $this->assertCount(1, Http::recorded(fn ($request): bool => str_contains($request->url(), 'api.openai.com')));
+    }
+
+    public function test_the_style_of_the_stress_can_be_chosen_on_the_command_line(): void
+    {
+        config()->set('elevenlabs.api_key', 'test-key');
+        config()->set('openai.api_key', 'test-key');
+        $requests = [];
+        FakeSpeech::fake($requests);
+        Http::fake(['api.openai.com/*' => Http::response(FakeOpenAi::answer(['marks' => [['line' => 0, 'word' => 0, 'marked' => 'Kónzum']]]))]);
+
+        $this->artisan('hub:voiceover-test', ['text' => 'Konzum bijeli.', '--voice' => 'voice-cli', '--accents' => 'caps'])
+            ->expectsOutputToContain('Glas čita: KOnzum bijeli.')
+            ->assertSuccessful();
+
+        $this->artisan('hub:voiceover-test', ['text' => 'Konzum bijeli.', '--voice' => 'voice-cli', '--accents' => 'sideways'])
+            ->expectsOutputToContain('--accents')
+            ->assertFailed();
+
+        $this->assertSame(['KOnzum bijeli.'], array_column($requests, 'text'));
+    }
+
+    public function test_the_brands_choice_of_style_is_the_default_and_a_missing_openai_key_is_said_plainly(): void
+    {
+        config()->set('elevenlabs.api_key', 'test-key');
+        config()->set('openai.api_key', null);
+        $requests = [];
+        FakeSpeech::fake($requests);
+        Brand::factory()->create(['slug' => 'uselisto', 'voiceover' => ['enabled' => true, 'voice_id' => 'voice-1', 'accents' => 'acute']]);
+
+        $this->artisan('hub:voiceover-test', ['text' => 'Konzum bijeli.', '--brand' => 'uselisto'])
+            ->expectsOutputToContain('OPENAI_API_KEY nije postavljen. [accents_not_configured]')
+            ->assertFailed();
+
+        $this->assertSame([], $requests, 'nothing is spoken that could not be checked');
     }
 
     public function test_a_voice_id_on_the_command_line_stands_in_for_the_brands(): void

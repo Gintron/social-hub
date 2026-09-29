@@ -39,7 +39,7 @@ Predložak je `.env.example`. Obavezno:
 | `HUB_CHROME_PATH` | prazno (Puppeteerov cache) ili puna putanja do Chromea |
 | `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_VERSION` | iz Meta developer dashboarda |
 | `MAIL_*` | za notifikacije (odobrenja, greške, tokeni) |
-| `OPENAI_API_KEY` | agent koji piše tekstove (`hub:agent-draft`); `OPENAI_MODEL` (zadano `gpt-6-sol`) i `OPENAI_EFFORT` po želji ([config/openai.php](../config/openai.php)) |
+| `OPENAI_API_KEY` | agent koji piše tekstove (`hub:agent-draft`) i naglasci za voice-over; `OPENAI_MODEL` (zadano `gpt-6-sol`), `OPENAI_EFFORT`, `OPENAI_ACCENT_MODEL` po želji ([config/openai.php](../config/openai.php)) |
 | `ELEVENLABS_API_KEY` | voice-over videa (opcionalno; [voiceover.md](voiceover.md)) |
 
 ## 4. Deploy skripta (Ploi → Site → Deploy script)
@@ -177,8 +177,9 @@ pisati nacrte, odobravati ili objavljivati. Detalji i primjer konfiguracije klij
 `ffmpeg` mora postojati na stroju (`sudo apt-get install -y ffmpeg`); bez njega slike rade, a
 `hub:render-video` padne tek kad ga netko pozove.
 
-**Voice-over** (opcionalno, [voiceover.md](voiceover.md)): `ELEVENLABS_API_KEY` u okolini, glas i prekidač
-na brendu u panelu. Traži ffmpeg 4.4 ili noviji (Ubuntu 22.04 ima 4.4, 24.04 ima 6.1); `hub:doctor` to
+**Voice-over** (opcionalno, [voiceover.md](voiceover.md)): `ELEVENLABS_API_KEY` i `OPENAI_API_KEY` u okolini
+(OpenAI označuje naglaske; bez njega glas ne nastaje, osim ako se na brendu isključe naglasci), glas i
+prekidač na brendu u panelu. Traži ffmpeg 4.4 ili noviji (Ubuntu 22.04 ima 4.4, 24.04 ima 6.1); `hub:doctor` to
 provjerava. Zvučni isječci idu na privatni disk (`storage/app/private/voiceovers`), koji deploy ne smije
 brisati ako ne želiš ponovno plaćati iste rečenice; `hub:prune-voiceovers` ih čisti tjedno.
 

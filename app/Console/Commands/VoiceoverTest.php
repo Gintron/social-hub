@@ -6,8 +6,10 @@ namespace App\Console\Commands;
 
 use App\Models\Brand;
 use App\Models\Voiceover;
+use App\Voiceover\Accenter;
 use App\Voiceover\ElevenLabsClient;
 use App\Voiceover\SpokenCroatian;
+use App\Voiceover\Stress;
 use App\Voiceover\Synthesizer;
 use App\Voiceover\VoiceoverException;
 use App\Voiceover\VoiceoverSettings;
@@ -19,11 +21,13 @@ final class VoiceoverTest extends Command
         {text? : What to say (default: a sample deal line)}
         {--brand= : Brand slug: its voice, model, speed and pronunciations}
         {--voice= : Voice id, instead of the brand\'s}
+        {--accents= : How the stress is told to the voice: acute, caps or off (default: the brand\'s)}
+        {--compare : Speak the line in every style of stress marking, to hear which one the voice makes the most of}
         {--list-voices : List the account\'s voices and stop}';
 
     protected $description = 'Speak one line with ElevenLabs the way a video would, and show what the voice received';
 
-    public function handle(ElevenLabsClient $client, SpokenCroatian $spoken, Synthesizer $synthesizer): int
+    public function handle(ElevenLabsClient $client, SpokenCroatian $spoken, Accenter $accenter, Synthesizer $synthesizer): int
     {
         if (! $client->configured()) {
             $this->error('ELEVENLABS_API_KEY nije postavljen (.env).');
@@ -45,6 +49,7 @@ final class VoiceoverTest extends Command
                     'model' => $settings->model,
                     'speed' => $settings->speed,
                     'stability' => $settings->stability,
+                    'accents' => $settings->accents,
                     'pronunciations' => array_map(fn (string $find, string $say): array => ['find' => $find, 'say' => $say], array_keys($settings->pronunciations), $settings->pronunciations),
                 ]);
             }
@@ -64,8 +69,23 @@ final class VoiceoverTest extends Command
                 return self::FAILURE;
             }
 
-            $cached = Voiceover::query()->where('hash', Synthesizer::hash($words, $settings))->exists();
-            $clip = $synthesizer->clip($words, $settings, $brand);
+            $requested = filled($this->option('accents')) ? (string) $this->option('accents') : $settings->accents;
+
+            if (! in_array($requested, Stress::STYLES, true)) {
+                $this->error('--accents mora biti acute, caps ili off.');
+
+                return self::FAILURE;
+            }
+
+            $styles = $this->option('compare') ? Stress::STYLES : [$requested];
+            $rows = [];
+
+            foreach ($styles as $style) {
+                // The marks are asked for once and kept, so comparing three styles costs three clips and one request.
+                $said = $accenter->prepare([$words], $style)[0];
+                $cached = Voiceover::query()->where('hash', Synthesizer::hash($said, $settings))->exists();
+                $rows[] = [$style, $said, $synthesizer->clip($said, $settings, $brand), $cached];
+            }
         } catch (VoiceoverException $e) {
             $this->error($e->getMessage().' ['.$e->errorCode.']');
 
@@ -73,18 +93,26 @@ final class VoiceoverTest extends Command
         }
 
         $this->line('Napisano:  '.$text);
-        $this->line('Glas čita: '.$words);
+
+        foreach ($rows as [$style, $said]) {
+            $this->line(($this->option('compare') ? 'Glas čita ('.$style.'): ' : 'Glas čita: ').$said);
+        }
+
         $this->newLine();
-        $this->table(['Glas', 'Model', 'Brzina', 'Znakova', 'Trajanje', 'Glasnoća', 'Izvor'], [[
+        $this->table(['Naglasci', 'Glas', 'Model', 'Brzina', 'Znakova', 'Trajanje', 'Glasnoća', 'Izvor'], array_map(fn (array $row): array => [
+            $row[0],
             $settings->voiceId,
             $settings->model,
             $settings->voiceSettings()['speed'],
-            $clip->characters,
-            number_format($clip->durationSeconds(), 1, ',', '').' s',
-            $clip->loudness_lufs === null ? '—' : number_format($clip->loudness_lufs, 1, ',', '').' LUFS',
-            $cached ? 'iz keša (nije naplaćeno)' : 'ElevenLabs (naplaćeno)',
-        ]]);
-        $this->line('Zapis: '.$clip->absolutePath());
+            $row[2]->characters,
+            number_format($row[2]->durationSeconds(), 1, ',', '').' s',
+            $row[2]->loudness_lufs === null ? '—' : number_format($row[2]->loudness_lufs, 1, ',', '').' LUFS',
+            $row[3] ? 'iz keša (nije naplaćeno)' : 'ElevenLabs (naplaćeno)',
+        ], $rows));
+
+        foreach ($rows as [$style, , $clip]) {
+            $this->line(($this->option('compare') ? $style.': ' : 'Zapis: ').$clip->absolutePath());
+        }
 
         return self::SUCCESS;
     }

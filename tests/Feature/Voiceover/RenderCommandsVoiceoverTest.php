@@ -98,7 +98,7 @@ final class RenderCommandsVoiceoverTest extends TestCase
         $brand->update(['voiceover' => ['enabled' => true, 'voice_id' => null]]);
 
         $this->artisan('hub:render-video', ['--brand' => 'uselisto', '--kind' => 'deal', '--count' => 1, '--voiceover' => true])
-            ->expectsOutputToContain('nije postavljen')
+            ->expectsOutputToContain('brend nema odabran glas')
             ->assertFailed();
     }
 
