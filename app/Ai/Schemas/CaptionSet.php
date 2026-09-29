@@ -4,40 +4,82 @@ declare(strict_types=1);
 
 namespace App\Ai\Schemas;
 
-use Anthropic\Lib\Attributes\Constrained;
-use Anthropic\Lib\Concerns\StructuredOutputModelTrait;
-use Anthropic\Lib\Contracts\StructuredOutputModel;
+use App\Ai\CaptionWriterException;
 
 /**
  * What the drafting agent must return: one caption per network, plus the bits a post needs around
- * them. Hashtags are one space-separated string rather than a list because an untyped array leaves
- * the generated JSON schema without an item type.
+ * them. Hashtags are one space-separated string rather than a list because that is what a model
+ * writes most reliably and what `hashtagList()` needs.
+ *
+ * `schema()` is what OpenAI holds the model to while it writes; `fromArray()` is the way back, and
+ * refuses anything that is not that shape.
  */
-final class CaptionSet implements StructuredOutputModel
+final class CaptionSet
 {
-    use StructuredOutputModelTrait;
+    /** The fields and what each is for — the descriptions are read by the model as part of the schema. */
+    private const FIELDS = [
+        'facebook' => 'Tekst za Facebook objavu. Hrvatski, bez markdowna. Smije sadržavati poveznicu iz podataka.',
+        'instagram' => 'Tekst za Instagram objavu. Hrvatski, bez poveznica (na Instagramu nisu klikabilne), najviše 2200 znakova.',
+        'tiktok' => 'Tekst za TikTok. Hrvatski, bez poveznica. Prvi red je naslov do 90 znakova: posao i najvažniji podatak (iznos, mjesto). Zatim kratak opis. Bez hashtagova.',
+        'hashtags' => 'Hashtagovi odvojeni razmakom, s ljestvicom, mala slova, najviše 30. Bez dijakritike.',
+        'alt_text' => 'Kratki opis slike za osobe koje ne vide sliku, do 300 znakova.',
+        'note' => 'Ako neki podatak nedostaje ili je sumnjiv, napiši to ovdje. Inače prazno.',
+    ];
 
-    #[Constrained(description: 'Tekst za Facebook objavu. Hrvatski, bez markdowna. Smije sadržavati poveznicu iz podataka.')]
     public string $facebook;
 
-    #[Constrained(description: 'Tekst za Instagram objavu. Hrvatski, bez poveznica (na Instagramu nisu klikabilne), najviše 2200 znakova.')]
     public string $instagram;
 
-    #[Constrained(description: 'Tekst za TikTok. Hrvatski, bez poveznica. Prvi red je naslov do 90 znakova: posao i najvažniji podatak (iznos, mjesto). Zatim kratak opis. Bez hashtagova.')]
     public string $tiktok;
 
-    #[Constrained(description: 'Hashtagovi odvojeni razmakom, s ljestvicom, mala slova, najviše 30. Bez dijakritike.')]
     public string $hashtags;
 
-    #[Constrained(description: 'Kratki opis slike za osobe koje ne vide sliku, do 300 znakova.')]
     public string $alt_text;
 
-    #[Constrained(description: 'Ako neki podatak nedostaje ili je sumnjiv, napiši to ovdje. Inače prazno.')]
     public ?string $note = null;
 
-    public static function description(): ?string
+    /**
+     * A strict JSON schema: every field required (the note may be null) and nothing else allowed.
+     *
+     * @return array<string, mixed>
+     */
+    public static function schema(): array
     {
-        return 'Tekstovi objave za jednu stavku sadržaja.';
+        $properties = [];
+
+        foreach (self::FIELDS as $field => $description) {
+            $properties[$field] = ['type' => $field === 'note' ? ['string', 'null'] : 'string', 'description' => $description];
+        }
+
+        return [
+            'type' => 'object',
+            'description' => 'Tekstovi objave za jednu stavku sadržaja.',
+            'properties' => $properties,
+            'required' => array_keys($properties),
+            'additionalProperties' => false,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     *
+     * @throws CaptionWriterException
+     */
+    public static function fromArray(array $data): self
+    {
+        $set = new self;
+
+        foreach (['facebook', 'instagram', 'tiktok', 'hashtags', 'alt_text'] as $field) {
+            if (! is_string($data[$field] ?? null)) {
+                throw new CaptionWriterException("Model nije vratio očekivanu strukturu (nedostaje „{$field}“).");
+            }
+
+            $set->{$field} = $data[$field];
+        }
+
+        $set->note = is_string($data['note'] ?? null) ? $data['note'] : null;
+
+        return $set;
     }
 
     /**

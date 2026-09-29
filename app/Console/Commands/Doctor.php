@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Ai\OpenAiClient;
+use App\Ai\OpenAiException;
 use App\Models\Brand;
 use App\Rendering\ImageRenderer;
 use App\Voiceover\ElevenLabsClient;
@@ -128,12 +130,24 @@ final class Doctor extends Command
             return 'app id + secret present, '.config('meta.graph_version');
         }, $ok, fatal: false);
 
-        $rows[] = $this->check('AI (Anthropic) config', function (): string {
-            if (blank(config('hub.ai.api_key'))) {
-                throw new RuntimeException('ANTHROPIC_API_KEY not set (hub:agent-draft ne može pisati objave)');
+        $rows[] = $this->check('AI (OpenAI)', function (): string {
+            $client = app(OpenAiClient::class);
+
+            if (! $client->configured()) {
+                throw new RuntimeException('OPENAI_API_KEY not set (hub:agent-draft ne može pisati objave)');
             }
 
-            return config('hub.ai.model').', effort='.config('hub.ai.effort');
+            $model = (string) config('openai.model');
+
+            // Asking for the model is free and answers the two things that go wrong: a key that does not work
+            // and a model name that is not (or no longer) there.
+            try {
+                $client->model($model);
+            } catch (OpenAiException $e) {
+                throw new RuntimeException($e->getMessage());
+            }
+
+            return sprintf('tekstovi: %s (%s)', $model, config('openai.effort') ?: 'bez razmišljanja');
         }, $ok, fatal: false);
 
         $rows[] = $this->check('ffmpeg (voice-over)', function (): string {

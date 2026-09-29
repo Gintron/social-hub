@@ -39,7 +39,7 @@ Predložak je `.env.example`. Obavezno:
 | `HUB_CHROME_PATH` | prazno (Puppeteerov cache) ili puna putanja do Chromea |
 | `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_VERSION` | iz Meta developer dashboarda |
 | `MAIL_*` | za notifikacije (odobrenja, greške, tokeni) |
-| `ANTHROPIC_API_KEY` | faza 4 (agent) |
+| `OPENAI_API_KEY` | agent koji piše tekstove (`hub:agent-draft`); `OPENAI_MODEL` (zadano `gpt-6-sol`) i `OPENAI_EFFORT` po želji ([config/openai.php](../config/openai.php)) |
 | `ELEVENLABS_API_KEY` | voice-over videa (opcionalno; [voiceover.md](voiceover.md)) |
 
 ## 4. Deploy skripta (Ploi → Site → Deploy script)
@@ -162,8 +162,10 @@ Ugovor za stranice: [`social-feed-v1.md`](social-feed-v1.md), referentna impleme
 
 ## 10. AI agent i MCP (opcionalno)
 
-`ANTHROPIC_API_KEY` u okolini uključuje `hub:agent-draft` — jutarnji prolaz koji piše tekstove za nove
-kandidate i ostavlja ih na odobrenje. Uključuje se još i po brendu (Brend → Glas brenda → „AI piše
+`OPENAI_API_KEY` u okolini uključuje `hub:agent-draft` — jutarnji prolaz koji piše tekstove za nove
+kandidate i ostavlja ih na odobrenje. (Prijelaz s Anthropica: ukloni `ANTHROPIC_API_KEY`, `HUB_AI_MODEL`,
+`HUB_AI_EFFORT` i `HUB_AI_MAX_TOKENS` iz okoline — hub ih više ne čita, a ime modela iz njih ne bi
+vrijedilo kod OpenAI-ja.) Uključuje se još i po brendu (Brend → Glas brenda → „AI piše
 nacrte"); bez toga scheduler prolazi bez posla.
 
 MCP server je na `https://hub.<domena>/mcp` iza Sanctum tokena. Token izdaješ s

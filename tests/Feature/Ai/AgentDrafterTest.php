@@ -37,7 +37,7 @@ final class AgentDrafterTest extends TestCase
         Queue::fake();
         Notification::fake();
         config()->set('hub.admin_emails', ['ops@example.test']);
-        config()->set('hub.ai.api_key', 'test-key');
+        config()->set('openai.api_key', 'test-key');
 
         $this->writer = new FakeCaptionWriter;
         $this->app->instance(CaptionWriter::class, $this->writer);
@@ -161,7 +161,7 @@ final class AgentDrafterTest extends TestCase
         SocialAccount::factory()->for($brand)->create();
 
         $this->writer->queue(
-            new CaptionWriterException('Claude API: 529 overloaded'),
+            new CaptionWriterException('OpenAI 529: overloaded'),
             FakeCaptionWriter::captions(facebook: 'Drugi je prošao.', instagram: 'Drugi.'),
         );
 
@@ -215,10 +215,10 @@ final class AgentDrafterTest extends TestCase
 
     public function test_the_command_refuses_without_an_api_key(): void
     {
-        config()->set('hub.ai.api_key', null);
+        config()->set('openai.api_key', null);
 
         $this->artisan('hub:agent-draft')
-            ->expectsOutputToContain('ANTHROPIC_API_KEY')
+            ->expectsOutputToContain('OPENAI_API_KEY')
             ->assertFailed();
     }
 

@@ -55,7 +55,7 @@ final class AgentDrafter
         $run = AgentRun::query()->create([
             'brand_id' => $brand->id,
             'type' => 'caption-draft',
-            'model' => (string) config('hub.ai.model'),
+            'model' => (string) config('openai.model'),
             'status' => 'running',
             'input_summary' => $items->count().' kandidata'.($kind !== null ? " ({$kind->value})" : ''),
         ]);

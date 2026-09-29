@@ -4,62 +4,42 @@ declare(strict_types=1);
 
 namespace App\Ai;
 
-use Anthropic\Client;
-use Anthropic\Core\Exceptions\APIStatusException;
 use App\Ai\Schemas\CaptionSet;
 use App\Models\Brand;
 use App\Models\ContentItem;
-use Throwable;
 
 /**
- * Captions from Claude, constrained by a JSON schema and a system prompt that carries the brand's
- * voice. The prompt is the stable part of the request and is cached; the item is the variable part.
+ * Captions from OpenAI, held to a JSON schema and a system prompt that carries the brand's voice. The
+ * prompt is the stable part of the request — identical for every item of a brand, which is what OpenAI's
+ * automatic prompt caching needs — and the item is the variable part.
  */
-final class AnthropicCaptionWriter implements CaptionWriter
+final class OpenAiCaptionWriter implements CaptionWriter
 {
-    public function __construct(private readonly Client $client) {}
+    public function __construct(private readonly OpenAiClient $client) {}
 
     public function write(ContentItem $item, Brand $brand, array $violations = []): CaptionResult
     {
-        $model = (string) config('hub.ai.model', 'claude-opus-5');
+        $model = (string) config('openai.model');
 
         try {
-            $message = $this->client->messages->create(
+            $result = $this->client->structured(
                 model: $model,
-                maxTokens: (int) config('hub.ai.max_tokens', 16000),
-                system: [[
-                    'type' => 'text',
-                    'text' => $this->system($brand),
-                    // Identical for every item of this brand, so it is worth caching.
-                    'cacheControl' => ['type' => 'ephemeral'],
-                ]],
-                messages: [['role' => 'user', 'content' => $this->user($item, $violations)]],
-                outputConfig: [
-                    'format' => CaptionSet::class,
-                    'effort' => (string) config('hub.ai.effort', 'medium'),
-                ],
+                system: $this->system($brand),
+                user: $this->user($item, $violations),
+                name: 'captions',
+                schema: CaptionSet::schema(),
+                effort: config('openai.effort'),
+                maxOutputTokens: (int) config('openai.max_output_tokens', 16000),
             );
-        } catch (APIStatusException $e) {
-            throw new CaptionWriterException('Claude API: '.$e->getMessage(), previous: $e);
-        } catch (Throwable $e) {
-            throw new CaptionWriterException('Poziv modela nije uspio: '.$e->getMessage(), previous: $e);
-        }
-
-        if ($message->stopReason === 'refusal') {
-            throw new CaptionWriterException('Model je odbio napisati objavu za ovu stavku.');
-        }
-
-        $captions = $message->parsedOutput();
-
-        if (! $captions instanceof CaptionSet) {
-            throw new CaptionWriterException('Model nije vratio očekivanu strukturu.');
+        } catch (OpenAiException $e) {
+            throw new CaptionWriterException($e->refused() ? 'Model je odbio napisati objavu za ovu stavku.' : $e->getMessage(), previous: $e);
         }
 
         return new CaptionResult(
-            captions: $captions,
-            model: $model,
-            inputTokens: $message->usage->inputTokens,
-            outputTokens: $message->usage->outputTokens,
+            captions: CaptionSet::fromArray($result->data),
+            model: $result->model,
+            inputTokens: $result->inputTokens,
+            outputTokens: $result->outputTokens,
         );
     }
 

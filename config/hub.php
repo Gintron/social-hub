@@ -81,16 +81,4 @@ return [
         // How long to wait for the item's own landing page before treating it as dead (App\Publishing\LinkPreflight).
         'link_preflight_timeout' => (int) env('HUB_LINK_PREFLIGHT_TIMEOUT', 8),
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | AI drafting agent
-    |--------------------------------------------------------------------------
-    */
-    'ai' => [
-        'api_key' => env('ANTHROPIC_API_KEY'),
-        'model' => env('HUB_AI_MODEL', 'claude-opus-5'),
-        'effort' => env('HUB_AI_EFFORT', 'medium'),
-        'max_tokens' => (int) env('HUB_AI_MAX_TOKENS', 16000),
-    ],
 ];

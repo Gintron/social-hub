@@ -10,7 +10,7 @@ Plan i odluke: `~/.claude/plans/imam-tri-projkekta-radim-hr-pure-quill.md`.
 ## Stack
 
 Laravel 13 · PHP 8.4 · MySQL · Filament 5 · spatie/browsershot (Chromium) · spatie/image · Sanctum ·
-laravel/mcp · Anthropic PHP SDK. Lokalno Sail (Docker), produkcija Ploi bez Dockera
+laravel/mcp · OpenAI API (tekstovi). Lokalno Sail (Docker), produkcija Ploi bez Dockera
 ([docs/deploy-ploi.md](docs/deploy-ploi.md)).
 
 ## Lokalno
@@ -40,7 +40,7 @@ Panel: http://localhost:8100/admin
 | `hub:voiceover-test [tekst] [--brand=] [--voice=] [--list-voices]` | Izgovori jednu rečenicu ElevenLabsom i pokaži što je glas primio i koliko je koštalo |
 | `hub:prune-voiceovers [--days=60]` | Obriši stare zvučne isječke s diska (tjedno iz schedulera); zapisi ostaju |
 | `hub:refresh-tiktok-tokens` | Osvježi TikTok tokene prije isteka (satno iz schedulera) |
-| `hub:agent-draft [brend] [--limit=] [--dry-run]` | Claude piše tekstove za nove kandidate i ostavlja ih na odobrenje |
+| `hub:agent-draft [brend] [--limit=] [--dry-run]` | OpenAI piše tekstove za nove kandidate i ostavlja ih na odobrenje |
 | `hub:issue-mcp-token {email} --scope=` | Token za MCP servera (read / draft / approve / publish) |
 | `hub:doctor` | Provjeri sve od čega objava ovisi |
 
@@ -57,7 +57,7 @@ app/Publishing   Graph i TikTok klijenti, mapiranje grešaka, Facebook/Instagram
 app/Http/Controllers/Meta  OAuth spajanje računa, deauthorize i data-deletion callbackovi
 app/Jobs         SyncSourceJob, RenderMediaJob, PublishVariantJob
 app/Filament     panel: kandidati, objave (pregled), kalendar, brendovi, izvori, računi
-app/Ai           agent koji piše tekstove (Claude) i validator koji brani izmišljene iznose
+app/Ai           agent koji piše tekstove (OpenAI) i validator koji brani izmišljene iznose
 app/Mcp          MCP server: hub kroz AI agenta (docs/mcp.md)
 docs/            social-feed-v1.md + schema, deploy-ploi.md, examples/laravel-social-feed
 ```
@@ -100,9 +100,10 @@ dnevnu kvotu, pa greške dolaze kao razumljiva poruka, a ne kao Metin „Invalid
 
 ## AI agent
 
-`hub:agent-draft` svakog jutra uzme nove kandidate, zamoli Claudea da napiše tekstove i ostavi ih
+`hub:agent-draft` svakog jutra uzme nove kandidate, zamoli OpenAI da napiše tekstove i ostavi ih
 kao nacrte **na odobrenje** — agent nikad ne objavljuje. Uključuje se po brendu (Brend → Glas brenda
-→ „AI piše nacrte") i traži `ANTHROPIC_API_KEY`.
+→ „AI piše nacrte") i traži `OPENAI_API_KEY` (model i razmišljanje: `OPENAI_MODEL`, `OPENAI_EFFORT`,
+[config/openai.php](config/openai.php)).
 
 Prije nego tekst uđe u nacrt, `App\Ai\CaptionValidator` provjeri ono što se modelu ne vjeruje na
 riječ: svaki iznos, postotak i poveznica u tekstu moraju postojati u podacima stavke. Ako ne postoje,

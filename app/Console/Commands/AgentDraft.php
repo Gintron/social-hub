@@ -18,12 +18,12 @@ final class AgentDraft extends Command
         {--limit=5 : How many candidates to draft per brand}
         {--dry-run : Write nothing; print what the model produced}';
 
-    protected $description = 'Have Claude write captions for the newest candidates and leave them waiting for approval';
+    protected $description = 'Have the model write captions for the newest candidates and leave them waiting for approval';
 
     public function handle(AgentDrafter $drafter): int
     {
-        if (blank(config('hub.ai.api_key'))) {
-            $this->error('ANTHROPIC_API_KEY nije postavljen; agent ne može pisati objave.');
+        if (blank(config('openai.api_key'))) {
+            $this->error('OPENAI_API_KEY nije postavljen; agent ne može pisati objave.');
 
             return self::FAILURE;
         }
