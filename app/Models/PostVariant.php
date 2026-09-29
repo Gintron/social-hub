@@ -117,6 +117,33 @@ final class PostVariant extends Model
     }
 
     /**
+     * Is this channel's video narrated? Only a video can be; whether it is comes from the channel
+     * (`settings.voiceover` = on|off, set by an auto-publish rule or a person on the review screen) and
+     * otherwise from the brand. A brand that has no voice chosen, or a hub with no key, is silent either way.
+     */
+    public function wantsVoiceover(): bool
+    {
+        if ($this->format() !== ContentFormat::Video) {
+            return false;
+        }
+
+        $choice = $this->setting('voiceover');
+
+        if ($choice === 'off' || $choice === false) {
+            return false;
+        }
+
+        $this->loadMissing('draft.brand');
+        $settings = $this->draft?->brand?->voiceoverSettings();
+
+        if ($settings === null || ! $settings->canSpeak()) {
+            return false;
+        }
+
+        return $choice === 'on' || $choice === true || $settings->enabled;
+    }
+
+    /**
      * Published, being published, or handed to a human with an id: nothing about it changes any more.
      */
     public function isLocked(): bool

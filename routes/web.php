@@ -6,6 +6,7 @@ use App\Http\Controllers\Meta\MetaOAuthController;
 use App\Http\Controllers\Meta\MetaWebhookController;
 use App\Http\Controllers\TikTok\TikTokBusinessOAuthController;
 use App\Http\Controllers\TikTok\TikTokOAuthController;
+use App\Http\Controllers\VoiceoverAudioController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
@@ -34,6 +35,9 @@ Route::middleware(['web', 'auth'])->group(function (): void {
      */
     Route::get('/tiktok/business/connect/{brand}', [TikTokBusinessOAuthController::class, 'connect'])->name('tiktok.business.connect');
     Route::get('/tiktok/business/callback/', [TikTokBusinessOAuthController::class, 'callback'])->name('tiktok.business.callback');
+
+    // Listening to a voice sample from the brand form; the clips are on a private disk.
+    Route::get('/voiceovers/{voiceover}/audio', VoiceoverAudioController::class)->name('voiceovers.audio');
 });
 
 /*

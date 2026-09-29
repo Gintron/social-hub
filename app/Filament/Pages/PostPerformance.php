@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Actions\CollectPostMetrics;
+use App\Enums\ContentFormat;
 use App\Enums\VariantStatus;
 use App\Models\Brand;
 use App\Models\PostVariant;
@@ -57,7 +58,7 @@ final class PostPerformance extends Page
         $variants = $this->measured();
         $timezone = (string) config('hub.brand_default_timezone', 'Europe/Zagreb');
 
-        return [
+        $breakdowns = [
             'Kanal i format' => $this->summarise($variants->groupBy(fn (PostVariant $variant): string => $variant->platform->label().' · '.$variant->format()->label())),
             'Sat objave' => $this->summarise($variants
                 ->groupBy(fn (PostVariant $variant): string => CarbonImmutable::parse($variant->published_at ?? $variant->manual_posted_at)->setTimezone($timezone)->format('H').':00')
@@ -66,6 +67,17 @@ final class PostPerformance extends Page
                 ->groupBy(fn (PostVariant $variant): string => 'Prioritet '.($variant->draft?->contentItems->max('priority') ?? '—'))
                 ->sortKeysDesc()),
         ];
+
+        // Does the voice earn its keep? Only worth a table once some measured video has one to compare with.
+        $videos = $variants
+            ->filter(fn (PostVariant $variant): bool => $variant->format() === ContentFormat::Video)
+            ->groupBy(fn (PostVariant $variant): string => data_get($variant->media->first(fn ($asset): bool => $asset->isVideo()), 'params.voiceover.status') === 'ok' ? 'Video s glasom' : 'Video bez glasa');
+
+        if ($videos->has('Video s glasom')) {
+            $breakdowns['Voice-over (samo videi)'] = $this->summarise($videos->sortKeys());
+        }
+
+        return $breakdowns;
     }
 
     /**
@@ -115,7 +127,7 @@ final class PostPerformance extends Page
         $since = CarbonImmutable::now()->subDays(max(1, $this->days));
 
         return once(fn () => PostVariant::query()
-            ->with(['latestMetric', 'draft.contentItems', 'draft.brand'])
+            ->with(['latestMetric', 'draft.contentItems', 'draft.brand', 'media'])
             ->whereHas('latestMetric')
             ->where(fn ($query) => $query->where('published_at', '>=', $since)->orWhere('manual_posted_at', '>=', $since))
             ->when($this->brandId, fn ($query) => $query->whereHas('draft', fn ($draft) => $draft->where('brand_id', $this->brandId)))

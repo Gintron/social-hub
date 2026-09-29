@@ -7,6 +7,8 @@ namespace App\Rendering;
 use App\Models\Brand;
 use App\Models\MediaAsset;
 use App\Models\PostDraft;
+use App\Voiceover\Narration;
+use App\Voiceover\NarrationClip;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,6 +24,9 @@ use Symfony\Component\Process\Process;
  *
  * Slides drift in a slow zoom and a brand track can play underneath. A brand can choose direct
  * cuts for a sharper rhythm; crossfades remain the default for existing campaigns.
+ *
+ * With a narration each slide stays up for as long as its line takes (never less than it would have),
+ * the line is placed over it, and the track underneath is ducked while it speaks.
  */
 final class VideoRenderer
 {
@@ -65,6 +70,15 @@ final class VideoRenderer
 
     private const AUDIO_FADE_OUT_SECONDS = 1.2;
 
+    /**
+     * A line starts a moment after its slide has arrived and ends a moment before the next one cuts in:
+     * speech that begins on the frame the picture changes, or is cut by it, is what makes a voice-over
+     * sound pasted on.
+     */
+    private const VOICE_LEAD_SECONDS = 0.2;
+
+    private const VOICE_TAIL_SECONDS = 0.4;
+
     public function __construct(private readonly TemplateRegistry $templates) {}
 
     /**
@@ -74,6 +88,7 @@ final class VideoRenderer
      * @param  Collection<int, MediaAsset>  $slides  Rendered images, in the order they should play.
      * @param  string|null  $audioPath  Absolute path to a track to play underneath; null keeps a silent track.
      * @param  list<float>|null  $slideSeconds  Explicit storyboard timings, one per slide.
+     * @param  Narration|null  $narration  What is said over the slides, one clip each (null where a slide is left to the music).
      */
     public function slideshow(
         Brand $brand,
@@ -84,6 +99,7 @@ final class VideoRenderer
         ?string $audioPath = null,
         bool $motion = true,
         ?array $slideSeconds = null,
+        ?Narration $narration = null,
     ): MediaAsset {
         if ($slides->isEmpty()) {
             throw new RuntimeException('Video treba barem jedan slajd.');
@@ -91,6 +107,23 @@ final class VideoRenderer
 
         if ($audioPath !== null && ! is_file($audioPath)) {
             throw new RuntimeException("Zvučni zapis ne postoji: {$audioPath}");
+        }
+
+        if ($narration !== null) {
+            if (count($narration->clips) !== $slides->count()) {
+                throw new RuntimeException('Voice-over treba jedan redak po slajdu.');
+            }
+
+            foreach ($narration->clips as $clip) {
+                if ($clip !== null && ! is_file($clip->path)) {
+                    throw new RuntimeException("Zapis voice-overa ne postoji: {$clip->path}");
+                }
+            }
+
+            // Nothing to place: the video is the one it would have been without a narration.
+            if (array_all($narration->clips, fn (?NarrationClip $clip): bool => $clip === null)) {
+                $narration = null;
+            }
         }
 
         $secondsPerSlide = max(1.5, $secondsPerSlide);
@@ -119,6 +152,10 @@ final class VideoRenderer
                 : min($jobVideo ? 2.4 : 2.5, $secondsPerSlide);
         }
 
+        if ($narration !== null) {
+            $durations = $this->fitNarration($durations, $narration, $transitionSeconds);
+        }
+
         $transitionSeconds = max(0.0, min($transitionSeconds, min($durations) / 2));
         $total = array_sum($durations) - ($count - 1) * $transitionSeconds;
 
@@ -131,7 +168,9 @@ final class VideoRenderer
         $output = tempnam(sys_get_temp_dir(), 'hub-video-').'.mp4';
 
         try {
-            $this->encode($slides, $output, $durations, $transitionSeconds, $total, $this->background($brand), $audioPath, $motion);
+            $starts = $narration === null ? [] : $this->voiceStarts($durations, $transitionSeconds);
+
+            $this->encode($slides, $output, $durations, $transitionSeconds, $total, $this->background($brand), $audioPath, $motion, $narration, $starts);
 
             $binary = file_get_contents($output);
 
@@ -156,6 +195,10 @@ final class VideoRenderer
                     'transition_seconds' => $transitionSeconds,
                     'audio' => $audioPath === null ? null : basename($audioPath),
                     'motion' => $motion,
+                    'voiceover' => $narration === null ? null : [
+                        ...$narration->describe(),
+                        'starts' => array_map(fn (float $start): float => round($start, 2), $starts),
+                    ],
                 ],
                 'width' => self::WIDTH,
                 'height' => self::HEIGHT,
@@ -202,6 +245,8 @@ final class VideoRenderer
         string $background,
         ?string $audioPath,
         bool $motion,
+        ?Narration $narration = null,
+        array $starts = [],
     ): void {
         $arguments = ['ffmpeg', '-y', '-hide_banner', '-loglevel', 'error'];
 
@@ -222,14 +267,26 @@ final class VideoRenderer
 
         $graph = $this->filter($durations, $transition, $background, $motion);
 
-        if ($audioPath !== null) {
+        // Each spoken line is one more input, after the slides and the track.
+        $voices = [];
+
+        if ($narration !== null) {
+            foreach ($narration->clips as $slide => $clip) {
+                if ($clip !== null) {
+                    $voices[] = [$audioInput + 1 + count($voices), $clip, $starts[$slide]];
+                    $arguments = [...$arguments, '-i', $clip->path];
+                }
+            }
+
+            $graph .= ';'.$this->narratedAudioFilter($audioInput, $audioPath !== null, $voices, $total, $narration->musicGainDb);
+        } elseif ($audioPath !== null) {
             $graph .= ';'.$this->audioFilter($audioInput, $total);
         }
 
         $arguments = [...$arguments,
             '-filter_complex', $graph,
             '-map', '[out]',
-            '-map', $audioPath === null ? $audioInput.':a' : '[aout]',
+            '-map', $audioPath === null && $narration === null ? $audioInput.':a' : '[aout]',
             '-c:v', 'libx264',
             '-preset', 'medium',
             '-crf', '21',
@@ -333,6 +390,104 @@ final class VideoRenderer
             .'afade=t=in:st=0:d=0.3,afade=t=out:st=%.3f:d=%.3f,aformat=channel_layouts=stereo[aout]',
             $input, $total, max(0.0, $total - $fadeOut), $fadeOut,
         );
+    }
+
+    /**
+     * Give every narrated slide the time its line takes: the line, a beat before it and after it, and the
+     * fade in and out of the slide itself. A slide never gets shorter than it would have been without a
+     * voice, so a line that is quick only ever leaves the picture as it was.
+     *
+     * @param  list<float>  $durations
+     * @return list<float>
+     */
+    private function fitNarration(array $durations, Narration $narration, float $transition): array
+    {
+        $last = count($durations) - 1;
+
+        foreach ($narration->clips as $slide => $clip) {
+            if ($clip === null) {
+                continue;
+            }
+
+            $needed = self::VOICE_LEAD_SECONDS + $clip->seconds + self::VOICE_TAIL_SECONDS
+                + ($slide > 0 ? $transition : 0.0)
+                + ($slide < $last ? $transition : 0.0);
+
+            $durations[$slide] = max($durations[$slide], $needed);
+        }
+
+        return $durations;
+    }
+
+    /**
+     * When each line starts in the finished video: after its slide has fully arrived (the first has no
+     * fade in) plus the lead.
+     *
+     * @param  list<float>  $durations
+     * @return list<float>
+     */
+    private function voiceStarts(array $durations, float $transition): array
+    {
+        $starts = [];
+        $begins = 0.0;
+
+        foreach ($durations as $slide => $duration) {
+            $starts[] = $begins + ($slide > 0 ? $transition : 0.0) + self::VOICE_LEAD_SECONDS;
+            $begins += $duration - $transition;
+        }
+
+        return $starts;
+    }
+
+    /**
+     * The soundtrack of a narrated video: every line at its start time and its own level, the brand's
+     * track (or silence) underneath, lowered and then pressed further down whenever the voice speaks,
+     * and a limiter at −1 dBFS that shaves the peaks of the voice and keeps the sum from clipping.
+     *
+     * @param  list<array{0: int, 1: NarrationClip, 2: float}>  $voices  Input index, clip and start of each line.
+     */
+    private function narratedAudioFilter(int $bedInput, bool $hasMusic, array $voices, float $total, float $musicGainDb): string
+    {
+        $parts = [];
+
+        if ($hasMusic) {
+            $fadeOut = min(self::AUDIO_FADE_OUT_SECONDS, $total / 3);
+            $parts[] = sprintf(
+                '[%d:a]atrim=0:%.3f,asetpts=N/SR/TB,loudnorm=I=-16:TP=-1.5:LRA=11,aresample=44100,volume=%.1fdB,'
+                .'afade=t=in:st=0:d=0.3,afade=t=out:st=%.3f:d=%.3f,aformat=sample_fmts=fltp:channel_layouts=stereo[bed]',
+                $bedInput, $total, $musicGainDb, max(0.0, $total - $fadeOut), $fadeOut,
+            );
+        } else {
+            $parts[] = sprintf('[%d:a]atrim=0:%.3f,asetpts=N/SR/TB,aformat=sample_fmts=fltp:channel_layouts=stereo[bed]', $bedInput, $total);
+        }
+
+        $labels = '';
+
+        foreach ($voices as $index => [$input, $clip, $start]) {
+            $delay = (int) round($start * 1000);
+            $parts[] = sprintf(
+                '[%d:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,volume=%.1fdB,adelay=%d|%d[v%d]',
+                $input, $clip->gainDb, $delay, $delay, $index,
+            );
+            $labels .= "[v{$index}]";
+        }
+
+        // Lines never overlap (each sits inside its own slide), so the mix only places them; it must not
+        // rescale them as one after another ends.
+        $parts[] = count($voices) === 1
+            ? $labels.'anull[said]'
+            : sprintf('%samix=inputs=%d:duration=longest:dropout_transition=0:normalize=0[said]', $labels, count($voices));
+
+        // The voice track runs the whole video, so the compressor's key never ends before the music does.
+        $parts[] = sprintf('[said]apad=whole_dur=%.3f,asplit=2[voice][key]', $total);
+        $parts[] = '[bed][key]sidechaincompress=threshold=0.03:ratio=4:attack=25:release=700:makeup=1[ducked]';
+        $parts[] = sprintf(
+            '[ducked][voice]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,alimiter=limit=0.89:level=0,'
+            .'atrim=0:%.3f,asetpts=N/SR/TB,aformat=channel_layouts=stereo[aout]',
+            $total,
+        );
+
+        return implode(';', $parts);
     }
 
     private function background(Brand $brand): string

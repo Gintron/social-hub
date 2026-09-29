@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\Brand;
 use App\Rendering\ImageRenderer;
+use App\Voiceover\ElevenLabsClient;
+use App\Voiceover\VoiceoverException;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
@@ -131,6 +134,60 @@ final class Doctor extends Command
             }
 
             return config('hub.ai.model').', effort='.config('hub.ai.effort');
+        }, $ok, fatal: false);
+
+        $rows[] = $this->check('ffmpeg (voice-over)', function (): string {
+            // The mix places lines with amix's `normalize` option and ducks the music with sidechaincompress.
+            foreach (['amix' => 'normalize', 'sidechaincompress' => 'threshold', 'alimiter' => 'limit'] as $filter => $option) {
+                $process = Process::fromShellCommandline("ffmpeg -hide_banner -h filter={$filter} 2>&1");
+                $process->run();
+
+                if (! str_contains($process->getOutput(), $option)) {
+                    throw new RuntimeException("filter {$filter} nema opciju {$option} — ffmpeg je prestar za voice-over (treba 4.4 ili noviji)");
+                }
+            }
+
+            return 'amix, sidechaincompress i alimiter podržani';
+        }, $ok, fatal: false);
+
+        $rows[] = $this->check('ElevenLabs (voice-over)', function (): string {
+            if (blank(config('elevenlabs.api_key'))) {
+                throw new RuntimeException('ELEVENLABS_API_KEY not set (videi ostaju bez glasa)');
+            }
+
+            try {
+                $subscription = app(ElevenLabsClient::class)->subscription();
+            } catch (VoiceoverException $e) {
+                // A key restricted to speech works; it just cannot say how much is left.
+                if ($e->errorCode === 'missing_permissions') {
+                    return 'ključ postavljen (ne smije čitati pretplatu)';
+                }
+
+                throw new RuntimeException($e->getMessage());
+            }
+
+            return sprintf(
+                '%s, %s od %s znakova iskorišteno',
+                $subscription['tier'] ?? 'plan',
+                number_format($subscription['character_count'], 0, ',', '.'),
+                number_format($subscription['character_limit'], 0, ',', '.'),
+            );
+        }, $ok, fatal: false);
+
+        $rows[] = $this->check('Voice-over po brendovima', function (): string {
+            $enabled = Brand::query()->get()->filter(fn (Brand $brand): bool => $brand->voiceoverSettings()->enabled);
+
+            if ($enabled->isEmpty()) {
+                return 'nijedan brend nema uključen voice-over';
+            }
+
+            $silent = $enabled->reject(fn (Brand $brand): bool => $brand->voiceoverSettings()->canSpeak());
+
+            if ($silent->isNotEmpty()) {
+                throw new RuntimeException('uključen, ali bez glasa ili ključa (videi ostaju bez glasa): '.$silent->pluck('slug')->implode(', '));
+            }
+
+            return $enabled->pluck('slug')->implode(', ');
         }, $ok, fatal: false);
 
         $rows[] = $this->check('Admin e-mails', function (): string {

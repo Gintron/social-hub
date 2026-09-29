@@ -6,8 +6,10 @@ namespace App\Console\Commands;
 
 use App\Models\Brand;
 use App\Rendering\ImageRenderer;
+use App\Rendering\Scene;
 use App\Rendering\TemplateRegistry;
 use App\Rendering\VideoRenderer;
+use App\Voiceover\Narrator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
@@ -23,7 +25,7 @@ final class RenderStoryboard extends Command
 
     protected $description = 'Render a campaign preview with explicit slide timings, without scheduling or publishing';
 
-    public function handle(ImageRenderer $images, VideoRenderer $video, TemplateRegistry $templates): int
+    public function handle(ImageRenderer $images, VideoRenderer $video, TemplateRegistry $templates, Narrator $narrator): int
     {
         try {
             $path = realpath((string) $this->argument('manifest'));
@@ -38,6 +40,8 @@ final class RenderStoryboard extends Command
                 'slides.*.seconds' => ['required', 'numeric', 'between:1.5,10'],
                 'slides.*.data' => ['present', 'array'],
                 'slides.*.image' => ['nullable', 'string'],
+                // What the brand's voice says over the slide; approved with the rest of the copy.
+                'slides.*.say' => ['nullable', 'string', 'max:300'],
                 'audio' => ['nullable', 'string'],
                 'voice' => ['sometimes', 'array'],
             ])->validate();
@@ -66,7 +70,18 @@ final class RenderStoryboard extends Command
             }
             $audio = filled($data['audio'] ?? null) ? $this->localPath(dirname($path), $data['audio']) : $brand->audioTrackPath('auto');
             $slides = collect($scenes)->map(fn (array $scene) => $images->render($brand, $scene['template'], $scene['data']));
-            $asset = $video->slideshow($brand, $slides, transitionSeconds: 0.0, audioPath: $audio, slideSeconds: array_column($scenes, 'seconds'));
+
+            // A slide with a `say` is spoken; a manifest with none stays as silent as it always was. The voice is
+            // asked for by the manifest, so one that cannot be made stops the render instead of going out mute.
+            $narration = array_filter(array_column($scenes, 'say'), fn (mixed $say): bool => filled($say)) === []
+                ? null
+                : $narrator->narrateLines(
+                    $brand,
+                    array_map(fn (array $scene): Scene => new Scene($scene['template'], $templates->roleOf($scene['template'])), $scenes),
+                    array_map(fn (array $scene): string => (string) ($scene['say'] ?? ''), $scenes),
+                );
+
+            $asset = $video->slideshow($brand, $slides, transitionSeconds: 0.0, audioPath: $audio, slideSeconds: array_column($scenes, 'seconds'), narration: $narration);
             File::copy($asset->absolutePath(), $output.'/video.mp4');
             foreach ($slides as $i => $slide) {
                 File::copy($slide->absolutePath(), $output.'/slide-'.($i + 1).'.jpg');
@@ -74,6 +89,10 @@ final class RenderStoryboard extends Command
             File::put($output.'/render.json', json_encode(['duration_ms' => $asset->duration_ms, 'params' => $asset->params, 'manifest' => $path], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             $this->info('Pregled: '.$output.'/video.mp4');
             $this->line('Trajanje: '.$asset->durationSeconds().' s. Nije napravljena ni zakazana objava.');
+
+            if ($narration !== null) {
+                $this->line(sprintf('Voice-over: %d znakova, glas %s. Slajdovi su ostali onoliko koliko traje njihov redak, a ne manje od zadanog.', $narration->characters(), $narration->voiceId));
+            }
 
             return self::SUCCESS;
         } catch (Throwable $e) {

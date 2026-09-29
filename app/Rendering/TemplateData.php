@@ -79,6 +79,17 @@ final class TemplateData
     }
 
     /**
+     * What a job's slides show of it — title, pay under its own label, place — for a voice-over to say
+     * exactly that and nothing the slide does not carry.
+     *
+     * @return array{title: string, pay: string|null, pay_label: string, location: string|null, extras: list<array{label: string, value: string}>}
+     */
+    public static function jobSummary(ContentItem $item): array
+    {
+        return self::jobDisplay($item, Highlights::figure($item));
+    }
+
+    /**
      * @param  array<string, mixed>  $overrides  Per-render tweaks (headline, hide_price, …) coming from the UI or the agent.
      * @return array<string, mixed>
      */

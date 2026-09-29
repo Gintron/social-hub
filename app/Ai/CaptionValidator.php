@@ -89,6 +89,40 @@ final class CaptionValidator
     }
 
     /**
+     * The amount and link rules for any text written from these items — a voice-over is held to the
+     * same ones as a caption: every figure it says must be one the items themselves state.
+     *
+     * @param  iterable<ContentItem>  $items
+     * @return list<string> Empty when the text may be used.
+     */
+    public function violationsInText(string $text, iterable $items): array
+    {
+        $allowedUrls = [];
+        $allowedAmounts = [];
+
+        foreach ($items as $item) {
+            $allowedUrls = [...$allowedUrls, ...$this->allowedUrls($item)];
+            $allowedAmounts = [...$allowedAmounts, ...$this->allowedAmounts($item)];
+        }
+
+        $violations = [];
+
+        foreach ($this->urlsIn($text) as $url) {
+            if (! in_array(mb_rtrim($url, '/.'), $allowedUrls, true)) {
+                $violations[] = "Poveznica {$url} ne postoji u podacima stavke.";
+            }
+        }
+
+        foreach ($this->amountsIn($text) as $raw => $value) {
+            if (! $this->isKnown($value, $allowedAmounts)) {
+                $violations[] = "Iznos „{$raw}\" ne postoji u podacima stavke.";
+            }
+        }
+
+        return array_values(array_unique($violations));
+    }
+
+    /**
      * @return list<string>
      */
     private function allowedUrls(ContentItem $item): array

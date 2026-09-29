@@ -13,8 +13,11 @@ use App\Jobs\RenderVideoJob;
 use App\Models\MediaAsset;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
+use App\Rendering\ScenePlanner;
 use App\Rendering\TemplateRegistry;
 use App\Rendering\VideoRenderer;
+use App\Voiceover\ScriptBuilder;
+use App\Voiceover\ScriptGuard;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use InvalidArgumentException;
 
@@ -27,7 +30,12 @@ use InvalidArgumentException;
  */
 final class PrepareVariantMedia
 {
-    public function __construct(private readonly TemplateRegistry $templates) {}
+    public function __construct(
+        private readonly TemplateRegistry $templates,
+        private readonly ScenePlanner $planner,
+        private readonly ScriptBuilder $scripts,
+        private readonly ScriptGuard $guard,
+    ) {}
 
     /**
      * Vertical for TikTok, where a photo or video fills the screen; 4:5 portrait elsewhere, the
@@ -47,7 +55,8 @@ final class PrepareVariantMedia
      * @param  iterable<PostVariant>  $variants
      * @param  bool  $fresh  Render again even when a matching asset exists.
      * @param  string|null  $templateKey  Template for image and carousel variants; null picks one per channel.
-     * @param  array{seconds?: float|int|string, audio?: string, motion?: bool}  $video
+     * @param  array{seconds?: float|int|string, audio?: string, motion?: bool, voiceover?: bool, script?: list<string>}  $video  `voiceover` overrides
+     *                                                                                                                            what the channel and brand say; `script` is what to say instead of what is written from the items.
      * @param  bool  $sync  Render before returning (MCP tools answer with the new URLs).
      * @param  array<string, mixed>  $overrides  Template field overrides for image renders.
      * @param  string|null  $kicker  Line above a digest cover's headline; defaults to the brand name.
@@ -63,6 +72,13 @@ final class PrepareVariantMedia
     ): void {
         if ($templateKey !== null) {
             $this->templates->get($templateKey);
+        }
+
+        $variants = is_array($variants) ? $variants : iterator_to_array($variants, false);
+
+        // A script somebody wrote is checked now, while they are still looking at the screen that sent it.
+        if (is_array($video['script'] ?? null)) {
+            $this->assertScript($variants, array_values($video['script']));
         }
 
         /** @var array<string, list<PostVariant>> $groups */
@@ -89,8 +105,10 @@ final class PrepareVariantMedia
             }
 
             if ($format === ContentFormat::Video) {
-                $asset = $fresh ? null : $this->latest($draft, VideoRenderer::TEMPLATE_KEY);
-                $asset !== null ? $this->attach($variant, [$asset]) : $groups['video'][] = $variant;
+                // The video with a voice and the one without are different files; a channel gets the one it asks for.
+                $voice = array_key_exists('voiceover', $video) ? (bool) $video['voiceover'] : $variant->wantsVoiceover();
+                $asset = $fresh ? null : $this->latestVideo($draft, $voice);
+                $asset !== null ? $this->attach($variant, [$asset]) : $groups['video:'.($voice ? 'voice' : 'plain')][] = $variant;
 
                 continue;
             }
@@ -150,7 +168,7 @@ final class PrepareVariantMedia
 
     /**
      * @param  list<PostVariant>  $members
-     * @param  array{seconds?: float|int|string, audio?: string, motion?: bool}  $video
+     * @param  array{seconds?: float|int|string, audio?: string, motion?: bool, voiceover?: bool, script?: list<string>}  $video
      * @param  array<string, mixed>  $overrides
      */
     private function job(string $group, array $members, array $video, array $overrides, ?string $kicker): ShouldQueue
@@ -166,6 +184,8 @@ final class PrepareVariantMedia
                 (float) ($video['seconds'] ?? VideoRenderer::DEFAULT_SECONDS_PER_SLIDE),
                 audio: (string) ($video['audio'] ?? 'auto'),
                 motion: (bool) ($video['motion'] ?? true),
+                voiceover: $argument === 'voice',
+                script: is_array($video['script'] ?? null) ? array_values(array_map('strval', $video['script'])) : null,
             ),
             'digest', 'digest-cover' => new RenderDigestJob(
                 $draft->id,
@@ -202,6 +222,38 @@ final class PrepareVariantMedia
     private function latest(PostDraft $draft, string $templateKey): ?MediaAsset
     {
         return $draft->mediaAssets()->where('template_key', $templateKey)->latest('id')->first();
+    }
+
+    /**
+     * The newest video of the draft that has a voice (or has none). One whose voice failed is a silent
+     * video and counts as one, so a channel that wants a voice renders again instead of reusing it.
+     */
+    private function latestVideo(PostDraft $draft, bool $voice): ?MediaAsset
+    {
+        return $draft->mediaAssets()
+            ->where('template_key', VideoRenderer::TEMPLATE_KEY)
+            ->latest('id')
+            ->get()
+            ->first(fn (MediaAsset $asset): bool => (data_get($asset->params, 'voiceover.status') === 'ok') === $voice);
+    }
+
+    /**
+     * @param  list<PostVariant>  $variants
+     * @param  list<string>  $lines
+     *
+     * @throws InvalidArgumentException
+     */
+    private function assertScript(array $variants, array $lines): void
+    {
+        foreach (collect($variants)->map(fn (PostVariant $variant): ?PostDraft => $variant->loadMissing('draft')->draft)->filter()->unique('id') as $draft) {
+            $draft->loadMissing('contentItems');
+            $script = $this->scripts->fromLines($this->planner->forDraft($draft), $lines);
+            $violations = $this->guard->check($script, $draft->contentItems, trusted: [(string) $draft->title]);
+
+            if ($violations !== []) {
+                throw new InvalidArgumentException('Tekst voice-overa nije prošao provjeru: '.implode(' ', $violations));
+            }
+        }
     }
 
     /**

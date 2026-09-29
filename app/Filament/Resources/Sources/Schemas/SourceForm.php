@@ -91,6 +91,11 @@ final class SourceForm
                                     ->visible(fn (Get $get): bool => self::platform($get) === Platform::TikTok),
                                 Toggle::make('settings.share_to_feed')->label('Reel i u feed profila')->default(true)
                                     ->visible(fn (Get $get): bool => self::platform($get) === Platform::InstagramBusiness),
+                                Select::make('settings.voiceover')->label('Voice-over')
+                                    ->options(['on' => 'Uključen', 'off' => 'Isključen'])
+                                    ->placeholder('Prema postavci brenda')
+                                    ->helperText('Za videe: Reel, TikTok, i pregledi koje serija radi kao video. Ostalo se ne govori.')
+                                    ->visible(fn (Get $get): bool => in_array(ContentFormat::Video, self::platform($get)?->formats() ?? [], true)),
                             ])
                             ->columns(3)
                             ->defaultItems(0),

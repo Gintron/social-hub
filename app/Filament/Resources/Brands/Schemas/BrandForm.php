@@ -7,11 +7,17 @@ namespace App\Filament\Resources\Brands\Schemas;
 use App\Drafting\DigestBuilder;
 use App\Drafting\DigestSeries;
 use App\Enums\ContentKind;
+use App\Filament\Support\VoiceoverPanel;
+use App\Models\Brand;
 use App\Rendering\VideoRenderer;
+use App\Voiceover\VoiceoverException;
+use App\Voiceover\VoiceoverSettings;
+use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -19,9 +25,13 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
+use Livewire\Component;
 
 final class BrandForm
 {
@@ -103,6 +113,89 @@ final class BrandForm
                             ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
                             ->collapsible(),
                     ])
+                    ->collapsible(),
+
+                Section::make('Voice-over (ElevenLabs)')
+                    ->description('Videi (Reels i TikTok) dobivaju glas koji izgovara ono što je na slajdovima: proizvod, cijenu, popust i poziv brenda. Tekst se piše iz podataka stavke, iznosi se provjeravaju kao i u tekstu objave, a glas se plaća samo jednom po rečenici. Kanal ili pravilo automatske objave mogu voice-over uključiti ili isključiti za sebe.')
+                    ->schema([
+                        Placeholder::make('voiceover_status')->label('Veza')
+                            ->content(fn (): string => VoiceoverPanel::status())
+                            ->columnSpanFull(),
+                        Toggle::make('voiceover.enabled')->label('Videi ovog brenda dobivaju voice-over')
+                            ->default(false)
+                            ->helperText('Vrijedi za sve nove videe, i one koje hub sam radi (pravila i serije pregleda). Bez odabranog glasa ili ključa videi ostaju kakvi jesu.')
+                            ->columnSpanFull(),
+                        Select::make('voiceover.voice_id')->label('Glas')
+                            ->options(fn (): array => VoiceoverPanel::voices())
+                            ->getOptionLabelUsing(fn (mixed $value): ?string => VoiceoverPanel::voices()[$value] ?? (filled($value) ? (string) $value : null))
+                            ->searchable()
+                            ->helperText('★ = ElevenLabs navodi glas kao provjeren za hrvatski. Ako nijedan nije dovoljno dobar, u ElevenLabsu izradi vlastiti glas i on će se ovdje pojaviti.')
+                            ->visible(fn (): bool => VoiceoverPanel::voices() !== []),
+                        TextInput::make('voiceover.voice_id')->label('ID glasa')
+                            ->maxLength(64)
+                            ->helperText(fn (): string => 'Popis glasova se ne može učitati'.(VoiceoverPanel::voicesError() !== null ? ' ('.VoiceoverPanel::voicesError().')' : '').'. Zalijepi ID iz ElevenLabs → Voices → ID.')
+                            ->visible(fn (): bool => VoiceoverPanel::voices() === []),
+                        Select::make('voiceover.model')->label('Model')
+                            ->options((array) config('elevenlabs.models', []))
+                            ->placeholder(fn (): string => 'Zadano ('.(config('elevenlabs.models')[config('elevenlabs.model')] ?? config('elevenlabs.model')).')')
+                            ->helperText('Novi model isprobaj preslušavanjem prije nego ga uključiš.'),
+                        TextInput::make('voiceover.speed')->label('Brzina')->numeric()
+                            ->minValue(VoiceoverSettings::MIN_SPEED)->maxValue(VoiceoverSettings::MAX_SPEED)->step(0.05)
+                            ->placeholder('1,05')
+                            ->helperText('0,7–1,2, zadano 1,05. Brže zvuči življe i skraćuje video; cijene ostaju razumljive do oko 1,1.'),
+                        Select::make('voiceover.music')->label('Glasnoća glazbe ispod glasa')
+                            ->options(['quiet' => 'Tiho', 'medium' => 'Srednje (zadano)', 'loud' => 'Glasnije'])
+                            ->helperText('Glazba brenda se uz to još stišava dok glas govori.'),
+                        TextInput::make('voiceover.outro')->label('Završna rečenica')
+                            ->maxLength(200)
+                            ->placeholder('Preuzmi Listo besplatno i dodaj prvi proizvod s letka.')
+                            ->helperText('Izgovara se na završnom slajdu. Prazno = poziv na akciju i prvi korak iz „Glas brenda“. Piši kako se govori i bez adrese stranice.')
+                            ->columnSpanFull(),
+                        Repeater::make('voiceover.pronunciations')->label('Izgovor imena')
+                            ->schema([
+                                TextInput::make('find')->label('Piše se')->required()->maxLength(60)->placeholder('SPAR'),
+                                TextInput::make('say')->label('Čita se')->required()->maxLength(80)->placeholder('Spar'),
+                            ])
+                            ->columns(2)
+                            ->default([])
+                            ->addActionLabel('Dodaj ime')
+                            ->itemLabel(fn (array $state): ?string => filled($state['find'] ?? null) ? $state['find'].' → '.($state['say'] ?? '…') : null)
+                            ->collapsible()
+                            ->helperText('Za imena koja glas čita krivo (trgovački lanci, kratice). Zamjena vrijedi za cijeli tekst prije nego ga glas čuje. Brojeve, iznose i datume hub sam izgovara.')
+                            ->columnSpanFull(),
+                        Actions::make([
+                            Action::make('previewVoiceover')
+                                ->label('Preslušaj glas')
+                                ->icon(Heroicon::OutlinedSpeakerWave)
+                                ->color('gray')
+                                ->modalHeading('Preslušaj glas')
+                                ->modalDescription('Koristi trenutne postavke iz obrasca, i one koje još nisu spremljene. Košta koliko ima znakova; ista rečenica se ne naplaćuje dvaput.')
+                                ->modalSubmitActionLabel('Izgovori')
+                                ->schema([
+                                    Textarea::make('text')->label('Tekst')->rows(3)->required()->maxLength(300)->default(VoiceoverPanel::SAMPLE),
+                                ])
+                                ->action(function (array $data, Component $livewire, ?Brand $record = null): void {
+                                    try {
+                                        $sample = VoiceoverPanel::sample((array) data_get($livewire, 'data.voiceover', []), (string) $data['text'], $record);
+                                    } catch (VoiceoverException $e) {
+                                        Notification::make()->title('Glas nije izgovoren')->body($e->getMessage())->danger()->send();
+
+                                        return;
+                                    }
+
+                                    Notification::make()
+                                        ->title('Probni zapis je spreman')
+                                        ->body('Glas čita: '.$sample['spoken'])
+                                        ->actions([
+                                            Action::make('play')->label('Preslušaj')->button()->url(route('voiceovers.audio', $sample['clip']), shouldOpenInNewTab: true),
+                                        ])
+                                        ->success()
+                                        ->persistent()
+                                        ->send();
+                                }),
+                        ])->key('voiceoverActions')->columnSpanFull(),
+                    ])
+                    ->columns(2)
                     ->collapsible(),
 
                 Section::make('Pregledi')

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\PostDrafts\Schemas;
 
 use App\Actions\ChangeVariantFormat;
+use App\Actions\ChangeVariantVoiceover;
 use App\Actions\PrepareVariantMedia;
 use App\Enums\ContentFormat;
 use App\Enums\Platform;
@@ -12,9 +13,14 @@ use App\Enums\VariantStatus;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
 use App\Publishing\FormatCheck;
+use App\Rendering\Scene;
+use App\Rendering\ScenePlanner;
 use App\Rendering\TemplateRegistry;
 use App\Rendering\VideoRenderer;
+use App\Voiceover\Narrator;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -33,6 +39,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Arr;
 use Throwable;
 
 /**
@@ -117,6 +124,14 @@ final class PostDraftForm
                             ->helperText(self::formatHelp($platform))
                             ->afterStateUpdated(fn (?string $state, ?string $old, Set $set) => self::changeFormat($id, $path, $state, $old, $set)),
 
+                        Toggle::make("{$path}.voiceover")
+                            ->label('Voice-over')
+                            ->live()
+                            ->disabled($locked || ! self::canSpeak($variant))
+                            ->helperText(self::voiceoverHelp($variant))
+                            ->visible(fn (Get $get): bool => $get("{$path}.format") === ContentFormat::Video->value && ! $platform->isManual())
+                            ->afterStateUpdated(fn (bool $state, Set $set) => self::changeVoiceover($id, $path, $state, $set)),
+
                         Textarea::make("{$path}.caption")
                             ->label('Tekst objave')
                             ->rows(12)
@@ -155,7 +170,7 @@ final class PostDraftForm
 
                     Group::make([
                         View::make('filament.forms.channel-media')->viewData(['variantId' => $id]),
-                        Actions::make(self::mediaActions($variant))->visible(! $locked),
+                        Actions::make(self::mediaActions($variant))->key("mediaActions{$id}")->visible(! $locked),
                     ]),
                 ]),
             ]);
@@ -250,6 +265,72 @@ final class PostDraftForm
             ->send();
     }
 
+    private static function canSpeak(PostVariant $variant): bool
+    {
+        return (bool) $variant->draft?->brand?->voiceoverSettings()->canSpeak();
+    }
+
+    private static function voiceoverHelp(PostVariant $variant): string
+    {
+        return self::canSpeak($variant)
+            ? 'Glas izgovara slajdove; iznosi su iz stavke. Promjena renderira video ponovno (ranije izrađen video se ne troši).'
+            : 'Brend nema odabran glas ili nedostaje ELEVENLABS_API_KEY (Brendovi → Voice-over).';
+    }
+
+    private static function changeVoiceover(int $id, string $path, bool $state, Set $set): void
+    {
+        $variant = PostVariant::query()->find($id);
+
+        if ($variant === null) {
+            return;
+        }
+
+        try {
+            app(ChangeVariantVoiceover::class)->execute($variant, $state);
+        } catch (Throwable $e) {
+            $set("{$path}.voiceover", ! $state);
+            Notification::make()->title('Voice-over nije promijenjen')->body($e->getMessage())->danger()->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title($state ? 'Voice-over uključen' : 'Voice-over isključen')
+            ->body('Video za ovaj kanal priprema se u pozadini; ostali kanali zadržavaju svoj.')
+            ->success()
+            ->send();
+    }
+
+    /**
+     * What the video would say, one row per slide, written from the item as it is now.
+     *
+     * @return list<array{label: string, text: string}>
+     */
+    private static function scriptRows(PostVariant $variant): array
+    {
+        $draft = $variant->draft;
+
+        if ($draft === null || $draft->contentItems->isEmpty()) {
+            return [];
+        }
+
+        $scenes = app(ScenePlanner::class)->forDraft($draft);
+        $script = app(Narrator::class)->script($draft, $scenes);
+        $cards = count(array_filter($scenes, fn (Scene $scene): bool => $scene->role === Scene::CARD));
+        $card = 0;
+
+        return array_map(function (Scene $scene, $line) use ($cards, &$card): array {
+            $label = match ($scene->role) {
+                Scene::COVER => 'Naslovnica',
+                Scene::HOOK => 'Udica',
+                Scene::CLOSING => 'Završni poziv',
+                default => $cards > 1 ? 'Kartica '.(++$card) : 'Kartica',
+            };
+
+            return ['label' => $label, 'text' => $line->text];
+        }, $scenes, $script->lines);
+    }
+
     /**
      * @return list<Action>
      */
@@ -286,12 +367,19 @@ final class PostDraftForm
                     }
 
                     try {
+                        $video = self::videoOptions($variant, $data);
+
                         app(PrepareVariantMedia::class)->execute(
                             [$variant],
                             fresh: true,
                             templateKey: filled($data['template'] ?? null) ? (string) $data['template'] : null,
-                            video: $data,
+                            video: $video,
                         );
+
+                        // Remembered only once the render is on its way: a script that was refused changes nothing.
+                        if ($variant->format() === ContentFormat::Video && ($video['voiceover'] ?? null) !== $variant->wantsVoiceover()) {
+                            $variant->putSettings(['voiceover' => $video['voiceover'] ? 'on' : 'off']);
+                        }
                     } catch (Throwable $e) {
                         Notification::make()->title('Render nije pokrenut')->body($e->getMessage())->danger()->send();
 
@@ -356,7 +444,45 @@ final class PostDraftForm
                 ])
                 ->helperText($tracks === [] ? 'Knjižnica brenda je prazna — dodaj podloge u postavkama brenda, inače video ostaje bez zvuka.' : null),
             Toggle::make('motion')->label('Pokret na slajdovima (lagani zoom)')->default(true),
+            Toggle::make('voiceover')->label('Voice-over')
+                ->default($variant->wantsVoiceover())
+                ->live()
+                ->disabled(! self::canSpeak($variant))
+                ->helperText(self::voiceoverHelp($variant)),
+            Repeater::make('script')->label('Što glas govori')
+                ->schema([
+                    Hidden::make('label'),
+                    Textarea::make('text')->label('Tekst')->rows(2)->maxLength(300),
+                ])
+                ->default(self::scriptRows($variant))
+                ->addable(false)->deletable(false)->reorderable(false)
+                ->itemLabel(fn (array $state): ?string => $state['label'] ?? null)
+                ->helperText('Napisano iz podataka stavke. Izmijeni samo ako glas nešto čita krivo; iznosi moraju biti oni iz stavke. Prazan redak = slajd samo uz glazbu. Ako ništa ne izmijeniš, tekst se ponovno piše iz stavke.')
+                ->visible(fn (Get $get): bool => (bool) $get('voiceover') && self::canSpeak($variant)),
         ];
+    }
+
+    /**
+     * The render options from the modal: the choice of voice, and the script only if a person changed it —
+     * left alone, it is written again from the item, so a price that changed on the source is not frozen.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private static function videoOptions(PostVariant $variant, array $data): array
+    {
+        $video = Arr::except($data, ['script', 'template']);
+        $video['voiceover'] = (bool) ($data['voiceover'] ?? false);
+
+        if ($video['voiceover']) {
+            $lines = array_values(array_map(fn (mixed $row): string => mb_trim((string) (is_array($row) ? ($row['text'] ?? '') : '')), (array) ($data['script'] ?? [])));
+
+            if ($lines !== array_column(self::scriptRows($variant), 'text')) {
+                $video['script'] = $lines;
+            }
+        }
+
+        return $video;
     }
 
     private static function captionHelp(string $caption, Platform $platform, ?ContentFormat $format): string

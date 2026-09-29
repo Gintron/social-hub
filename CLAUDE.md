@@ -153,6 +153,26 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   Trending zvuk postoji samo kroz inbox (`settings.delivery = inbox`): hub preda video, čovjek
   objavi u aplikaciji, varijanta čeka u `ManualPending` s `external_post_id` (publish_id).
 
+- **Voice-over je dodatak videu, nikad njegov uvjet.** Glas (ElevenLabs, `App\Voiceover\*`, `docs/voiceover.md`)
+  stvara `Narrator` u `RenderVideoJob`. Ako ne uspije (nema ključa, plan potrošen, redak odbijen) video se
+  renderira bez njega, razlog ide u `media_assets.params.voiceover` (vidi ga urednik na kanalu) i jedan mail
+  adminu po uzroku. Ne uvoditi put u kojem objava čeka glas.
+- **Glas govori samo ono što piše u podacima stavke.** `ScriptBuilder` piše iz `Highlights`/`price`/`facts` (istog
+  što crta slajd), `ScriptGuard` primjenjuje pravila `CaptionValidator` (iznos, postotak, poveznica) i na redak koji
+  je urednik izmijenio, prije nego što se išta plati. Nova provjera ide ondje, ne u tekst upute.
+- **Brojeve izgovara hub, ne model.** Model dobiva samo riječi (`SpokenCroatian`: „1,49 €“ → „jedan euro i
+  četrdeset devet centi“, uz padež i rod). Ne slati znamenke glasu; ime koje se čita krivo ide u „Izgovor imena“
+  na brendu.
+- **Isječak se plaća jednom.** Jedan redak = jedan zahtjev; `Synthesizer` ga nalazi po sha256 od teksta, glasa,
+  modela i postavki u `voiceovers`. U ključ ne ulazi kontekst (`previous_text`): završna rečenica brenda dijeli se
+  između svih videa.
+- **Video s glasom i video bez glasa su dva asseta.** `PrepareVariantMedia::latestVideo` ih razlikuje po
+  `params.voiceover.status`; kanal nikad ne dobije onaj koji nije tražio. Tko odlučuje: `settings.voiceover` kanala →
+  pravilo automatske objave (`UpdateVariant::EDITABLE_SETTINGS`) → `brands.voiceover.enabled`.
+- **Slajd čeka riječi, ne obrnuto.** `VideoRenderer::fitNarration` produžuje slajd na trajanje njegovog retka (nikad
+  kraće nego bez glasa); glazba se ispod glasa stišava `sidechaincompress`-om. Ne rezati retke da stanu u zadano
+  trajanje: Facebook Reel smije 90 s, proračun znakova (`elevenlabs.max_characters_per_video`) je ograda za to.
+
 ## Rad
 
 - Sve kroz Sail: `./vendor/bin/sail artisan …`, `./vendor/bin/sail bin pint`, `./vendor/bin/sail artisan test`.

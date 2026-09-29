@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Support;
 
+use App\Enums\ContentFormat;
 use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
@@ -89,9 +90,31 @@ final class Present
                 'template' => $asset->template_key,
                 'size' => $asset->width.'x'.$asset->height,
             ])->all(),
+            'voiceover' => self::voiceover($variant),
             'permalink' => $variant->permalink,
             'published_at' => $variant->published_at?->toIso8601ZuluString(),
             'error' => $variant->error_message,
         ];
+    }
+
+    /**
+     * Whether a video channel is narrated and what its video says; null for anything that has no sound.
+     *
+     * @return array{wanted: bool, status: string, script?: list<string>, error?: string}|null
+     */
+    private static function voiceover(PostVariant $variant): ?array
+    {
+        if ($variant->format() !== ContentFormat::Video) {
+            return null;
+        }
+
+        $params = (array) data_get($variant->media->first(fn ($asset): bool => $asset->isVideo()), 'params.voiceover', []);
+
+        return array_filter([
+            'wanted' => $variant->wantsVoiceover(),
+            'status' => ($params['status'] ?? null) === 'ok' ? 'spoken' : (($params['status'] ?? null) === 'failed' ? 'failed' : 'none'),
+            'script' => ($params['status'] ?? null) === 'ok' ? array_column((array) ($params['script'] ?? []), 'text') : null,
+            'error' => ($params['status'] ?? null) === 'failed' ? (string) ($params['error'] ?? '') : null,
+        ], fn (mixed $value): bool => $value !== null);
     }
 }

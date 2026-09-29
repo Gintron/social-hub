@@ -35,8 +35,10 @@ Panel: http://localhost:8100/admin
 | `hub:render-preview {predložak} [--item=] [--html]` | Renderiraj predložak za stavku |
 | `hub:publish-due` | Pošalji zakazane nacrte u red (svake minute iz schedulera) |
 | `hub:verify-accounts` | Provjeri Meta tokene, označi one koje treba ponovno povezati |
-| `hub:render-video [--brand=] [--kind=] [--count=] [--seconds=]` | Uspravni 9:16 slideshow (MP4) za Reels i TikTok |
-| `hub:render-storyboard {manifest} --brand= --output=` | Pregled videa iz JSON scenarija s trajanjima kadrova; ne stvara nacrt ni objavu |
+| `hub:render-video [--brand=] [--kind=] [--count=] [--seconds=] [--voiceover]` | Uspravni 9:16 slideshow (MP4) za Reels i TikTok, po želji s glasom |
+| `hub:render-storyboard {manifest} --brand= --output=` | Pregled videa iz JSON scenarija s trajanjima kadrova (i `say` po kadru za glas); ne stvara nacrt ni objavu |
+| `hub:voiceover-test [tekst] [--brand=] [--voice=] [--list-voices]` | Izgovori jednu rečenicu ElevenLabsom i pokaži što je glas primio i koliko je koštalo |
+| `hub:prune-voiceovers [--days=60]` | Obriši stare zvučne isječke s diska (tjedno iz schedulera); zapisi ostaju |
 | `hub:refresh-tiktok-tokens` | Osvježi TikTok tokene prije isteka (satno iz schedulera) |
 | `hub:agent-draft [brend] [--limit=] [--dry-run]` | Claude piše tekstove za nove kandidate i ostavlja ih na odobrenje |
 | `hub:issue-mcp-token {email} --scope=` | Token za MCP servera (read / draft / approve / publish) |
@@ -48,6 +50,7 @@ Panel: http://localhost:8100/admin
 app/Sources      Social Feed v1 adapter, RSS/Atom/JSON Feed adapter, validator, sinkronizacija
 app/Support      PostingSchedule: kad brend smije objavljivati (termini po lokalnom vremenu)
 app/Rendering    Blade predlošci po vrsti sadržaja → Browsershot → JPEG; ffmpeg → 9:16 MP4 za Reels i TikTok
+app/Voiceover    voice-over: tekst iz stavke, brojevi riječima, ElevenLabs, keš isječaka (docs/voiceover.md)
 app/Drafting     deterministički captioni i digest (baza za AI agenta)
 app/Actions      CreateDraft, ApproveDraft, ScheduleDraft, DispatchDraftPublishing, MarkManualPosted, DiscardDraft
 app/Publishing   Graph i TikTok klijenti, mapiranje grešaka, Facebook/Instagram/TikTok publisheri, OAuth
@@ -114,6 +117,10 @@ Agenti mogu i sami voditi hub kroz MCP server — alati, opsezi tokena i primjer
 `hub:render-video` renderira postojeće predloške uspravno (1080×1920) i spoji ih ffmpegom u MP4 s
 prijelazima, tihim zvučnim zapisom i `faststart` zaglavljem — jedan video ide na sva tri mjesta.
 Na nacrtu je to akcija **Renderiraj video**, a kanal se prebaci na reel u postavkama varijante.
+
+**Voice-over.** Brend može uključiti glas (ElevenLabs) koji izgovara što je na slajdovima: proizvod,
+cijenu, popust, rok i poziv brenda. Tekst se piše iz podataka stavke, iznosi se provjeravaju, a ako glas
+ne uspije video izlazi bez njega. Postavke, cijena i ograničenja: [docs/voiceover.md](docs/voiceover.md).
 
 TikTok traži dvoje što se ne rješava kodom: prolazak **audita** (do tada su objave samo privatne) i
 **verificiranu domenu** s koje TikTok povlači video. Detalji su u [docs/tiktok.md](docs/tiktok.md).

@@ -16,7 +16,7 @@ Server: `App\Mcp\Servers\SocialHubServer`, rute u [`routes/ai.php`](../routes/ai
 | `hub.list_drafts` | `mcp` | Objave i njihovo stanje po kanalu. |
 | `hub.publish_stats` | `mcp` | Što je izašlo, što je palo, što čeka ručnu objavu. |
 | `hub.create_draft` | `mcp:draft` | Od kandidata radi objavu koja čeka odobrenje. |
-| `hub.update_variant` | `mcp:draft` | Mijenja tekst jednog kanala ili ga isključuje iz objave. |
+| `hub.update_variant` | `mcp:draft` | Mijenja tekst jednog kanala, format, voice-over videa ili ga isključuje iz objave. |
 | `hub.render_preview` | `mcp:draft` | Ponovno renderira sliku, po želji drugim predloškom. |
 | `hub.approve_draft` | `mcp:approve` | Odobrava i po želji zakazuje. |
 | `hub.publish_draft` | `mcp:publish` | Objavljuje odmah. |

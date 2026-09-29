@@ -29,6 +29,11 @@
     $video = $media->first(fn ($asset) => $asset->isVideo());
     $images = $media->reject(fn ($asset) => $asset->isVideo())->values();
     $item = $variant?->draft?->contentItems->first();
+
+    // What the voice did for this video: spoke it (and what it said), failed (and why), or was not asked.
+    $voice = $video ? (array) data_get($video->params, 'voiceover', []) : [];
+    $voiced = ($voice['status'] ?? null) === 'ok';
+    $voiceWanted = $variant?->wantsVoiceover() ?? false;
 @endphp
 <div @if($rendering) wire:poll.3s @endif style="display:flex;flex-direction:column;gap:12px">
   @if($variant === null)
@@ -37,6 +42,17 @@
     @if($problem !== null && ! $rendering)
       <div style="border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5">
         {{ $problem }}
+      </div>
+    @endif
+
+    @if($video && ! $rendering && $voiceWanted && ! $voiced)
+      <div style="border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5">
+        @if(($voice['status'] ?? null) === 'failed')
+          <strong>Video je bez voice-overa:</strong> {{ $voice['error'] ?? 'glas nije mogao nastati' }}
+          <br>Objava ide i bez njega. Kad se uzrok ukloni, „Renderiraj ponovno“ ga dodaje.
+        @else
+          <strong>Ovaj video nema voice-over</strong> — izrađen je prije nego što je uključen. „Renderiraj ponovno“ ga dodaje.
+        @endif
       </div>
     @endif
 
@@ -79,6 +95,16 @@
                @if($video->poster) poster="{{ $video->poster->publicUrl() }}" @endif
                style="display:block;width:100%;max-height:560px;background:#000"></video>
         <div style="padding:12px;font-size:13px;white-space:pre-wrap;line-height:1.4">{{ $caption }}</div>
+        @if($voiced)
+          <details style="margin:0 12px 12px;font-size:12px;line-height:1.5">
+            <summary style="cursor:pointer;font-weight:600">🎙 Voice-over · {{ $voice['characters'] ?? 0 }} znakova</summary>
+            <ol style="margin:6px 0 0 18px;padding:0">
+              @foreach((array) ($voice['script'] ?? []) as $line)
+                <li style="{{ ($line['text'] ?? '') === '' ? 'opacity:.5' : '' }}">{{ ($line['text'] ?? '') !== '' ? $line['text'] : '(slajd samo uz glazbu)' }}</li>
+              @endforeach
+            </ol>
+          </details>
+        @endif
       @elseif($images->isNotEmpty())
         @unless($isInstagram)
           <div style="padding:0 12px 12px;font-size:14px;white-space:pre-wrap;line-height:1.4">{{ $caption }}</div>

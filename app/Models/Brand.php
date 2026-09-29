@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Drafting\DigestSeries;
+use App\Voiceover\VoiceoverSettings;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Storage;
  * @property array<int, array{day?: string, from: string, to: string}>|null $posting_windows
  * @property int|null $daily_post_limit
  * @property array<array-key, array{path?: string|null, title?: string|null, license?: string|null}>|null $audio_tracks
+ * @property array<string, mixed>|null $voiceover
  * @property array<array-key, array<string, mixed>>|null $digests
  * @property string $timezone
  */
@@ -36,7 +38,7 @@ final class Brand extends Model
     public const AUDIO_DISK = 'public';
 
     protected $fillable = [
-        'slug', 'name', 'site_url', 'logo_path', 'colors', 'voice', 'posting_windows', 'daily_post_limit', 'audio_tracks', 'digests', 'timezone',
+        'slug', 'name', 'site_url', 'logo_path', 'colors', 'voice', 'posting_windows', 'daily_post_limit', 'audio_tracks', 'voiceover', 'digests', 'timezone',
     ];
 
     public function sources(): HasMany
@@ -140,6 +142,14 @@ final class Brand extends Model
         return is_file($path) ? $path : ($choice === 'auto' ? $this->defaultAudioPath() : null);
     }
 
+    /**
+     * The brand's narrator: whether its videos are spoken and by which voice.
+     */
+    public function voiceoverSettings(): VoiceoverSettings
+    {
+        return VoiceoverSettings::forBrand($this);
+    }
+
     protected function casts(): array
     {
         return [
@@ -147,6 +157,7 @@ final class Brand extends Model
             'voice' => 'array',
             'posting_windows' => 'array',
             'audio_tracks' => 'array',
+            'voiceover' => 'array',
             'digests' => 'array',
         ];
     }

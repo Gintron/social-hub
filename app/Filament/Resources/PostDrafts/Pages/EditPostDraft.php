@@ -166,6 +166,7 @@ final class EditPostDraft extends EditRecord
             ->mapWithKeys(fn (PostVariant $variant): array => ["v{$variant->id}" => [
                 'enabled' => $variant->enabled,
                 'format' => $variant->format()->value,
+                'voiceover' => $variant->wantsVoiceover(),
                 'caption' => $variant->caption,
                 'delivery' => (string) $variant->setting('delivery', 'direct'),
                 'privacy_level' => (string) $variant->setting('privacy_level', config('tiktok.default_privacy_level', 'SELF_ONLY')),
