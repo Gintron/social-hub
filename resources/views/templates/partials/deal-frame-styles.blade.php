@@ -9,14 +9,11 @@
   .deal__in { zoom: {{ $g['zoom'] }}; display: flex; flex-direction: column; }
   .deal-top { display: flex; align-items: center; gap: 26px; padding: 0 72px; }
   .deal-top .eyebrow { font-size: 30px; line-height: 1.3; max-width: 200px; color: rgba(255,255,255,.85); }
-  /* The picture is a tile of a leaflet, an object of its own: shown whole, never stretched. */
   .deal-media { position: relative; flex: none; margin: 30px auto 0; }
-  .leaflet { position: relative; width: 100%; height: 100%; background: #fff; overflow: hidden; border-radius: 30px; box-shadow: 0 26px 60px rgba(0,0,0,.28);
-             @if($card) transform: rotate(-1.6deg); @endif }
-  .leaflet__fill { position: absolute; left: -60px; top: -60px; width: calc(100% + 120px); height: calc(100% + 120px); object-fit: cover; filter: blur(30px) saturate(1.1); opacity: .5; }
-  .leaflet__img { position: relative; display: block; width: 100%; height: 100%; object-fit: contain; padding: 14px; }
-  /* Cut at the bottom (TemplateData::LEAFLET_CUT), where the next tile's fragments sit, and faded into the edge. */
-  .leaflet__img--cut { object-fit: cover; object-position: 50% 0; padding: 0; -webkit-mask-image: linear-gradient(180deg, #000 0, #000 86%, transparent 100%); }
+@include('templates.partials.leaflet-styles')
+@if($card)
+  .leaflet { transform: rotate(-1.6deg); }
+@endif
   .stamp { position: absolute; top: -82px; width: 220px; height: 220px; z-index: 3; display: flex; align-items: center; justify-content: center;
            border-radius: 50%; background: #dc2626; color: #fff; font-size: 74px; font-weight: 900; letter-spacing: -2px;
            transform: rotate(9deg); box-shadow: 0 14px 34px rgba(0,0,0,.3); }

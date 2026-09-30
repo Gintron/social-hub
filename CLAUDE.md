@@ -31,6 +31,11 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   blok, popust je pečat na uglu pločice; raspored po formatu je u `App\Rendering\DealFrame` (pločica dobije
   visinu koja preostane iza trgovine, bloka i činjenica), ne u CSS-u. Uz `video_style=direct` kartica ne pečati
   popust drugi put, a ključ hooka mora ostati u regexu u `VideoRenderer` (uvod 2,5 s).
+- **Usporedba crta rang, ne samo ispisuje.** Popis je niz traka: duljina prati brojku od nule (najkraća = najjeftinija,
+  žuta), ali nikad ispod `ComparisonFrame::MIN_BAR` jer bi u nju stali samo logotip i broj. Kad je ijedna brojka nešto
+  drugo od običnog broja („od 9,98 €/kg“) trake se ne crtaju uopće — nepošteno bi bilo mjeriti ono što se ne da izmjeriti.
+  4:5 i 1:1 nemaju zaseban dizajn: isti se smanjuje (`ComparisonFrame::layout` → `zoom`), a story ostavlja sigurne
+  zone aplikacije i nema podnožja. Žuta i crvena su signal trgovine, ne boja brenda (kao u akcijama).
 - **Sve mutacije nacrta idu kroz `App\Actions\*`** — Filament, MCP alati i agent zovu iste klase.
 - **Objavljivanje je idempotentno**: `PostVariant::claimForPublishing()` (atomski queued→publishing),
   skip kad `external_post_id` postoji, `ShouldBeUnique` jobovi. Draft status se **postavlja prije**

@@ -39,12 +39,7 @@
 
     @if($hasImage)
       <div class="deal-media" style="width: {{ $g['tw'] }}px; height: {{ $g['th'] }}px;">
-        <div class="leaflet">
-          @unless($cut)
-            <img class="leaflet__fill" src="{{ $item['primary_image'] }}" alt="">
-          @endunless
-          <img class="leaflet__img{{ $cut ? ' leaflet__img--cut' : '' }}" src="{{ $item['primary_image'] }}" alt="">
-        </div>
+        @include('templates.partials.leaflet', ['src' => $item['primary_image'], 'cut' => $cut])
         @if($showStamp)
           <div class="stamp" style="left: {{ $g['stampLeft'] }}px;">−{{ $discount }}%</div>
         @elseif(blank($discount) && ! empty($item['badges']))

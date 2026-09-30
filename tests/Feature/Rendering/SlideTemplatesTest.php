@@ -235,13 +235,13 @@ final class SlideTemplatesTest extends TestCase
 
         // The hook names the cheapest shop as its headline and the next two beside it, each by its own plaque.
         $hook = $renderer->html($brand, 'kinds/comparison-hook-story', $params);
-        $winner = mb_substr($hook, mb_strpos($hook, '<div class="winner">'), mb_strpos($hook, '<div class="next">') - mb_strpos($hook, '<div class="winner">'));
-        foreach (['NAJJEFTINIJE', '<div class="name">Lidl</div>', '<div class="figure">9,98 €/kg</div>', 'Bellarom Mljevena kava 500 g · 4,99 €'] as $text) {
+        $winner = mb_substr($hook, mb_strpos($hook, '<div class="cmp-win">'), mb_strpos($hook, '<div class="cmp-next">') - mb_strpos($hook, '<div class="cmp-win">'));
+        foreach (['NAJJEFTINIJE', '<div class="name">Lidl</div>', '9,98</span><span class="u">€/kg</span>', 'Bellarom Mljevena kava 500 g · 4,99 €'] as $text) {
             $this->assertStringContainsString($text, $winner);
         }
-        $next = mb_substr($hook, mb_strpos($hook, '<div class="next">'));
+        $next = mb_substr($hook, mb_strpos($hook, '<div class="cmp-next">'));
         $this->assertLessThan(mb_strpos($next, '<div class="name">Konzum</div>'), mb_strpos($next, '<div class="name">Spar</div>'));
-        $this->assertStringContainsString('<div class="value">16,23 €/kg</div>', $next);
+        $this->assertStringContainsString('<div class="cmp-rk__value">16,23 €/kg</div>', $next);
         $this->assertStringContainsString('Kava u ovotjednim letcima', $hook);
         $this->assertStringNotContainsString('class="footer"', $hook, 'na 9:16 podnožje pokriva aplikacija');
         $this->assertStringContainsString('class="footer"', $renderer->html($brand, 'kinds/comparison-hook-square', $params));
