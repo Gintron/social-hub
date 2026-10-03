@@ -64,16 +64,16 @@ final class ElevenLabsClientTest extends TestCase
         });
         $this->assertGreaterThan(1000, mb_strlen($audio->bytes, '8bit'));
         $this->assertSame('req-1', $audio->requestId);
-        $this->assertSame(31, $audio->characters, 'billed characters come from the character-cost header');
+        $this->assertSame(31, $audio->cost, 'what was billed comes from the character-cost header, whatever the length of the text');
     }
 
-    public function test_the_length_of_the_text_stands_in_when_the_api_reports_no_cost(): void
+    public function test_no_cost_is_recorded_when_the_api_reports_none(): void
     {
         Http::fake(['api.elevenlabs.io/*' => Http::response(FakeSpeech::mp3(), 200)]);
 
         $audio = app(ElevenLabsClient::class)->speak('Pet znakova', 'voice-1', 'eleven_multilingual_v2');
 
-        $this->assertSame(11, $audio->characters);
+        $this->assertNull($audio->cost, 'the length of the text is not passed off as a cost');
         $this->assertNull($audio->requestId);
     }
 

@@ -61,12 +61,15 @@ final class ElevenLabsClient
             throw new VoiceoverException('ElevenLabs je vratio prazan zvučni zapis.', 'empty_audio', retryable: true);
         }
 
+        // The docs call this header "the cost of the generation in characters". Measured against the same 43-character
+        // line it was 14 on multilingual v2, 9 on v3, 7 on flash v2.5 and 3 on v4 (2026-10-03): it is what the request
+        // was billed in credits, so it says what a line cost but never how long it was. Length is the text's own.
         $cost = $response->header('character-cost');
 
         return new SpokenAudio(
             bytes: $audio,
             requestId: filled($response->header('request-id')) ? $response->header('request-id') : null,
-            characters: is_numeric($cost) ? (int) $cost : mb_strlen($text),
+            cost: is_numeric($cost) ? (int) $cost : null,
         );
     }
 

@@ -99,12 +99,13 @@ final class VoiceoverTest extends Command
         }
 
         $this->newLine();
-        $this->table(['Naglasci', 'Glas', 'Model', 'Brzina', 'Znakova', 'Trajanje', 'Glasnoća', 'Izvor'], array_map(fn (array $row): array => [
+        $this->table(['Naglasci', 'Glas', 'Model', 'Brzina', 'Znakova', 'Kredita', 'Trajanje', 'Glasnoća', 'Izvor'], array_map(fn (array $row): array => [
             $row[0],
             $settings->voiceId,
             $settings->model,
             $settings->voiceSettings()['speed'],
             $row[2]->characters,
+            $row[2]->cost ?? '—',
             number_format($row[2]->durationSeconds(), 1, ',', '').' s',
             $row[2]->loudness_lufs === null ? '—' : number_format($row[2]->loudness_lufs, 1, ',', '').' LUFS',
             $row[3] ? 'iz keša (nije naplaćeno)' : 'ElevenLabs (naplaćeno)',

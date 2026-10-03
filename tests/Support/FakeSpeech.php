@@ -17,8 +17,19 @@ final class FakeSpeech
     /** Roughly how many characters a Croatian narrator gets through in a second. */
     public const CHARACTERS_PER_SECOND = 14.0;
 
+    /**
+     * What the real API bills per character of text in its `character-cost` header (14 for 43 characters on
+     * multilingual v2): a credit figure that is deliberately not the length, so nothing can pass by mistaking one for the other.
+     */
+    public const COST_PER_CHARACTER = 0.33;
+
     /** @var array<string, string> */
     private static array $cache = [];
+
+    public static function cost(string $text): int
+    {
+        return (int) round(mb_strlen($text) * self::COST_PER_CHARACTER);
+    }
 
     /**
      * A mono 44.1 kHz MP3 tone, the shape ElevenLabs returns.
@@ -62,7 +73,7 @@ final class FakeSpeech
                 return Http::response(
                     self::mp3(max($minimumSeconds, round(mb_strlen($text) / self::CHARACTERS_PER_SECOND, 1))),
                     200,
-                    ['request-id' => 'req-'.mb_substr(md5($text), 0, 12), 'character-cost' => (string) mb_strlen($text)],
+                    ['request-id' => 'req-'.mb_substr(md5($text), 0, 12), 'character-cost' => (string) self::cost($text)],
                 );
             },
         ]);

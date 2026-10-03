@@ -12,7 +12,10 @@ final readonly class SpokenAudio
     public function __construct(
         public string $bytes,
         public ?string $requestId,
-        /** What ElevenLabs charged for it (the `character-cost` header), else the length of the text. */
-        public int $characters,
+        /**
+         * What ElevenLabs billed for it: the `character-cost` header, null when it sent none. Despite the name it
+         * is not the length of the text but the account's billing units, and they depend on the model.
+         */
+        public ?int $cost,
     ) {}
 }

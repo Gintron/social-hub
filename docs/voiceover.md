@@ -150,11 +150,34 @@ ElevenLabs naplaćuje po znaku. Svaki izgovoreni redak sprema se u `voiceovers` 
 postavke → sha256) i **isti tekst istim glasom ne plaća se dvaput**: završna rečenica brenda izgovori se
 jednom i koristi u svakom idućem videu; ponovni render, prebacivanje kanala s Reela na TikTok ili
 isključivanje i uključivanje glasa ne koštaju ništa. Tablica je i knjiga: što je rečeno, kojim glasom,
-koliko znakova. Ključ je tekst **s oznakama naglasaka**, pa se izmjena načina zapisa naglasaka plaća kao
-novi tekst (samo za retke koji se ponovno izgovaraju).
+koliko je bilo znakova (`characters`) i koliko je ElevenLabs naplatio (`cost`). Ključ je tekst **s oznakama
+naglasaka**, pa se izmjena načina zapisa naglasaka plaća kao novi tekst (samo za retke koji se ponovno
+izgovaraju).
 
-Procjena: oko 250 znakova po videu, 10 videa dnevno ≈ 75 000 znakova mjesečno. Gornja granica po videu
-je `ELEVENLABS_MAX_CHARACTERS_PER_VIDEO` (800; oko minute govora, a Facebook Reel smije 90 s).
+**`characters` i `cost` nisu isto.** `characters` je duljina izgovorenog teksta (`mb_strlen`, hub je računa
+sam). `cost` je zaglavlje odgovora `character-cost`: dokumentacija ga opisuje kao „cijenu generiranja u
+znakovima“, ali izmjereno je drugo, ono što je zahtjev naplaćen u kreditima računa, i ovisi o modelu. Isti redak
+od 43 znaka (2026-10-03, plan `payg`):
+
+| Model | `character-cost` |
+|---|---|
+| `eleven_multilingual_v2` | 14 |
+| `eleven_v3` | 9 |
+| `eleven_flash_v2_5` | 7 |
+| `eleven_v4` | 3 |
+
+Na multilingual v2 redci od 10, 43 i 87 znakova dali su 3, 14 i 30, pa je to oko trećine znaka po znaku, ali
+ne točno razmjerno; „Aaa…“ od 43 znaka naplaćen je isto kao pravi redak od 43. Zbroj zaglavlja slaže se približno
+s dnevnom potrošnjom u kreditima (`GET /v1/usage/character-stats?metric=credits`). `cost` je `null` kad API
+zaglavlje nije poslao; duljinu teksta nikad ne glumi. Za koliko je koji brend potrošio zbroji `cost`, ne `characters`.
+
+Na `payg` planu `character_count` iz `/v1/user/subscription` (to je ono što `hub:doctor` i panel zovu
+„koliko je plana ostalo“) nije se pomaknuo ni nakon osam poziva u nekoliko minuta (izmjereno 2026-10-03), pa
+nemoj po njemu zaključivati da ništa nije potrošeno; dnevna potrošnja je u `character-stats`.
+
+Procjena: oko 250 znakova po videu, 10 videa dnevno ≈ 75 000 znakova mjesečno (u kreditima, po gornjem mjerenju,
+to je manje). Gornja granica po videu je `ELEVENLABS_MAX_CHARACTERS_PER_VIDEO` (800; oko minute govora, a Facebook
+Reel smije 90 s); mjeri se duljinom skripte (`ScriptGuard`), ne zaglavljem.
 `hub:prune-voiceovers` (tjedno, nedjeljom) briše zvučne datoteke starije od 60 dana; zapisi ostaju, a
 ista rečenica, ako zatreba, izgovori se ponovno pod istim zapisom.
 

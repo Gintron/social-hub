@@ -49,6 +49,7 @@ final class VoiceoverCommandsTest extends TestCase
         $this->artisan('hub:voiceover-test', ['text' => 'Kruh 500 g za 1,49 €.', '--brand' => 'uselisto'])
             ->expectsOutputToContain('Glas čita: Kruh petsto grama za jedan euro i četrdeset devet centi.')
             ->expectsOutputToContain('ElevenLabs (naplaćeno)')
+            ->expectsOutputToContain('Kredita')
             ->assertSuccessful();
 
         // Said again, it is not paid for again.

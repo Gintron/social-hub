@@ -178,7 +178,9 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   na brendu.
 - **Isječak se plaća jednom.** Jedan redak = jedan zahtjev; `Synthesizer` ga nalazi po sha256 od teksta, glasa,
   modela i postavki u `voiceovers`. U ključ ne ulazi kontekst (`previous_text`): završna rečenica brenda dijeli se
-  između svih videa.
+  između svih videa. Knjiga ima dva broja: `characters` je duljina izgovorenog teksta (hub je računa), a `cost` je
+  zaglavlje `character-cost` — ono što je zahtjev naplaćen u kreditima, ne broj znakova (isti redak od 43 znaka:
+  14 na v2, 9 na v3, 7 na flash, 3 na v4). Potrošnju zbrajaj po `cost`; zaglavlje nikad ne ide u `characters`.
 - **Video s glasom i video bez glasa su dva asseta.** `PrepareVariantMedia::latestVideo` ih razlikuje po
   `params.voiceover.status`; kanal nikad ne dobije onaj koji nije tražio. Tko odlučuje: `settings.voiceover` kanala →
   pravilo automatske objave (`UpdateVariant::EDITABLE_SETTINGS`) → `brands.voiceover.enabled`.

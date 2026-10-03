@@ -51,7 +51,9 @@ final class SynthesizerTest extends TestCase
         $this->assertSame('eleven_multilingual_v2', $clip->model);
         $this->assertSame('Preuzmi Listo i dodaj prvi proizvod s letka.', $clip->text);
         $this->assertSame($this->brand->id, $clip->brand_id);
-        $this->assertSame(mb_strlen('Preuzmi Listo i dodaj prvi proizvod s letka.'), $clip->characters);
+        $this->assertSame(44, $clip->characters, 'characters is the length of what was said');
+        $this->assertSame(FakeSpeech::cost('Preuzmi Listo i dodaj prvi proizvod s letka.'), $clip->cost);
+        $this->assertNotSame($clip->characters, $clip->cost, 'the billed figure is kept apart from the length');
         $this->assertStringStartsWith('voiceovers/uselisto/', $clip->path);
         Storage::disk('local')->assertExists($clip->path);
         $this->assertSame(Storage::disk('local')->size($clip->path), $clip->bytes);
@@ -61,6 +63,17 @@ final class SynthesizerTest extends TestCase
         $this->assertStringStartsWith('req-', (string) $clip->request_id);
         $this->assertSame(0.55, $clip->settings['stability']);
         $this->assertCount(1, $this->requests);
+    }
+
+    public function test_a_clip_the_api_sent_no_cost_for_is_recorded_with_its_length_and_no_cost(): void
+    {
+        Http::swap(new Factory);
+        Http::fake(['api.elevenlabs.io/*' => Http::response(FakeSpeech::mp3(), 200, ['request-id' => 'req-1'])]);
+
+        $clip = app(Synthesizer::class)->clip('Preuzmi Listo.', $this->settings(), $this->brand);
+
+        $this->assertSame(14, $clip->characters);
+        $this->assertNull($clip->cost);
     }
 
     public function test_the_same_words_in_the_same_voice_are_paid_for_once(): void

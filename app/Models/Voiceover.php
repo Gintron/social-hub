@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string $text
  * @property array<string, mixed>|null $settings
  * @property int $characters
+ * @property int|null $cost
  * @property int $duration_ms
  * @property float|null $loudness_lufs
  * @property float|null $true_peak_db
@@ -33,7 +34,7 @@ final class Voiceover extends Model
     use HasFactory;
 
     protected $fillable = [
-        'brand_id', 'hash', 'voice_id', 'model', 'text', 'settings', 'characters', 'duration_ms',
+        'brand_id', 'hash', 'voice_id', 'model', 'text', 'settings', 'characters', 'cost', 'duration_ms',
         'loudness_lufs', 'true_peak_db', 'disk', 'path', 'bytes', 'request_id',
     ];
 
@@ -62,6 +63,7 @@ final class Voiceover extends Model
         return [
             'settings' => 'array',
             'characters' => 'integer',
+            'cost' => 'integer',
             'duration_ms' => 'integer',
             'loudness_lufs' => 'float',
             'true_peak_db' => 'float',

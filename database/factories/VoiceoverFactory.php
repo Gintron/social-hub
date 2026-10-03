@@ -26,6 +26,7 @@ final class VoiceoverFactory extends Factory
             'text' => $text,
             'settings' => ['stability' => 0.55],
             'characters' => mb_strlen($text),
+            'cost' => null,
             'duration_ms' => 2500,
             'loudness_lufs' => -20.0,
             'true_peak_db' => -4.0,
