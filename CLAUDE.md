@@ -181,6 +181,10 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   između svih videa. Knjiga ima dva broja: `characters` je duljina izgovorenog teksta (hub je računa), a `cost` je
   zaglavlje `character-cost` — ono što je zahtjev naplaćen u kreditima, ne broj znakova (isti redak od 43 znaka:
   14 na v2, 9 na v3, 7 na flash, 3 na v4). Potrošnju zbrajaj po `cost`; zaglavlje nikad ne ide u `characters`.
+- **Jedan model glasa: ElevenLabs v4** (Marijan, 03. 10. 2026.), i noviji kad izađe. Ime modela je `ELEVENLABS_MODEL` i
+  popis `config/elevenlabs.models`, nikad grana u kodu; brend sa spremljenim modelom izvan popisa dobiva zadani. v4 prima
+  sve glasovne postavke, ali `speed` ne primjenjuje (isti redak jednako dug uz 0,7 i 1,2) — ne obećavati ubrzanje
+  postavkom. v2/v3/flash su maknuti iz panela; ne vraćati ih bez razloga.
 - **Video s glasom i video bez glasa su dva asseta.** `PrepareVariantMedia::latestVideo` ih razlikuje po
   `params.voiceover.status`; kanal nikad ne dobije onaj koji nije tražio. Tko odlučuje: `settings.voiceover` kanala →
   pravilo automatske objave (`UpdateVariant::EDITABLE_SETTINGS`) → `brands.voiceover.enabled`.

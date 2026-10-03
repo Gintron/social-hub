@@ -59,7 +59,7 @@ final class NarratorTest extends TestCase
             'Preuzmi Listo. Dodaj prvi proizvod s letka.',
         ], array_column($this->requests, 'text'));
         $this->assertSame('voice-1', $narration->voiceId);
-        $this->assertSame('eleven_multilingual_v2', $narration->model);
+        $this->assertSame('eleven_v4', $narration->model);
         $this->assertSame(-14.0, $narration->musicGainDb);
         $this->assertSame(array_sum(array_map('mb_strlen', array_column($this->requests, 'text'))), $narration->characters());
 

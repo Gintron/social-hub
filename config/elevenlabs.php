@@ -16,10 +16,11 @@ return [
     'base_url' => env('ELEVENLABS_BASE_URL', 'https://api.elevenlabs.io'),
 
     /*
-     * Multilingual v2 lists Croatian, reads numbers better than the fast models and accepts every
-     * voice setting used below. A brand can pick another model in the panel (eleven_v4, eleven_v3).
+     * v4 is the one model the hub speaks with (Marijan, 2026-10-03), and the newer one when ElevenLabs ships
+     * it: change this and `models` below, nothing in the code names a model. It accepts every voice setting
+     * used below (200 on all of them), but ignores `speed` — the same line comes back the same length at 0.7 and 1.2.
      */
-    'model' => env('ELEVENLABS_MODEL', 'eleven_multilingual_v2'),
+    'model' => env('ELEVENLABS_MODEL', 'eleven_v4'),
 
     'output_format' => 'mp3_44100_128',
 
@@ -68,13 +69,10 @@ return [
     'max_characters_per_video' => (int) env('ELEVENLABS_MAX_CHARACTERS_PER_VIDEO', 800),
 
     /*
-     * Models the panel offers. `stitching` is not needed (clips are spoken independently); the note is
-     * what the editor reads.
+     * Models the panel offers, and the only ones a brand's setting is read as: anything else falls back to
+     * `model` above. A newer model is one more line here. The note is what the editor reads.
      */
     'models' => [
-        'eleven_multilingual_v2' => 'Multilingual v2 — provjeren hrvatski i brojevi (preporučeno)',
-        'eleven_v4' => 'v4 — najnoviji, ekspresivniji (isprobaj prije upotrebe)',
-        'eleven_v3' => 'v3 — ekspresivan, ograničene postavke glasa',
-        'eleven_flash_v2_5' => 'Flash v2.5 — jeftiniji, hrvatski nije službeno naveden',
+        'eleven_v4' => 'v4 — jedini model koji hub koristi',
     ],
 ];

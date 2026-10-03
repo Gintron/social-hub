@@ -63,7 +63,7 @@ final readonly class VoiceoverSettings
         return new self(
             enabled: (bool) ($data['enabled'] ?? false),
             voiceId: filled($data['voice_id'] ?? null) ? mb_trim((string) $data['voice_id']) : null,
-            model: in_array($model, $models, true) ? $model : (string) config('elevenlabs.model', 'eleven_multilingual_v2'),
+            model: in_array($model, $models, true) ? $model : (string) config('elevenlabs.model', 'eleven_v4'),
             stability: is_numeric($data['stability'] ?? null) ? max(0.0, min(1.0, (float) $data['stability'])) : null,
             speed: is_numeric($data['speed'] ?? null) ? max(self::MIN_SPEED, min(self::MAX_SPEED, (float) $data['speed'])) : null,
             outro: filled($data['outro'] ?? null) ? mb_trim((string) $data['outro']) : null,
@@ -132,11 +132,6 @@ final readonly class VoiceoverSettings
     {
         $defaults = (array) config('elevenlabs.voice_settings', []);
         $stability = $this->stability ?? (float) ($defaults['stability'] ?? 0.5);
-
-        // v3 has three stability positions — creative, natural, robust — and no values between them.
-        if ($this->model === 'eleven_v3') {
-            $stability = collect([0.0, 0.5, 1.0])->sortBy(fn (float $step): float => abs($step - $stability))->first();
-        }
 
         return [
             'stability' => round($stability, 2),

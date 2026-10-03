@@ -156,7 +156,7 @@ final class BrandForm
                         TextInput::make('voiceover.speed')->label('Brzina')->numeric()
                             ->minValue(VoiceoverSettings::MIN_SPEED)->maxValue(VoiceoverSettings::MAX_SPEED)->step(0.05)
                             ->placeholder('1,05')
-                            ->helperText('0,7–1,2, zadano 1,05. Brže zvuči življe i skraćuje video; cijene ostaju razumljive do oko 1,1.'),
+                            ->helperText('0,7–1,2, zadano 1,05. Model v4 ovu postavku ne primjenjuje (izmjereno: isti redak je jednako dug uz 0,7 i 1,2), pa je za sada bez učinka.'),
                         Select::make('voiceover.music')->label('Glasnoća glazbe ispod glasa')
                             ->options(['quiet' => 'Tiho', 'medium' => 'Srednje (zadano)', 'loud' => 'Glasnije'])
                             ->helperText('Glazba brenda se uz to još stišava dok glas govori.'),

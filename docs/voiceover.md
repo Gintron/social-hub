@@ -117,8 +117,8 @@ izmijenjeni u dijalogu, završna rečenica brenda, probni zapis u panelu.
   Oznaka se sprema kao mjesto (koja riječ, koji samoglasnik), ne kao znak, pa promjena načina ne pita model
   ponovno.
 - **Što glas s oznakom napravi, čuje se; ne čita.** ElevenLabs za hrvatski ne navodi kako čita oznake
-  naglaska: `eleven_multilingual_v2` nema phoneme tagova, a `eleven_v4` prima IPA između kosih crta
-  (`"/ˈkuːtʃa/"`, u dokumentaciji samo engleski primjeri). Zato prije uključivanja pokreni
+  naglaska: `eleven_v4` prima IPA između kosih crta (`"/ˈkuːtʃa/"`, u dokumentaciji samo engleski
+  primjeri). Zato prije uključivanja pokreni
   `hub:voiceover-test --brand=uselisto --compare "…rečenica s imenom ili riječi koju glas griješi…"`:
   izgovori se bez oznaka, s akutom i s velikim slovom (jedan upit OpenAI-ju, tri isječka), pa odaberi način
   koji zvuči najbolje, a ako nijedan nije bolji od `off`, ostavi `off`. Oznake u tekstu vidi i tko zna
@@ -135,8 +135,11 @@ izmijenjeni u dijalogu, završna rečenica brenda, probni zapis u panelu.
 
 - **Slajd čeka riječi.** Slajd ostaje dok se njegov redak ne izgovori (0,2 s prije, 0,4 s poslije, uz
   prijelaze) i nikad kraće nego bez glasa. Video je zato nešto duži: tipično 12–16 s umjesto 9 s.
-- **Brzina** je zadano 1,05 (postavka brenda, 0,7–1,2): sekunda ušteđena na svakom slajdu je sekunda
-  zadržane pažnje. Redak dulji od 130 znakova gubi zadnje rečenice; naslov se reže na 60 znakova.
+- **Brzina** je zadano 1,05 (postavka brenda, 0,7–1,2), ali **v4 je ne primjenjuje**: isti redak od 43 znaka
+  vratio se jednako dug (59 812, 58 558 i 59 812 bajtova) uz brzinu 0,7, 1,0 i 1,2, a toliko se razlikuju i dva
+  identična zahtjeva (izmjereno 2026-10-03). API je prihvaća (200), pa postavka ne smeta, ali ne ubrzava.
+  Ubrzati se može samo u hubu (ffmpeg `atempo`); to nije napravljeno. Redak dulji od 130 znakova gubi zadnje
+  rečenice; naslov se reže na 60 znakova.
 - **Svaki redak ide zasebnim zahtjevom** i dovodi se na istu glasnoću (−14 LUFS, kako se kratki video
   obično miksa: feedovi ga ne normaliziraju pa tih video zvuči slabije) prije miksa, pa glas ne skače
   između slajdova. Na kraju miksa je limiter na −1 dBFS koji skida vrhove govora.
@@ -156,27 +159,19 @@ izgovaraju).
 
 **`characters` i `cost` nisu isto.** `characters` je duljina izgovorenog teksta (`mb_strlen`, hub je računa
 sam). `cost` je zaglavlje odgovora `character-cost`: dokumentacija ga opisuje kao „cijenu generiranja u
-znakovima“, ali izmjereno je drugo, ono što je zahtjev naplaćen u kreditima računa, i ovisi o modelu. Isti redak
-od 43 znaka (2026-10-03, plan `payg`):
-
-| Model | `character-cost` |
-|---|---|
-| `eleven_multilingual_v2` | 14 |
-| `eleven_v3` | 9 |
-| `eleven_flash_v2_5` | 7 |
-| `eleven_v4` | 3 |
-
-Na multilingual v2 redci od 10, 43 i 87 znakova dali su 3, 14 i 30, pa je to oko trećine znaka po znaku, ali
-ne točno razmjerno; „Aaa…“ od 43 znaka naplaćen je isto kao pravi redak od 43. Zbroj zaglavlja slaže se približno
-s dnevnom potrošnjom u kreditima (`GET /v1/usage/character-stats?metric=credits`). `cost` je `null` kad API
-zaglavlje nije poslao; duljinu teksta nikad ne glumi. Za koliko je koji brend potrošio zbroji `cost`, ne `characters`.
+znakovima“, ali izmjereno je drugo, ono što je zahtjev naplaćen u kreditima računa, i ovisi o modelu. Hub govori
+samo modelom v4 (vidi *Kvaliteta hrvatskog*); na njemu (2026-10-03, plan `payg`) redci od 10, 43, 87 i 219
+znakova dali su 1, 3, 5 i 13 kredita, dakle oko 0,06 kredita po znaku. Isti redak od 43 znaka na drugim modelima
+koštao je 14 (multilingual v2), 9 (v3) i 7 (flash v2.5), pa je pri prelasku na noviji model prvo što treba
+napraviti `hub:voiceover-test` i pogledati stupac *Kredita*. Zbroj zaglavlja slaže se približno s dnevnom
+potrošnjom u kreditima (`GET /v1/usage/character-stats?metric=credits`). `cost` je `null` kad API zaglavlje nije
+poslao; duljinu teksta nikad ne glumi. Za koliko je koji brend potrošio zbroji `cost`, ne `characters`.
 
 Na `payg` planu `character_count` iz `/v1/user/subscription` (to je ono što `hub:doctor` i panel zovu
 „koliko je plana ostalo“) nije se pomaknuo ni nakon osam poziva u nekoliko minuta (izmjereno 2026-10-03), pa
 nemoj po njemu zaključivati da ništa nije potrošeno; dnevna potrošnja je u `character-stats`.
 
-Procjena: oko 250 znakova po videu, 10 videa dnevno ≈ 75 000 znakova mjesečno (u kreditima, po gornjem mjerenju,
-to je manje). Gornja granica po videu je `ELEVENLABS_MAX_CHARACTERS_PER_VIDEO` (800; oko minute govora, a Facebook
+Procjena: oko 250 znakova po videu, 10 videa dnevno ≈ 75 000 znakova mjesečno, a to je na v4 oko 4 500 kredita. Gornja granica po videu je `ELEVENLABS_MAX_CHARACTERS_PER_VIDEO` (800; oko minute govora, a Facebook
 Reel smije 90 s); mjeri se duljinom skripte (`ScriptGuard`), ne zaglavljem.
 `hub:prune-voiceovers` (tjedno, nedjeljom) briše zvučne datoteke starije od 60 dana; zapisi ostaju, a
 ista rečenica, ako zatreba, izgovori se ponovno pod istim zapisom.
@@ -215,13 +210,15 @@ ga traži).
   odgovorima. Prvo što treba napraviti s pravim ključevima je `hub:doctor` i `hub:voiceover-test --compare`.
 - **Nije provjereno da glas oznake naglaska čita kako treba.** To je pretpostavka iza cijele te značajke
   (vidi *Naglasci*), i jedino što je može potvrditi je uho. Ako ni akut ni veliko slovo ne pomažu,
-  `off` vraća ono što je bilo prije, a treći način zapisa (IPA između kosih crta, samo `eleven_v4`) je moguće
+  `off` vraća ono što je bilo prije, a treći način zapisa (IPA između kosih crta, koju v4 prima) je moguće
   nadopuniti u `Stress::render` bez ponovnog pitanja modela.
 - **Točnost naglaska je točnost modela.** Kod provjerava da je riječ ista, ne da je naglasak dobar; to znanje
   je modelovo. Zato je uputa oprezna (ne označuj ako nisi siguran) i zato se označeno vidi ispod videa.
-- **Kvaliteta hrvatskog ovisi o glasu i modelu.** Zadano je `eleven_multilingual_v2` (hrvatski
-  naveden, bolji s brojevima). `eleven_v4` i `eleven_v3` navode hrvatski, ali ih treba preslušati prije
-  uključivanja (v3 ima samo tri razine stabilnosti pa ih hub zaokružuje); Flash v2.5 hrvatski ne navodi.
+- **Jedini model je `eleven_v4`** (Marijan, 03. 10. 2026.), a kad ElevenLabs izda noviji, njega. Model je
+  `ELEVENLABS_MODEL` i popis `models` u `config/elevenlabs.php`; u kodu nema grane po imenu modela, a brend čija je
+  spremljena postavka izvan popisa (stari `eleven_multilingual_v2`) dobiva zadani. Novi model: dodaj ga u popis,
+  preslušaj `hub:voiceover-test --compare` i pogledaj stupac *Kredita*. Kvaliteta hrvatskog ovisi o glasu i
+  modelu; v4 navodi hrvatski, ali ga treba preslušati. Brojeve izgovara hub (`SpokenCroatian`), ne model.
 - **Oznaka umjetnog sadržaja.** Glas je sintetiziran. TikTok i Meta imaju pravila o označavanju
   AI-generiranog sadržaja i hub ih ne postavlja sam (nije provjereno postoji li u TikTok Business
   API-ju parametar za tu oznaku). Pročitaj njihova pravila prije nego uključiš glas na javnim računima.

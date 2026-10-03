@@ -22,7 +22,7 @@ final class VoiceoverFactory extends Factory
             'brand_id' => null,
             'hash' => hash('sha256', $text.fake()->uuid()),
             'voice_id' => 'voice-test',
-            'model' => 'eleven_multilingual_v2',
+            'model' => 'eleven_v4',
             'text' => $text,
             'settings' => ['stability' => 0.55],
             'characters' => mb_strlen($text),

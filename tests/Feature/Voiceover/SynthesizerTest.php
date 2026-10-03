@@ -48,7 +48,7 @@ final class SynthesizerTest extends TestCase
         $clip = app(Synthesizer::class)->clip('Preuzmi Listo i dodaj prvi proizvod s letka.', $this->settings(), $this->brand);
 
         $this->assertSame('voice-1', $clip->voice_id);
-        $this->assertSame('eleven_multilingual_v2', $clip->model);
+        $this->assertSame('eleven_v4', $clip->model);
         $this->assertSame('Preuzmi Listo i dodaj prvi proizvod s letka.', $clip->text);
         $this->assertSame($this->brand->id, $clip->brand_id);
         $this->assertSame(44, $clip->characters, 'characters is the length of what was said');
@@ -96,10 +96,13 @@ final class SynthesizerTest extends TestCase
 
     public function test_a_different_voice_model_or_setting_is_a_different_clip(): void
     {
+        // A newer model, added to the list the way the next one will be.
+        config()->set('elevenlabs.models', ['eleven_v4' => 'v4', 'eleven_next' => 'next']);
+
         $synthesizer = app(Synthesizer::class);
         $synthesizer->clip('Preuzmi Listo.', $this->settings(), $this->brand);
         $synthesizer->clip('Preuzmi Listo.', $this->settings(['voice_id' => 'voice-2']), $this->brand);
-        $synthesizer->clip('Preuzmi Listo.', $this->settings(['model' => 'eleven_v4']), $this->brand);
+        $synthesizer->clip('Preuzmi Listo.', $this->settings(['model' => 'eleven_next']), $this->brand);
         $synthesizer->clip('Preuzmi Listo.', $this->settings(['speed' => 1.1]), $this->brand);
         $synthesizer->clip('Preuzmi Listo!', $this->settings(), $this->brand);
 
