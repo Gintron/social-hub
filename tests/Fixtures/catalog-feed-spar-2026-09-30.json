@@ -1,0 +1,207 @@
+{
+  "version": "1",
+  "brand": "uselisto",
+  "items": [
+    {
+      "id": "catalog:12aeb74b-e219-43ae-8232-5bc26000ef61",
+      "kind": "catalog",
+      "title": "Spar katalog 30.9.2026. – 6.10.2026.",
+      "subtitle": "Spar",
+      "body_text": null,
+      "facts": [
+        {
+          "label": "VRIJEDI OD",
+          "value": "30.9.2026."
+        },
+        {
+          "label": "VRIJEDI DO",
+          "value": "6.10.2026."
+        },
+        {
+          "label": "STRANICA",
+          "value": "47"
+        },
+        {
+          "label": "PROIZVODA",
+          "value": "396"
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Preuzmi Listo",
+        "url": "https://uselisto.com/app"
+      },
+      "url": "https://uselisto.com/katalozi/spar/12aeb74b-e219-43ae-8232-5bc26000ef61",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/catalogs/12aeb74b-e219-43ae-8232-5bc26000ef61/pages/001.webp",
+          "role": "primary",
+          "alt": "Spar, naslovnica letka"
+        },
+        {
+          "url": "https://api.uselisto.com/files/catalogs/12aeb74b-e219-43ae-8232-5bc26000ef61/pages/004.webp",
+          "role": "gallery",
+          "alt": "Spar, stranica 4"
+        },
+        {
+          "url": "https://api.uselisto.com/files/catalogs/12aeb74b-e219-43ae-8232-5bc26000ef61/pages/005.webp",
+          "role": "gallery",
+          "alt": "Spar, stranica 5"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/701be0e3-da76-4527-963b-4a2ad792651a/logo-mt2j01xs-0c5c.webp",
+          "role": "logo",
+          "alt": "Spar"
+        }
+      ],
+      "priority": 79,
+      "tags": [
+        "spar",
+        "katalog"
+      ],
+      "published_at": "2026-09-28T10:54:01.515Z",
+      "expires_at": "2026-10-06T23:59:59Z",
+      "updated_at": "2026-09-28T10:54:01.515Z",
+      "raw": {
+        "demo": {
+          "catalog_id": "12aeb74b-e219-43ae-8232-5bc26000ef61",
+          "chain": "spar",
+          "chain_name": "Spar",
+          "chain_phrase": "Sparov katalog",
+          "valid_from": "2026-09-30",
+          "valid_to": "2026-10-06",
+          "page_count": 47,
+          "product_count": 396,
+          "currency": "EUR",
+          "locale": "hr-HR",
+          "pages": [
+            {
+              "number": 1,
+              "url": "https://api.uselisto.com/files/catalogs/12aeb74b-e219-43ae-8232-5bc26000ef61/pages/001.webp",
+              "width": 1600,
+              "height": 2172
+            },
+            {
+              "number": 4,
+              "url": "https://api.uselisto.com/files/catalogs/12aeb74b-e219-43ae-8232-5bc26000ef61/pages/004.webp",
+              "width": 1600,
+              "height": 2172
+            },
+            {
+              "number": 5,
+              "url": "https://api.uselisto.com/files/catalogs/12aeb74b-e219-43ae-8232-5bc26000ef61/pages/005.webp",
+              "width": 1600,
+              "height": 2172
+            }
+          ],
+          "taps": [
+            {
+              "page": 5,
+              "card_id": "a2489b67-9dce-4d7d-962f-89464aa98fef",
+              "product_id": "2a988f76-a453-4a73-9df6-a0085a134d56",
+              "brand": null,
+              "name": "Povrće za juhu",
+              "variant": null,
+              "price_cents": 129,
+              "old_price_cents": null,
+              "discount_pct": null,
+              "currency": "EUR",
+              "unit": {
+                "amount": 600,
+                "measure": "g"
+              },
+              "bbox": {
+                "h": 0.22440622440622437,
+                "w": 0.31000000000000005,
+                "x": 0.6677777777777778,
+                "y": 0.055692055692055695
+              },
+              "tap_bbox": {
+                "h": 0.2977067977067977,
+                "w": 0.33611111111111114,
+                "x": 0.6638888888888889,
+                "y": 0
+              },
+              "point": {
+                "x": 0.8227777777777778,
+                "y": 0.1678951678951679
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/12aeb74b-e219-43ae-8232-5bc26000ef61/crops/a2489b67-9dce-4d7d-962f-89464aa98fef-9b0fa94ea9.webp"
+            },
+            {
+              "page": 5,
+              "card_id": "e51e8930-993b-41b9-afc0-a9c14600a219",
+              "product_id": "6dbbc88d-6683-4d1c-a319-091899a09a3d",
+              "brand": null,
+              "name": "Grah šareni",
+              "variant": null,
+              "price_cents": 149,
+              "old_price_cents": null,
+              "discount_pct": null,
+              "currency": "EUR",
+              "unit": {
+                "amount": 1,
+                "measure": "kg"
+              },
+              "bbox": {
+                "h": 0.19492219492219498,
+                "w": 0.3088888888888889,
+                "x": 0.6677777777777778,
+                "y": 0.3153153153153153
+              },
+              "tap_bbox": {
+                "h": 0.21498771498771502,
+                "w": 0.33611111111111114,
+                "x": 0.6638888888888889,
+                "y": 0.2977067977067977
+              },
+              "point": {
+                "x": 0.8222222222222222,
+                "y": 0.4127764127764128
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/12aeb74b-e219-43ae-8232-5bc26000ef61/crops/e51e8930-993b-41b9-afc0-a9c14600a219-0ce3d734d9.webp"
+            },
+            {
+              "page": 5,
+              "card_id": "f110bb3f-403e-45e2-bded-42c0cf21ba78",
+              "product_id": "1bc1b8e9-ce8d-4d89-8d9e-643a447feb41",
+              "brand": "Vrtovi Hrvatske",
+              "name": "Domaći krastavac salatar",
+              "variant": null,
+              "price_cents": 69,
+              "old_price_cents": null,
+              "discount_pct": null,
+              "currency": "EUR",
+              "unit": {
+                "amount": 1,
+                "measure": "pc"
+              },
+              "bbox": {
+                "h": 0.22440622440622437,
+                "w": 0.3,
+                "x": 0.042222222222222223,
+                "y": 0.5151515151515151
+              },
+              "tap_bbox": {
+                "h": 0.25470925470925465,
+                "w": 0.35444444444444445,
+                "x": 0,
+                "y": 0.5126945126945126
+              },
+              "point": {
+                "x": 0.1922222222222222,
+                "y": 0.6273546273546273
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/12aeb74b-e219-43ae-8232-5bc26000ef61/crops/f110bb3f-403e-45e2-bded-42c0cf21ba78-162815e93c.webp"
+            }
+          ],
+          "total_cents": 347,
+          "app_url": "https://uselisto.com/app",
+          "campaign": "katalog-spar-2026-09-30"
+        }
+      }
+    }
+  ],
+  "next_cursor": null
+}

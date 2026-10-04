@@ -128,7 +128,9 @@ final class ApplyAutoPublishRules
                     accounts: $accounts->filter(fn (SocialAccount $account): bool => in_array($account->platform->value, $open, true))->values(),
                     actor: ActorType::System,
                     scheduledAt: $slots[$created],
-                    status: DraftStatus::Approved,
+                    // One rule asking for a person's look is enough to hold the whole draft: it is one post, and
+                    // approving it approves every channel it goes to.
+                    status: $this->needsApproval($rules, $open) ? DraftStatus::PendingApproval : DraftStatus::Approved,
                     channelOptions: $options,
                 );
 
@@ -164,6 +166,15 @@ final class ApplyAutoPublishRules
     }
 
     /**
+     * @param  Collection<int, AutoPublishRule>  $rules
+     * @param  list<string>  $platforms  The channels this draft goes to.
+     */
+    private function needsApproval(Collection $rules, array $platforms): bool
+    {
+        return $rules->contains(fn (AutoPublishRule $rule): bool => $rule->requires_approval && in_array($rule->platform->value, $platforms, true));
+    }
+
+    /**
      * The best items of the source that are still worth posting when the first slot comes, highest
      * priority first. More are read than are needed: some will be passed over.
      *
@@ -174,6 +185,7 @@ final class ApplyAutoPublishRules
         return ContentItem::query()
             ->where('source_id', $source->id)
             ->postableAt($firstSlot)
+            ->stillNews()
             ->notDrafted()
             ->orderByDesc('priority')
             ->orderByDesc('published_at')

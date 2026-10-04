@@ -120,6 +120,7 @@ final class IngestControllerTest extends TestCase
             'source_id' => $source->id,
             'platform' => Platform::FacebookPage,
             'enabled' => true,
+            'requires_approval' => false,
             'delay_minutes' => 0,
         ]);
 

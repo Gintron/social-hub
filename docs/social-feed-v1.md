@@ -76,7 +76,7 @@ kriva ovlast → `403`.
 | Polje | Tip | Obavezno | Napomena |
 |---|---|---|---|
 | `id` | string | da | Stabilan i jedinstven unutar izvora. Hub ga koristi za idempotenciju (`unique(source_id, external_id)`). Preporuka: `"<vrsta>:<id>"`. |
-| `kind` | enum | da | `job`, `deal`, `article`, `event`, `generic`, `comparison`. Određuje zadani predložak slike i caption builder. |
+| `kind` | enum | da | `job`, `deal`, `article`, `event`, `generic`, `comparison`, `catalog`. Određuje zadani predložak slike i caption builder. |
 | `title` | string | da | Do 300 znakova. |
 | `subtitle` | string | ne | Tvrtka / trgovački lanac / autor. |
 | `body_text` | string | ne | **Čisti tekst bez HTML-a.** `\n` za novi red, `• ` za natuknice. Stranica radi HTML→tekst, ne hub. |
@@ -123,6 +123,39 @@ kao i jednu stavku.
 | `raw.rows[]` | Neobavezno, isti redoslijed kao `facts`: `chain_name` (mora biti jednak `label`), `title` (proizvod i pakiranje), `price_cents`, `logo` i `image` (apsolutni URL-ovi). Redak kojemu `chain_name` ne odgovara hub prikaže bez tih dodataka. |
 | `expires_at` | Kad prva od ponuda istječe: nakon toga usporedba više nije točna. |
 
+## Katalog (`kind: catalog`)
+
+Vijest „izašao je novi letak/katalog“ za video u kojem se na pravom letku dodirom dodaju tri proizvoda na listu
+([`catalog-video.md`](catalog-video.md)). Jedna stavka po letku, ne po ponudi.
+
+| Polje | Značenje u katalogu |
+|---|---|
+| `id` | `catalog:<id prve verzije letka>`: osvježen letak (nova verzija, novi interni id) je ista vijest, ne nova objava. |
+| `title`, `subtitle` | „Konzum katalog 7.10.2026. – 13.10.2026.“, lanac. |
+| `facts` | `VRIJEDI OD`, `VRIJEDI DO`, `STRANICA`, `PROIZVODA`. |
+| `price` | `null`. Cijene proizvoda su u `raw.demo.taps`. |
+| `cta` | `{label, url}`: poveznica na aplikaciju (`https://uselisto.com/app`); hub joj dodaje izvor kanala. |
+| `url` | Javna stranica letka (hub provjerava da je živa prije objave). |
+| `images` | `primary` je naslovnica; `gallery` stranice koje video prolazi; `logo` je znak lanca. |
+| `expires_at` | Kraj valjanosti letka. Hub ne objavljuje letak koji ne vrijedi još 3 dana nakon objave. |
+| `raw.demo` | Blok iz kojeg se slaže video, **obavezan**; bez njega stavka nije video. |
+
+`raw.demo` (hub ga čita strogo: `App\Catalog\CatalogDemo`, odbija s razlogom):
+
+| Polje | Značenje |
+|---|---|
+| `catalog_id`, `chain`, `chain_name`, `valid_from`, `valid_to` | Identitet i valjanost; datumi `YYYY-MM-DD`. |
+| `chain_phrase` | „Konzumov katalog“ u obliku koji glas izgovara i naslov piše; `null` → hub kaže „katalog trgovine Konzum“. |
+| `page_count`, `product_count`, `currency`, `locale` | Za zaslon aplikacije („1 / 64“, iznos, format cijene). |
+| `pages[]` | `{number, url, width, height}` redom kojim se prolaze: naslovnica, pa stranice do one s dodirima. Apsolutni URL-ovi. |
+| `taps[]` | **Točno 3**, redom dodirivanja: `page`, `card_id`, `product_id`, `brand`, `name`, `variant`, `price_cents` (cijeli broj), `currency`, `unit {amount, measure}`, `crop` (slika kartice koju aplikacija sprema uz stavku liste), `bbox` i `point` (normalizirano 0–1: okvir kartice i točka dodira). |
+| `total_cents` | **Zbroj `price_cents` dodira**; hub odbija blok u kojem to nije. |
+| `app_url`, `campaign` | `https://uselisto.com/app` i `katalog-<lanac>-<valid_from>`: hub dodaje `utm_source=<tiktok\|instagram\|facebook>` i `utm_medium=social`. |
+
+Stranica smije birati proizvode kako hoće, ali dodir mora biti onaj koji njezina aplikacija doista prihvaća kao
+„dodaj“ (Listo to provjerava istom logikom kao aplikacija, `server/api/catalogTap.ts`). Filteri izvora
+(`query.kind=catalog`, `query.min_products`, `query.max_validity_days`) idu u postavke izvora kao i svi drugi.
+
 ## Kako stranica prevodi svoj domen
 
 Stranica zna što je njezin sadržaj, hub ne mora. Nekoliko primjera preslikavanja:
@@ -136,6 +169,7 @@ Stranica zna što je njezin sadržaj, hub ne mora. Nekoliko primjera preslikavan
 | Cijena na akciji | `price{current_cents, old_cents, discount_pct, currency}` + `badges ["−43 %"]` |
 | Trgovački lanac | `subtitle` + `images[{role: logo}]` |
 | Vrijedi do (katalog) | `expires_at` |
+| Novi letak lanca | `kind: catalog` + `raw.demo` (vidi gore) |
 
 ## Pravila koja hub provjerava pri "Test connection"
 

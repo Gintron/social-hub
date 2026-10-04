@@ -63,6 +63,19 @@ final class ContentItem extends Model
         );
     }
 
+    /**
+     * Days after publication that automation still treats an item of each kind as news.
+     *
+     * @return array<string, int>
+     */
+    public static function maxAgeDays(): array
+    {
+        return array_filter(
+            array_map('intval', (array) config('hub.max_age_days', [])),
+            fn (int $days): bool => $days > 0,
+        );
+    }
+
     public function source(): BelongsTo
     {
         return $this->belongsTo(Source::class);
@@ -131,6 +144,31 @@ final class ContentItem extends Model
 
         return $this->expires_at->isFuture()
             && ($days === null || $this->expires_at->greaterThanOrEqualTo($postedAt->addDays($days)));
+    }
+
+    /**
+     * Kinds that are only news for a few days (`hub.max_age_days`: a leaflet) are left out once they are older;
+     * every other kind never ages out. Age counts from `published_at`, or from the first sight of the item.
+     *
+     * @param  Builder<ContentItem>  $query
+     */
+    public function scopeStillNews(Builder $query): void
+    {
+        $ages = self::maxAgeDays();
+
+        $query->where(function (Builder $q) use ($ages): void {
+            $q->whereNotIn('kind', array_keys($ages));
+
+            foreach ($ages as $kind => $days) {
+                $since = now()->subDays($days);
+
+                $q->orWhere(fn (Builder $news) => $news
+                    ->where('kind', $kind)
+                    ->where(fn (Builder $age) => $age
+                        ->where('published_at', '>=', $since)
+                        ->orWhere(fn (Builder $unknown) => $unknown->whereNull('published_at')->where('first_seen_at', '>=', $since))));
+            }
+        });
     }
 
     /**

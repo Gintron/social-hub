@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $source_id
  * @property Platform $platform
  * @property bool $enabled
+ * @property bool $requires_approval
  * @property int $delay_minutes
  * @property int|null $daily_cap
  * @property ContentFormat|null $format
@@ -26,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class AutoPublishRule extends Model
 {
-    protected $fillable = ['source_id', 'platform', 'enabled', 'delay_minutes', 'daily_cap', 'format', 'settings'];
+    protected $fillable = ['source_id', 'platform', 'enabled', 'requires_approval', 'delay_minutes', 'daily_cap', 'format', 'settings'];
 
     public function source(): BelongsTo
     {
@@ -56,6 +57,7 @@ final class AutoPublishRule extends Model
         return [
             'platform' => Platform::class,
             'enabled' => 'boolean',
+            'requires_approval' => 'boolean',
             'delay_minutes' => 'integer',
             'daily_cap' => 'integer',
             'format' => ContentFormat::class,

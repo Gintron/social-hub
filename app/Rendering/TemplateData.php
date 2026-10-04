@@ -82,6 +82,7 @@ final class TemplateData
             ContentKind::Event => '📅',
             ContentKind::Generic => '📌',
             ContentKind::Comparison => '⚖️',
+            ContentKind::Catalog => '📖',
         };
     }
 

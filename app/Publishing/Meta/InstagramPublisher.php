@@ -119,7 +119,28 @@ final class InstagramPublisher implements Publisher
             $payload['cover_url'] = (string) $cover;
         }
 
-        return $this->containerId($graph->post("{$igUserId}/media", $payload, $token, 'ig.reel'));
+        // The label for AI-generated content, set when the container is made (Instagram Platform changelog, 22 Jun 2026).
+        if ($variant->aiGenerated()) {
+            $payload['is_ai_generated'] = 'true';
+        }
+
+        try {
+            return $this->containerId($graph->post("{$igUserId}/media", $payload, $token, 'ig.reel'));
+        } catch (PublishException $e) {
+            // The pinned Graph version may not know the parameter yet; the Reel is not held back for it, but the
+            // refusal is logged, because a label that was meant to be there is not.
+            $unknownParameter = ($e instanceof PermanentPublishException && $e->errorCode === 'invalid_parameter')
+                || str_contains(mb_strtolower($e->getMessage()), 'is_ai_generated');
+
+            if (! isset($payload['is_ai_generated']) || ! $unknownParameter) {
+                throw $e;
+            }
+
+            Log::warning('hub.ig.ai_label_rejected', ['variant' => $variant->id, 'error' => $e->getMessage()]);
+            unset($payload['is_ai_generated']);
+
+            return $this->containerId($graph->post("{$igUserId}/media", $payload, $token, 'ig.reel'));
+        }
     }
 
     private function singleContainer(GraphClient $graph, string $igUserId, string $token, MediaAsset $asset, string $caption): string

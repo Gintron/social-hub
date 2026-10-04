@@ -226,6 +226,13 @@ ga traži).
   vlastite uvjete.
 - **ffmpeg 4.4 ili noviji** (`amix` s opcijom `normalize`); `hub:doctor` to provjerava.
 
+## Video „izašao je novi katalog“
+
+Ima vlastiti scenarij od četiri rečenice (`App\Catalog\CatalogCopy`) umjesto teksta po slajdu, ali isti put
+do glasa: `Narrator::narrateItems` → provjera → `SpokenCroatian` → (naglasci/izgovor) → `Synthesizer` s ključem u
+`voiceovers`. Rečenice 2–4 su iste za sve lance, pa se plaćaju jednom; prva nosi lanac („Konzumov katalog“).
+Glas ne ruši render, video bez glasa je isti video (vidi `catalog-video.md`).
+
 ## Gdje je u kodu
 
 ```

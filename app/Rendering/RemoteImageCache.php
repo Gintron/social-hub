@@ -74,6 +74,15 @@ final class RemoteImageCache
     }
 
     /**
+     * Where the cached copy of a remote image is on disk (downloaded on the first ask), for the one renderer that
+     * hands Chromium files instead of data: URIs — the catalog video, whose pages are too many and too large to inline.
+     */
+    public function path(?string $url): ?string
+    {
+        return $this->localFile($url);
+    }
+
+    /**
      * The cached copy of a remote asset, downloaded on the first ask and kept for the TTL.
      */
     private function localFile(?string $url): ?string

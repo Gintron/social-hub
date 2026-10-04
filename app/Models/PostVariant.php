@@ -144,6 +144,40 @@ final class PostVariant extends Model
     }
 
     /**
+     * Where the new-catalog video says its link is (`comment` or `bio`): the channel's own setting, else the
+     * hub's choice for that platform (config/catalog_video.php).
+     */
+    public function linkIn(): string
+    {
+        $choice = $this->setting('link_in') ?? config('catalog_video.link_in.'.$this->platform->value);
+
+        return $choice === 'bio' ? 'bio' : 'comment';
+    }
+
+    /**
+     * Is this post labelled as AI-generated content on the network (TikTok `is_ai_generated`/`is_aigc`, Instagram
+     * `is_ai_generated`)? A voice that is synthesised is AI-generated audio, so a video carrying one is labelled
+     * unless the channel says `ai_generated` = false; the channel can also ask for the label itself.
+     * Facebook's Reels API has no parameter for it (docs/catalog-video.md).
+     */
+    public function aiGenerated(): bool
+    {
+        $choice = $this->setting('ai_generated');
+
+        if (is_bool($choice)) {
+            return $choice;
+        }
+
+        if ($this->format() !== ContentFormat::Video) {
+            return false;
+        }
+
+        $media = $this->relationLoaded('media') ? $this->media : $this->media()->get();
+
+        return $media->contains(fn (MediaAsset $asset): bool => $asset->isVideo() && data_get($asset->params, 'voiceover.status') === 'ok');
+    }
+
+    /**
      * Published, being published, or handed to a human with an id: nothing about it changes any more.
      */
     public function isLocked(): bool

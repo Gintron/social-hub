@@ -277,8 +277,10 @@ Pitanja 6, 8 i 11 traže čovjeka: dokumenti tvrtke, snimka zaslona i pristanak.
 | App logo | 512×512 PNG, **obavezno** |
 | Scope → TikTok accounts | Account user (basic info + insights), Get account media, Account post content (Video publish, Photo publish, Video Upload) |
 
-*Account comment* se **ne** traži — hub ne dira komentare, a prijava koja traži više nego što koristi
-daje recenzentu razloga za pitanja.
+*Account comment* se **nije** tražio pri prvoj prijavi (hub tada nije dirao komentare). Od 3. 10. 2026. video „izašao
+je novi katalog“ kaže da je poveznica u komentaru, pa se dozvola traži naknadno (`comment.list.manage`, `comment.list`):
+tijek, moguća nova forma i uključivanje su u `docs/catalog-video.md` § TikTok. Kod je gotov i isključen
+(`TIKTOK_BUSINESS_COMMENTS`).
 
 ### Dvije redirect adrese, samo jedna je naša
 

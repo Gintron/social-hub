@@ -202,6 +202,27 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   (`accents_*`), ne glas bez naglasaka; jedini put bez OpenAI-ja je *Naglasci: Isključeno* na brendu. Kako glas čita
   oznaku (akut ili veliko slovo) nije provjereno, već se bira uhom: `hub:voiceover-test --compare`.
 
+- **Video „izašao je novi katalog“ je scena, ne slideshow** (`docs/catalog-video.md`). Izvor šalje `kind: catalog` s
+  blokom `raw.demo` (tri proizvoda koje dodir doista dodaje: Listo ih bira istom logikom kao aplikacija); hub ga čita
+  strogo (`CatalogDemo`) i odbija blok čiji `total_cents` nije zbroj cijena. Video crta Chromium kao funkciju od `t`
+  (`resources/catalog-video/scene.js`, kopija zaslona aplikacije u mjerama iz njezina koda), ffmpeg miksa i kodira.
+  Sva vremena su u `CatalogVideoPlan` i svako je na cijelom kadru: zvuk dodavanja ide na kadar dodira, rečenica nikad
+  ne prelazi u iduću scenu, video čeka riječi. Tekst glasa, titlova, naslova i objave piše samo `CatalogCopy`
+  (poziv je „Poveznica do aplikacije je u komentaru“, ne cijena ni ušteda). Glas je dodatak, ne uvjet: bez njega isti
+  video s titlovima.
+- **Jedna poveznica po videu i kanalu** (`TrackedLink`): `utm_source` po kanalu, `utm_medium=social`, kampanja iz
+  izvora; sprema se u `post_variants.link_url` i `settings.tracking`. Prvi komentar je poveznica: na Facebooku i
+  Instagramu ga ostavlja publisher, na TikToku `LeaveTikTokCommentJob` (`business/comment/create/`, tri minute nakon
+  objave, uz provjeru da komentar nije `HIDDEN`) tek kad je `TIKTOK_BUSINESS_COMMENTS=true`, tj. kad aplikacija ima dozvolu
+  za komentare; inače i kad komentar ne uspije admin dobije mail s točnim tekstom za lijepljenje (obećanje videa mora
+  vrijediti). Komentar nikad ne ruši varijantu: objava je već javna.
+- **`auto_publish_rules.requires_approval`** (zadano uključeno): nacrt se sam napravi i renderira, ali čeka čovjeka;
+  jedno pravilo koje traži odobrenje drži cijeli nacrt. Postojeća pravila su migracijom ostala bez odobrenja. Pregledi
+  (serije) ne čitaju prekidač. Letak je „vijest“ tri dana (`hub.max_age_days`), da prva sinkronizacija ne stavi u red
+  videe za sve što izvor već drži.
+- **Oznaka AI-generiranog sadržaja**: `PostVariant::aiGenerated()` (video sa sintetičkim glasom) → TikTok
+  `is_ai_generated`/`is_aigc`, Instagram `is_ai_generated`; Facebook Reels API nema parametar.
+
 ## Rad
 
 - Sve kroz Sail: `./vendor/bin/sail artisan …`, `./vendor/bin/sail bin pint`, `./vendor/bin/sail artisan test`.

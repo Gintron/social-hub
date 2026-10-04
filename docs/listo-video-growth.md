@@ -253,3 +253,16 @@ ponuda pred istekom zadržava cijelu temu do sljedećeg tjedna.
 Pravilo vrijedi za pojedinačne objave, preglede (svaku stavku posebno) i kandidate koje vide agent i MCP
 alati (od trenutka upita, jer vrijeme objave tada određuje čovjek). Ručno zakazan nacrt ne blokira: čovjek
 odlučuje. Već zakazane objave se ne provjeravaju iznova.
+
+## Video „izašao je novi katalog“ (3. 10. 2026.)
+
+Prvi video koji hub sam slaže iz podataka s vlastitim ciljem: instalacija. Čim Listo objavi novi letak lanca,
+hub slaže 9:16 video od ~16 s u kojem se na pravom letku dodirom dodaju tri proizvoda na listu, s glasom Luka
+(ElevenLabs `eleven_v4`) i završnim pozivom „Preuzmi Listo. Poveznica do aplikacije je u komentaru.“ Objava ide na
+TikTok, Instagram (Reels) i Facebook stranicu, svaka s vlastitom mjerenom poveznicom
+(`/app?utm_source=<kanal>&utm_medium=social&utm_campaign=katalog-<lanac>-<valid_from>`), pa se registracija s
+`source/campaign` može pripisati objavi. Opis, odluke, što je provjereno a što nije, uključivanje i TikTok
+pitanje (komentiranje nije u hubu): [`catalog-video.md`](catalog-video.md).
+
+Pauza automatike za Listo (pravila 1, 2, 6 `enabled=0` od 30. 9.) ostaje dok Marijan ne kaže drukčije; nova pravila
+za katalog imaju prekidač *Traži odobrenje* (zadano uključen).

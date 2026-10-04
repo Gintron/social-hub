@@ -1,0 +1,185 @@
+{
+  "version": "1",
+  "brand": "uselisto",
+  "items": [
+    {
+      "id": "catalog:bd705b76-4034-48a6-879a-c8dd3ac1d5ce",
+      "kind": "catalog",
+      "title": "Lidl katalog 5.10.2026. – 11.10.2026.",
+      "subtitle": "Lidl",
+      "body_text": null,
+      "facts": [
+        {
+          "label": "VRIJEDI OD",
+          "value": "5.10.2026."
+        },
+        {
+          "label": "VRIJEDI DO",
+          "value": "11.10.2026."
+        },
+        {
+          "label": "STRANICA",
+          "value": "74"
+        },
+        {
+          "label": "PROIZVODA",
+          "value": "442"
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Preuzmi Listo",
+        "url": "https://uselisto.com/app"
+      },
+      "url": "https://uselisto.com/katalozi/lidl/bd705b76-4034-48a6-879a-c8dd3ac1d5ce",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/catalogs/bd705b76-4034-48a6-879a-c8dd3ac1d5ce/pages/001.webp",
+          "role": "primary",
+          "alt": "Lidl, naslovnica letka"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/a25cfdcc-6235-4261-8549-873384a04c6c/logo-msu7305k-5d6e.webp",
+          "role": "logo",
+          "alt": "Lidl"
+        }
+      ],
+      "priority": 88,
+      "tags": [
+        "lidl",
+        "katalog"
+      ],
+      "published_at": "2026-10-01T10:19:25.962Z",
+      "expires_at": "2026-10-11T23:59:59Z",
+      "updated_at": "2026-10-01T10:19:25.962Z",
+      "raw": {
+        "demo": {
+          "catalog_id": "bd705b76-4034-48a6-879a-c8dd3ac1d5ce",
+          "chain": "lidl",
+          "chain_name": "Lidl",
+          "chain_phrase": "Lidlov katalog",
+          "valid_from": "2026-10-05",
+          "valid_to": "2026-10-11",
+          "page_count": 74,
+          "product_count": 442,
+          "currency": "EUR",
+          "locale": "hr-HR",
+          "pages": [
+            {
+              "number": 1,
+              "url": "https://api.uselisto.com/files/catalogs/bd705b76-4034-48a6-879a-c8dd3ac1d5ce/pages/001.webp",
+              "width": 1600,
+              "height": 2714
+            }
+          ],
+          "taps": [
+            {
+              "page": 1,
+              "card_id": "edc988c4-3bad-4aa3-9f81-6a3cdc650355",
+              "product_id": "a72702b1-9634-43f4-b636-6d26bb103336",
+              "brand": "MILBONA",
+              "name": "Vrhnje za kuhanje bez laktoze",
+              "variant": null,
+              "price_cents": 99,
+              "old_price_cents": 149,
+              "discount_pct": 33,
+              "currency": "EUR",
+              "unit": {
+                "amount": 200,
+                "measure": "ml"
+              },
+              "bbox": {
+                "h": 0.26802096985583224,
+                "w": 0.25888888888888884,
+                "x": 0.7022222222222222,
+                "y": 0.20969855832241152
+              },
+              "tap_bbox": {
+                "h": 0.4245740498034076,
+                "w": 0.3138888888888889,
+                "x": 0.6861111111111111,
+                "y": 0.05969855832241153
+              },
+              "point": {
+                "x": 0.8316666666666666,
+                "y": 0.34370904325032764
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/bd705b76-4034-48a6-879a-c8dd3ac1d5ce/crops/edc988c4-3bad-4aa3-9f81-6a3cdc650355-8ee7535bb0.webp"
+            },
+            {
+              "page": 1,
+              "card_id": "38115cb5-b8b7-4520-8b45-9536aa21ddc5",
+              "product_id": "aeb3c48e-5f45-493d-adbd-f3197041016e",
+              "brand": "FRESHONA",
+              "name": "Mješavina crvenog voća",
+              "variant": "Smrznuto",
+              "price_cents": 309,
+              "old_price_cents": 499,
+              "discount_pct": 38,
+              "currency": "EUR",
+              "unit": {
+                "amount": 750,
+                "measure": "g"
+              },
+              "bbox": {
+                "h": 0.41415465268676277,
+                "w": 0.31333333333333335,
+                "x": 0.008888888888888889,
+                "y": 0.28636959370904325
+              },
+              "tap_bbox": {
+                "h": 0.5748545709610471,
+                "w": 0.3277777777777778,
+                "x": 0,
+                "y": 0.13636959370904325
+              },
+              "point": {
+                "x": 0.16555555555555557,
+                "y": 0.49344692005242463
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/bd705b76-4034-48a6-879a-c8dd3ac1d5ce/crops/38115cb5-b8b7-4520-8b45-9536aa21ddc5-fb65400b06.webp"
+            },
+            {
+              "page": 1,
+              "card_id": "3fa61d7c-0972-4690-bba3-c02bdec49c1b",
+              "product_id": "d49eb989-6f14-4830-9272-832ce3536c0d",
+              "brand": null,
+              "name": "Svježe mljeveno miješano meso",
+              "variant": "Junetina i svinjetina",
+              "price_cents": 539,
+              "old_price_cents": null,
+              "discount_pct": null,
+              "currency": "EUR",
+              "unit": {
+                "amount": 1,
+                "measure": "kg"
+              },
+              "bbox": {
+                "h": 0.1916765459828642,
+                "w": 0.319924585218703,
+                "x": 0.3333333333333333,
+                "y": 0.5124508519003932
+              },
+              "tap_bbox": {
+                "h": 0.2128107500556523,
+                "w": 0.34162895927601816,
+                "x": 0.3277777777777778,
+                "y": 0.4947575360419397
+              },
+              "point": {
+                "x": 0.49329562594268483,
+                "y": 0.6082891248918253
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/bd705b76-4034-48a6-879a-c8dd3ac1d5ce/crops/3fa61d7c-0972-4690-bba3-c02bdec49c1b-524a9b7c43.webp"
+            }
+          ],
+          "total_cents": 947,
+          "app_url": "https://uselisto.com/app",
+          "campaign": "katalog-lidl-2026-10-05"
+        }
+      }
+    }
+  ],
+  "next_cursor": null
+}

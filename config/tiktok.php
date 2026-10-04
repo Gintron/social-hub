@@ -43,6 +43,15 @@ return [
          * Branded Content is for paid partnerships and would override this.
          */
         'brand_organic' => (bool) env('TIKTOK_BUSINESS_BRAND_ORGANIC', true),
+
+        /*
+         * Leave the post's first comment through `/business/comment/create/` (App\Jobs\LeaveTikTokCommentJob).
+         * Off until the app has been given the comment permission (scopes `comment.list.manage`, `comment.list`)
+         * and every account has authorised it again — without them TikTok refuses. While it is off the job still
+         * runs: it tells an admin the exact text to paste by hand, so what the video promises ("poveznica je u
+         * komentaru") is kept either way. See docs/catalog-video.md.
+         */
+        'comments' => (bool) env('TIKTOK_BUSINESS_COMMENTS', false),
     ],
 
     /*

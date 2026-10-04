@@ -78,6 +78,8 @@ final class SourceForm
                                         ->all())
                                     ->placeholder('Zadano za platformu'),
                                 Toggle::make('enabled')->label('Uključeno')->default(false),
+                                Toggle::make('requires_approval')->label('Traži odobrenje')->default(true)
+                                    ->helperText('Hub sam napravi nacrt i video, ali ga ne objavi dok ga čovjek ne odobri. Isključi kad si zadovoljan nacrtima: tada ide sam, u sljedeći termin.'),
                                 TextInput::make('delay_minutes')->label('Odgoda (min)')->numeric()->default(0)->minValue(0)->maxValue(10080)
                                     ->helperText('Koliko čekati nakon što stavka stigne.'),
                                 TextInput::make('daily_cap')->label('Najviše dnevno')->numeric()->minValue(1)->maxValue(50)

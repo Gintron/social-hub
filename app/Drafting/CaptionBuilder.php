@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Drafting;
 
+use App\Catalog\CatalogCopy;
+use App\Catalog\CatalogDemo;
 use App\Enums\ContentKind;
 use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\ContentItem;
 use App\Rendering\TemplateData;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 /**
  * Deterministic captions from generic item fields — what auto-publish posts, the fallback when the
@@ -47,6 +50,10 @@ final class CaptionBuilder
 
     public function for(Platform $platform, ContentItem $item, Brand $brand): string
     {
+        if ($item->kind === ContentKind::Catalog && ($catalog = $this->catalog($platform, $item, $brand)) !== null) {
+            return $catalog;
+        }
+
         return match ($platform) {
             Platform::InstagramBusiness => $this->instagram($item, $brand),
             Platform::TikTok => $this->tiktok($item, $brand),
@@ -322,6 +329,30 @@ final class CaptionBuilder
         $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
 
         return mb_trim($text);
+    }
+
+    /**
+     * The post around a new-catalog video. Null when the item does not carry a usable `raw.demo`: the general
+     * caption then says what the item says, which is a title and its dates.
+     */
+    private function catalog(Platform $platform, ContentItem $item, Brand $brand): ?string
+    {
+        try {
+            $demo = CatalogDemo::fromItem($item);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+
+        // A group is posted by hand, and a link in a comment there is not a thing: it stays in the text.
+        if ($platform === Platform::FacebookGroup) {
+            $link = $item->cta['url'] ?? $demo->appUrl ?? $item->url;
+
+            return self::tidy(CatalogCopy::caption($platform, $item, $brand, $demo)."\n\n👉 ".$link);
+        }
+
+        $where = config("catalog_video.link_in.{$platform->value}") === CatalogCopy::WHERE_BIO ? CatalogCopy::WHERE_BIO : CatalogCopy::WHERE_COMMENT;
+
+        return self::tidy(CatalogCopy::caption($platform, $item, $brand, $demo, $where));
     }
 
     private function socialCta(Brand $brand, string $host): string

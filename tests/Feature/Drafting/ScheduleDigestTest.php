@@ -232,6 +232,7 @@ final class ScheduleDigestTest extends TestCase
             'source_id' => $this->source->id,
             'platform' => $platform,
             'enabled' => true,
+            'requires_approval' => false,
             'settings' => $settings,
         ]);
     }

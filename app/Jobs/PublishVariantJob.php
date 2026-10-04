@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Enums\AccountStatus;
+use App\Enums\Platform;
 use App\Enums\VariantStatus;
 use App\Models\PostVariant;
 use App\Notifications\AccountNeedsReconnect;
@@ -152,6 +153,8 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
             ])->save();
 
             Log::info('hub.published', ['variant' => $variant->id, 'platform' => $variant->platform->value, 'permalink' => $result->permalink]);
+
+            $this->leaveTikTokComment($variant);
         } catch (TokenInvalidException $e) {
             $variant->account?->forceFill(['status' => AccountStatus::NeedsReconnect])->save();
 
@@ -176,6 +179,23 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
             throw $e;
         } finally {
             $draft?->refreshStatusFromVariants();
+        }
+    }
+
+    /**
+     * A TikTok post that carries a first comment (a new-catalog video says the link is in it) gets it from its own job, a
+     * few minutes on, when TikTok has made the post public. The post is live: nothing here may fail the variant.
+     */
+    private function leaveTikTokComment(PostVariant $variant): void
+    {
+        if ($variant->platform !== Platform::TikTok || blank($variant->setting('first_comment'))) {
+            return;
+        }
+
+        try {
+            LeaveTikTokCommentJob::dispatch($variant->id)->delay(now()->addMinutes(LeaveTikTokCommentJob::FIRST_TRY_AFTER_MINUTES));
+        } catch (Throwable $e) {
+            Log::warning('hub.tiktok.first_comment_not_queued', ['variant' => $variant->id, 'error' => $e->getMessage()]);
         }
     }
 

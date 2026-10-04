@@ -86,6 +86,8 @@ final class TikTokPublisher implements Publisher
                 'disable_duet' => (bool) $variant->setting('disable_duet', (bool) ($creator['duet_disabled'] ?? false)),
                 'disable_stitch' => (bool) $variant->setting('disable_stitch', (bool) ($creator['stitch_disabled'] ?? false)),
                 'video_cover_timestamp_ms' => (int) $variant->setting('cover_timestamp_ms', 0),
+                // Content Posting API: the video is labelled "Creator labeled as AI-generated".
+                ...($variant->aiGenerated() ? ['is_aigc' => true] : []),
             ],
             'source_info' => [
                 // The hub's media domain must be verified in the TikTok developer portal, otherwise

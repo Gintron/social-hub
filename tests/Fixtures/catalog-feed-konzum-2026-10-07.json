@@ -1,0 +1,207 @@
+{
+  "version": "1",
+  "brand": "uselisto",
+  "items": [
+    {
+      "id": "catalog:257404e1-0047-4425-a544-f38f949255e7",
+      "kind": "catalog",
+      "title": "Konzum katalog 7.10.2026. – 13.10.2026.",
+      "subtitle": "Konzum",
+      "body_text": null,
+      "facts": [
+        {
+          "label": "VRIJEDI OD",
+          "value": "7.10.2026."
+        },
+        {
+          "label": "VRIJEDI DO",
+          "value": "13.10.2026."
+        },
+        {
+          "label": "STRANICA",
+          "value": "64"
+        },
+        {
+          "label": "PROIZVODA",
+          "value": "420"
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Preuzmi Listo",
+        "url": "https://uselisto.com/app"
+      },
+      "url": "https://uselisto.com/katalozi/konzum/257404e1-0047-4425-a544-f38f949255e7",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/catalogs/257404e1-0047-4425-a544-f38f949255e7/pages/001.webp",
+          "role": "primary",
+          "alt": "Konzum, naslovnica letka"
+        },
+        {
+          "url": "https://api.uselisto.com/files/catalogs/257404e1-0047-4425-a544-f38f949255e7/pages/005.webp",
+          "role": "gallery",
+          "alt": "Konzum, stranica 5"
+        },
+        {
+          "url": "https://api.uselisto.com/files/catalogs/257404e1-0047-4425-a544-f38f949255e7/pages/006.webp",
+          "role": "gallery",
+          "alt": "Konzum, stranica 6"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/7c5e7e42-7487-4307-a726-f5f28f0687aa/logo-msu71e3q-c86b.webp",
+          "role": "logo",
+          "alt": "Konzum"
+        }
+      ],
+      "priority": 84,
+      "tags": [
+        "konzum",
+        "katalog"
+      ],
+      "published_at": "2026-10-03T07:04:13.507Z",
+      "expires_at": "2026-10-13T23:59:59Z",
+      "updated_at": "2026-10-03T07:04:13.507Z",
+      "raw": {
+        "demo": {
+          "catalog_id": "257404e1-0047-4425-a544-f38f949255e7",
+          "chain": "konzum",
+          "chain_name": "Konzum",
+          "chain_phrase": "Konzumov katalog",
+          "valid_from": "2026-10-07",
+          "valid_to": "2026-10-13",
+          "page_count": 64,
+          "product_count": 420,
+          "currency": "EUR",
+          "locale": "hr-HR",
+          "pages": [
+            {
+              "number": 1,
+              "url": "https://api.uselisto.com/files/catalogs/257404e1-0047-4425-a544-f38f949255e7/pages/001.webp",
+              "width": 1600,
+              "height": 2199
+            },
+            {
+              "number": 5,
+              "url": "https://api.uselisto.com/files/catalogs/257404e1-0047-4425-a544-f38f949255e7/pages/005.webp",
+              "width": 1600,
+              "height": 2199
+            },
+            {
+              "number": 6,
+              "url": "https://api.uselisto.com/files/catalogs/257404e1-0047-4425-a544-f38f949255e7/pages/006.webp",
+              "width": 1600,
+              "height": 2199
+            }
+          ],
+          "taps": [
+            {
+              "page": 6,
+              "card_id": "0032167e-efe7-4cfa-8f96-fb6f43ad132a",
+              "product_id": "f05c5a20-a8b9-4a29-9a8b-dbed8aabba45",
+              "brand": "CEKIN",
+              "name": "Pileći zabatak",
+              "variant": "obiteljsko pakiranje",
+              "price_cents": 379,
+              "old_price_cents": null,
+              "discount_pct": null,
+              "currency": "EUR",
+              "unit": {
+                "amount": 1,
+                "measure": "kg"
+              },
+              "bbox": {
+                "h": 0.28051738075990307,
+                "w": 0.33666666666666667,
+                "x": 0.044444444444444446,
+                "y": 0.18997574777687956
+              },
+              "tap_bbox": {
+                "h": 0.4344665639650843,
+                "w": 0.3988888888888889,
+                "x": 0,
+                "y": 0.03997574777687957
+              },
+              "point": {
+                "x": 0.2127777777777778,
+                "y": 0.33023443815683107
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/257404e1-0047-4425-a544-f38f949255e7/crops/0032167e-efe7-4cfa-8f96-fb6f43ad132a-da9481e64f.webp"
+            },
+            {
+              "page": 6,
+              "card_id": "7c21dbc8-5dc5-40bc-aa46-b286befeb512",
+              "product_id": "df373479-10a8-486e-b3a1-4bd72496e936",
+              "brand": "VINDON",
+              "name": "Pureće mljeveno meso",
+              "variant": null,
+              "price_cents": 479,
+              "old_price_cents": null,
+              "discount_pct": null,
+              "currency": "EUR",
+              "unit": {
+                "amount": 500,
+                "measure": "g"
+              },
+              "bbox": {
+                "h": 0.25742646271017106,
+                "w": 0.3367848164906988,
+                "x": 0.6483967681623932,
+                "y": 0.2599213725102297
+              },
+              "tap_bbox": {
+                "h": 0.41462671009945384,
+                "w": 0.35969050480769227,
+                "x": 0.6403094951923077,
+                "y": 0.10992137251022968
+              },
+              "point": {
+                "x": 0.8167891764077426,
+                "y": 0.38863460386531523
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/257404e1-0047-4425-a544-f38f949255e7/crops/7c21dbc8-5dc5-40bc-aa46-b286befeb512-01744c573b.webp"
+            },
+            {
+              "page": 6,
+              "card_id": "418d9b4a-607d-4c9d-98e4-87e46d4366b3",
+              "product_id": "76a2a85a-e8cc-4f86-86ab-1bdec039b757",
+              "brand": "ZDENKA",
+              "name": "Topljeni sir",
+              "variant": "u trokutićima",
+              "price_cents": 179,
+              "old_price_cents": null,
+              "discount_pct": null,
+              "currency": "EUR",
+              "unit": {
+                "amount": 140,
+                "measure": "g"
+              },
+              "bbox": {
+                "h": 0.20223320804452805,
+                "w": 0.2609421348667672,
+                "x": 0.7048083600427351,
+                "y": 0.5317483299989664
+              },
+              "tap_bbox": {
+                "h": 0.21713953362305793,
+                "w": 0.29651183069381604,
+                "x": 0.703488169306184,
+                "y": 0.5245480826096836
+              },
+              "point": {
+                "x": 0.8352794274761186,
+                "y": 0.6328649340212305
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/257404e1-0047-4425-a544-f38f949255e7/crops/418d9b4a-607d-4c9d-98e4-87e46d4366b3-a20474b738.webp"
+            }
+          ],
+          "total_cents": 1037,
+          "app_url": "https://uselisto.com/app",
+          "campaign": "katalog-konzum-2026-10-07"
+        }
+      }
+    }
+  ],
+  "next_cursor": null
+}

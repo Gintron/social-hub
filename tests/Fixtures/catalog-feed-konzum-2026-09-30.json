@@ -1,0 +1,185 @@
+{
+  "version": "1",
+  "brand": "uselisto",
+  "items": [
+    {
+      "id": "catalog:06762451-1155-444e-b480-f0df3050c94c",
+      "kind": "catalog",
+      "title": "Konzum katalog 30.9.2026. – 6.10.2026.",
+      "subtitle": "Konzum",
+      "body_text": null,
+      "facts": [
+        {
+          "label": "VRIJEDI OD",
+          "value": "30.9.2026."
+        },
+        {
+          "label": "VRIJEDI DO",
+          "value": "6.10.2026."
+        },
+        {
+          "label": "STRANICA",
+          "value": "54"
+        },
+        {
+          "label": "PROIZVODA",
+          "value": "337"
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Preuzmi Listo",
+        "url": "https://uselisto.com/app"
+      },
+      "url": "https://uselisto.com/katalozi/konzum/06762451-1155-444e-b480-f0df3050c94c",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/catalogs/06762451-1155-444e-b480-f0df3050c94c/pages/001.webp",
+          "role": "primary",
+          "alt": "Konzum, naslovnica letka"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/7c5e7e42-7487-4307-a726-f5f28f0687aa/logo-msu71e3q-c86b.webp",
+          "role": "logo",
+          "alt": "Konzum"
+        }
+      ],
+      "priority": 67,
+      "tags": [
+        "konzum",
+        "katalog"
+      ],
+      "published_at": "2026-09-30T03:14:54.675Z",
+      "expires_at": "2026-10-06T23:59:59Z",
+      "updated_at": "2026-09-30T03:14:54.675Z",
+      "raw": {
+        "demo": {
+          "catalog_id": "06762451-1155-444e-b480-f0df3050c94c",
+          "chain": "konzum",
+          "chain_name": "Konzum",
+          "chain_phrase": "Konzumov katalog",
+          "valid_from": "2026-09-30",
+          "valid_to": "2026-10-06",
+          "page_count": 54,
+          "product_count": 337,
+          "currency": "EUR",
+          "locale": "hr-HR",
+          "pages": [
+            {
+              "number": 1,
+              "url": "https://api.uselisto.com/files/catalogs/06762451-1155-444e-b480-f0df3050c94c/pages/001.webp",
+              "width": 1600,
+              "height": 2199
+            }
+          ],
+          "taps": [
+            {
+              "page": 1,
+              "card_id": "6a91eb00-61c7-4eaf-ac02-9d0cdd0f9101",
+              "product_id": "c22c457e-351f-4e54-965e-056fcfc83c18",
+              "brand": null,
+              "name": "Gouda sir",
+              "variant": "polutvrdi",
+              "price_cents": 449,
+              "old_price_cents": null,
+              "discount_pct": null,
+              "currency": "EUR",
+              "unit": {
+                "amount": 1,
+                "measure": "kg"
+              },
+              "bbox": {
+                "h": 0.22958771220695234,
+                "w": 0.31444444444444447,
+                "x": 0.3433333333333333,
+                "y": 0.3241713823767179
+              },
+              "tap_bbox": {
+                "h": 0.23403395311236863,
+                "w": 0.3205555555555556,
+                "x": 0.33999999999999997,
+                "y": 0.3213419563459984
+              },
+              "point": {
+                "x": 0.5005555555555555,
+                "y": 0.4389652384801941
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/06762451-1155-444e-b480-f0df3050c94c/crops/6a91eb00-61c7-4eaf-ac02-9d0cdd0f9101-951a6ec4a5.webp"
+            },
+            {
+              "page": 1,
+              "card_id": "a5755163-979c-4698-9b39-7b452162b101",
+              "product_id": "b85fe9ca-04d9-40f2-abe7-38a98a03cf76",
+              "brand": "PASTA ZARA",
+              "name": "Tjestenina",
+              "variant": "odabrane vrste",
+              "price_cents": 149,
+              "old_price_cents": 239,
+              "discount_pct": 37,
+              "currency": "EUR",
+              "unit": {
+                "amount": 1,
+                "measure": "kg"
+              },
+              "bbox": {
+                "h": 0.23039611964430068,
+                "w": 0.3144444444444445,
+                "x": 0.6633333333333333,
+                "y": 0.32336297493936944
+              },
+              "tap_bbox": {
+                "h": 0.23443815683104285,
+                "w": 0.33944444444444444,
+                "x": 0.6605555555555556,
+                "y": 0.32093775262732416
+              },
+              "point": {
+                "x": 0.8205555555555556,
+                "y": 0.43856103476151975
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/06762451-1155-444e-b480-f0df3050c94c/crops/a5755163-979c-4698-9b39-7b452162b101-63768d5173.webp"
+            },
+            {
+              "page": 1,
+              "card_id": "fb9b572d-d5e4-4bdd-bce0-d033a8adaa82",
+              "product_id": "7195ad1c-2847-4f3e-a37f-6f2eefea5680",
+              "brand": null,
+              "name": "Pureći file",
+              "variant": "od prsa",
+              "price_cents": 699,
+              "old_price_cents": 999,
+              "discount_pct": 30,
+              "currency": "EUR",
+              "unit": {
+                "amount": 1,
+                "measure": "kg"
+              },
+              "bbox": {
+                "h": 0.24333063864187554,
+                "w": 0.3244444444444444,
+                "x": 0.011111111111111112,
+                "y": 0.5852869846402587
+              },
+              "tap_bbox": {
+                "h": 0.24737267582861766,
+                "w": 0.33944444444444444,
+                "x": 0,
+                "y": 0.5844785772029103
+              },
+              "point": {
+                "x": 0.1733333333333333,
+                "y": 0.7069523039611965
+              },
+              "crop": "https://api.uselisto.com/files/catalogs/06762451-1155-444e-b480-f0df3050c94c/crops/fb9b572d-d5e4-4bdd-bce0-d033a8adaa82-ad7a588f7b.webp"
+            }
+          ],
+          "total_cents": 1297,
+          "app_url": "https://uselisto.com/app",
+          "campaign": "katalog-konzum-2026-09-30"
+        }
+      }
+    }
+  ],
+  "next_cursor": null
+}

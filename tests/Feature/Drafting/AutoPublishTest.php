@@ -340,6 +340,7 @@ final class AutoPublishTest extends TestCase
             'source_id' => $source->id,
             'platform' => $platform,
             'enabled' => true,
+            'requires_approval' => false,
             'delay_minutes' => $delayMinutes,
             'daily_cap' => $dailyCap,
             'format' => $format,

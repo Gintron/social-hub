@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions;
 
+use App\Catalog\CatalogCopy;
 use App\Enums\ContentFormat;
+use App\Enums\ContentKind;
 use App\Enums\Platform;
+use App\Jobs\RenderCatalogVideoJob;
 use App\Jobs\RenderDigestJob;
 use App\Jobs\RenderMediaJob;
 use App\Jobs\RenderSlidesJob;
@@ -13,6 +16,7 @@ use App\Jobs\RenderVideoJob;
 use App\Models\MediaAsset;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
+use App\Rendering\CatalogVideo\CatalogVideoRenderer;
 use App\Rendering\ScenePlanner;
 use App\Rendering\TemplateRegistry;
 use App\Rendering\VideoRenderer;
@@ -104,6 +108,18 @@ final class PrepareVariantMedia
                 continue;
             }
 
+            // The new-catalog video is one scene in motion, not a slideshow of the item's cards: its own render.
+            if ($format === ContentFormat::Video && $item->kind === ContentKind::Catalog) {
+                $voice = array_key_exists('voiceover', $video) ? (bool) $video['voiceover'] : $variant->wantsVoiceover();
+                $where = $variant->linkIn();
+                // The sentence that says where the link is is in the voice and on the end card, so a channel that says
+                // "u biografiji" needs another file than one that says "u komentaru".
+                $asset = $fresh ? null : $this->latestCatalogVideo($draft, $voice, $where);
+                $asset !== null ? $this->attach($variant, [$asset]) : $groups['catalog:'.($voice ? 'voice' : 'plain').':'.$where][] = $variant;
+
+                continue;
+            }
+
             if ($format === ContentFormat::Video) {
                 // The video with a voice and the one without are different files; a channel gets the one it asks for.
                 $voice = array_key_exists('voiceover', $video) ? (bool) $video['voiceover'] : $variant->wantsVoiceover();
@@ -178,6 +194,13 @@ final class PrepareVariantMedia
         [$type, $argument] = array_pad(explode(':', $group, 2), 2, '');
 
         return match ($type) {
+            'catalog' => new RenderCatalogVideoJob(
+                $draft->id,
+                $ids,
+                voiceover: str_starts_with($argument, 'voice'),
+                where: str_ends_with($argument, CatalogCopy::WHERE_BIO) ? CatalogCopy::WHERE_BIO : CatalogCopy::WHERE_COMMENT,
+                audio: (string) ($video['audio'] ?? 'auto'),
+            ),
             'video' => new RenderVideoJob(
                 $draft->id,
                 $ids,
@@ -235,6 +258,19 @@ final class PrepareVariantMedia
             ->latest('id')
             ->get()
             ->first(fn (MediaAsset $asset): bool => (data_get($asset->params, 'voiceover.status') === 'ok') === $voice);
+    }
+
+    /**
+     * The newest new-catalog video of the draft with this voice (or none) and this sentence about the link.
+     */
+    private function latestCatalogVideo(PostDraft $draft, bool $voice, string $where): ?MediaAsset
+    {
+        return $draft->mediaAssets()
+            ->where('template_key', CatalogVideoRenderer::TEMPLATE_KEY)
+            ->latest('id')
+            ->get()
+            ->first(fn (MediaAsset $asset): bool => (data_get($asset->params, 'voiceover.status') === 'ok') === $voice
+                && data_get($asset->params, 'link_in', CatalogCopy::WHERE_COMMENT) === $where);
     }
 
     /**

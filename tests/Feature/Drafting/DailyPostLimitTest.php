@@ -157,6 +157,7 @@ final class DailyPostLimitTest extends TestCase
             'source_id' => $this->source->id,
             'platform' => Platform::FacebookPage,
             'enabled' => true,
+            'requires_approval' => false,
             'delay_minutes' => $delay,
             'daily_cap' => $dailyCap,
         ]);

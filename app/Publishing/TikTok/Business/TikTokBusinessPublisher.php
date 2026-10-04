@@ -125,6 +125,8 @@ final class TikTokBusinessPublisher implements Publisher
             'disable_duet' => (bool) $variant->setting('disable_duet', (bool) ($settings['duet_disabled'] ?? false)),
             'disable_stitch' => (bool) $variant->setting('disable_stitch', (bool) ($settings['stitch_disabled'] ?? false)),
             'thumbnail_offset' => (int) $variant->setting('cover_timestamp_ms', 0),
+            // Shown as "Creator labeled as AI-generated" and cannot be changed afterwards (Business API, publish).
+            ...($variant->aiGenerated() ? ['is_ai_generated' => true] : []),
         ];
     }
 

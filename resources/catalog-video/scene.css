@@ -1,0 +1,152 @@
+@font-face { font-family: "Figtree"; font-weight: 400; src: url("fonts/Figtree_400Regular.ttf"); }
+@font-face { font-family: "Figtree"; font-weight: 500; src: url("fonts/Figtree_500Medium.ttf"); }
+@font-face { font-family: "Figtree"; font-weight: 600; src: url("fonts/Figtree_600SemiBold.ttf"); }
+@font-face { font-family: "Figtree"; font-weight: 700; src: url("fonts/Figtree_700Bold.ttf"); }
+@font-face { font-family: "Figtree"; font-weight: 800; src: url("fonts/Figtree_800ExtraBold.ttf"); }
+@font-face { font-family: "Fraunces"; font-weight: 700; src: url("fonts/Fraunces_700Bold.ttf"); }
+@font-face { font-family: "Ionicons"; src: url("fonts/Ionicons.ttf"); }
+
+:root {
+  /* Boje brenda (videa): zadane su Listove. */
+  --cream: #F4F1E9;
+  --green: #2F6B45;
+  --ink: #1F2A21;
+  --soft: #E4EBDC;
+
+  /* Boje aplikacije (lib/theme.ts): zaslon je kopija, pa one ne ovise o brendu videa. */
+  --app-background: #F4F1E9;
+  --app-surface: #FFFDF8;
+  --app-sunken: #EDE7DA;
+  --app-border: #DED8C9;
+  --app-hairline: #E8E2D6;
+  --app-text: #1F2A21;
+  --app-secondary: #4C5A4B;
+  --app-muted: #6F7A67;
+  --app-accent: #2F6B45;
+  --app-accent-soft: #E4EBDC;
+  --app-on-dark: #FFFDF8;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--cream); }
+body { font-family: "Figtree", sans-serif; -webkit-font-smoothing: antialiased; }
+
+#frame { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--cream); }
+#backdrop, #cta-bg { position: absolute; inset: 0; }
+#cta-bg { background: var(--green); opacity: 0; }
+
+/* ── naslovi i okvir ────────────────────────────────────────────────── */
+#lockup, #cta-lockup { position: absolute; left: 0; top: 0; width: 1080px; height: 1px; }
+#lockup-icon, #cta-icon { position: absolute; left: 78px; top: 165px; width: 66px; height: 66px; border-radius: 17px; }
+#cta-icon { box-shadow: 0 0 0 3px var(--cream); }
+#lockup-name, #cta-name { position: absolute; left: 165px; top: 153px; font: 700 69px/1.2 "Fraunces", serif; color: var(--green); white-space: nowrap; }
+#lockup-site, #cta-site { position: absolute; right: 191px; top: 186px; font: 700 27px/1 "Figtree", sans-serif; color: var(--green); white-space: nowrap; }
+#cta-lockup { opacity: 0; }
+#cta-name, #cta-site { color: var(--cream); }
+
+#titles { position: absolute; left: 0; top: 0; width: 1080px; height: 476px; }
+.title { position: absolute; left: 78px; top: 239px; width: 880px; opacity: 0; font: 700 70px/76px "Fraunces", serif; color: var(--green); white-space: nowrap; }
+.title .chip { display: inline-block; margin-top: 12px; padding: 7px 26px 9px; border-radius: 999px; background: var(--soft); color: var(--ink); font: 700 34px/40px "Figtree", sans-serif; letter-spacing: 0; }
+
+#stage { position: absolute; left: 0; top: 0; width: 100px; height: 100px; overflow: hidden; border-radius: 28px; background: #161C14; box-shadow: 0 0 0 4px var(--app-border); transform-origin: 0 0; }
+#phone { position: absolute; left: 0; top: 0; width: 402px; height: 874px; overflow: hidden; transform-origin: 0 0; background: #161C14; }
+.screen { position: absolute; inset: 0; }
+.ion { font-family: "Ionicons"; font-style: normal; font-weight: 400; line-height: 1; display: inline-block; }
+
+/* ── zaslon letka (app/katalog/[id].tsx) ───────────────────────────── */
+#viewer { background: #161C14; }
+#track { position: absolute; left: 0; top: 0; height: 874px; display: flex; will-change: transform; }
+.page { position: relative; flex: 0 0 402px; width: 402px; height: 874px; overflow: hidden; }
+.page img { position: absolute; left: 0; width: 402px; display: block; }
+.mark { position: absolute; border: 2px solid var(--app-accent); border-radius: 10px; background: rgba(14, 159, 110, 0.10); }
+.mark .badge { position: absolute; right: -8px; top: -8px; width: 20px; height: 20px; border-radius: 10px; background: var(--app-accent); border: 1.5px solid #fff; display: flex; align-items: center; justify-content: center; }
+.flash { position: absolute; border: 3px solid #fff; border-radius: 10px; background: rgba(255, 255, 255, 0.22); opacity: 0; }
+
+#topbar { position: absolute; left: 0; right: 0; top: 0; height: 128px; padding: 70px 16px 0; display: flex; align-items: flex-start; gap: 12px; background: linear-gradient(180deg, rgba(6,10,18,.92), rgba(6,10,18,.55) 50%, rgba(6,10,18,0)); }
+#topbar .round { width: 34px; height: 34px; border-radius: 17px; background: rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; }
+#chain-name { flex: 1; height: 34px; line-height: 34px; color: #fff; font: 700 17px/34px "Figtree", sans-serif; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; }
+#topbar .pill { margin-top: 4px; height: 26px; padding: 0 12px; border-radius: 999px; background: rgba(255,255,255,.14); color: #fff; display: flex; align-items: center; justify-content: center; font: 700 12px/1 "Figtree", sans-serif; font-variant-numeric: tabular-nums; }
+#topbar .pill .ion { font-size: 16px; }
+#fullscreen { margin-top: 4px; height: 26px; padding: 0 12px; border-radius: 999px; background: rgba(245,158,11,.25); border: 1px solid #F59E0B; color: #FBBF24; display: flex; align-items: center; }
+#fullscreen .ion { font-size: 14px; }
+
+/* ── status traka (iPhone) ─────────────────────────────────────────── */
+#statusbar { position: absolute; left: 0; top: 0; width: 402px; height: 62px; color: #fff; z-index: 5; }
+#statusbar.dark { color: #000; }
+#statusbar svg { fill: currentColor; stroke: currentColor; }
+#clock { position: absolute; left: 41px; top: 20px; width: 66px; text-align: center; font: 700 17px/26px "Figtree", sans-serif; letter-spacing: -0.2px; }
+#island { position: absolute; left: 138px; top: 14px; width: 126px; height: 37px; border-radius: 19px; background: #000; }
+#status-icons { position: absolute; right: 38px; top: 24px; height: 16px; display: flex; align-items: center; gap: 6px; }
+#status-icons svg { display: block; }
+
+/* ── zaslon Liste (app/(tabs)/liste.tsx, components/ListCard.tsx) ──── */
+#lists { background: var(--app-background); }
+#lists-scroll { position: absolute; left: 0; right: 0; top: 0; padding-top: 78px; }
+#lists-header { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; margin-bottom: 12px; }
+#lists-title { font: 700 32px/40px "Fraunces", serif; letter-spacing: -0.5px; color: var(--app-text); }
+.add-button { width: 34px; height: 34px; border-radius: 999px; background: var(--app-accent-soft); color: var(--app-accent); display: flex; align-items: center; justify-content: center; font: 800 17px/1 "Figtree", sans-serif; }
+#lists-tabs { display: flex; gap: 8px; padding: 0 16px; margin-bottom: 16px; }
+.tab { padding: 7px 12px; border-radius: 999px; background: var(--app-surface); color: var(--app-secondary); font: 700 13px/16px "Figtree", sans-serif; }
+.tab.active { background: var(--app-accent-soft); color: var(--app-accent); }
+
+.section { position: relative; display: flex; flex-direction: column; margin: 0 16px 16px; padding: 16px; background: var(--app-surface); border-radius: 20px; box-shadow: 0 6px 28px rgba(31, 42, 33, 0.06); }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.head-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#chain-mark { width: 28px; height: 28px; border-radius: 14px; background: var(--app-sunken); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #fff; font: 800 10px/1 "Figtree", sans-serif; letter-spacing: -0.2px; }
+#chain-mark img { width: 28px; height: 28px; object-fit: contain; display: block; }
+#list-chain-name { font: 700 18px/22px "Fraunces", serif; letter-spacing: -0.2px; color: var(--app-text); white-space: nowrap; }
+.head-actions { display: flex; align-items: center; gap: 12px; }
+.share { font: 700 13px/16px "Figtree", sans-serif; color: var(--app-accent); }
+.kebab { width: 32px; height: 32px; border-radius: 999px; background: var(--app-sunken); color: var(--app-secondary); display: flex; align-items: center; justify-content: center; }
+.kebab .ion { font-size: 18px; }
+.group-label { margin-top: 16px; margin-bottom: 4px; font: 700 11px/14px "Figtree", sans-serif; letter-spacing: 0.7px; text-transform: uppercase; color: var(--app-muted); }
+
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 0.33px solid var(--app-hairline); }
+.row .check { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 13px; border: 2px solid var(--app-border); }
+.row .main { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.row .crop { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 14px; background: var(--app-sunken) center / contain no-repeat; }
+.row .text { flex: 1; min-width: 0; }
+.row .brand { font: 400 11px/14px "Figtree", sans-serif; color: var(--app-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.row .name { font: 700 15px/19px "Figtree", sans-serif; letter-spacing: -0.2px; color: var(--app-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.row .unit { font: 400 12px/15px "Figtree", sans-serif; color: var(--app-muted); }
+.row .price { font: 800 16px/20px "Figtree", sans-serif; letter-spacing: -0.4px; color: var(--app-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.add-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.add-mark { width: 26px; height: 26px; border-radius: 13px; border: 2px dashed var(--app-border); display: flex; align-items: center; justify-content: center; color: var(--app-muted); font: 800 13px/1 "Figtree", sans-serif; }
+.add-text { font: 700 14px/18px "Figtree", sans-serif; color: var(--app-accent); }
+.total-row { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--app-border); }
+.total-label, #total-value { font: 700 16px/20px "Figtree", sans-serif; color: var(--app-text); }
+#total-value { font-variant-numeric: tabular-nums; }
+#total-ring { position: absolute; left: 6px; right: 6px; bottom: 8px; height: 44px; border-radius: 12px; border: 2.5px solid var(--app-accent); background: rgba(47, 107, 69, 0.13); opacity: 0; }
+
+#tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 86px; display: flex; padding-top: 6px; background: var(--app-surface); border-top: 0.33px solid var(--app-hairline); }
+.tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 3px; }
+.tab-icon { width: 46px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: var(--app-muted); font-size: 19px; }
+.tab-item.active .tab-icon { background: var(--app-accent-soft); color: var(--app-accent); }
+.tab-icon .check { font-size: 20px; }
+.tab-label { margin-top: 3.5px; font: 700 11px/14px "Figtree", sans-serif; color: var(--app-muted); }
+.tab-item.active .tab-label { color: var(--app-text); }
+
+/* ── obavijest „Dodano u listu“ (components/Toast.tsx) ─────────────── */
+#toast { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--ink); border-radius: 20px; box-shadow: 0 -8px 28px rgba(31,42,33,.18); opacity: 0; transform-origin: 50% 100%; width: 100px; }
+.toast-badge { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 13px; background: var(--app-accent); display: flex; align-items: center; justify-content: center; }
+.toast-text { flex: 1; min-width: 0; }
+.toast-title { font: 700 14px/17px "Figtree", sans-serif; color: var(--app-on-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast-detail { margin-top: 1px; font: 400 12px/15px "Figtree", sans-serif; color: rgba(255,255,255,.62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── pokazivač (bijeli prozirni krug, tamni obrub, prsten pri otpuštanju) ── */
+#pointer { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; }
+#pointer .body { position: absolute; border-radius: 50%; background: rgba(255,255,255,.84); border: 4.5px solid rgba(31,42,33,.8); }
+#pointer .body .dot { position: absolute; left: 50%; top: 50%; border-radius: 50%; background: var(--ink); transform: translate(-50%, -50%); }
+#pointer .shadow { position: absolute; border-radius: 50%; background: rgba(20,28,22,.37); filter: blur(9px); }
+#pointer .ring { position: absolute; border-radius: 50%; border-style: solid; background: transparent; opacity: 0; }
+
+/* ── titlovi ──────────────────────────────────────────────────────── */
+#caption { position: absolute; left: 68px; width: 844px; top: 1590px; transform: translateY(-50%); display: none; padding: 14px 24px; border-radius: 20px; background: var(--ink); color: var(--cream); font: 700 42px/51px "Figtree", sans-serif; text-align: center; }
+
+/* ── završna kartica ──────────────────────────────────────────────── */
+#cta { position: absolute; inset: 0; pointer-events: none; }
+#cta-headline { position: absolute; left: 78px; top: 290px; width: 900px; font: 700 112px/126px "Fraunces", serif; color: var(--cream); opacity: 0; white-space: nowrap; }
+#cta-link { position: absolute; left: 80px; top: 570px; width: 800px; font: 600 38px/48px "Figtree", sans-serif; color: var(--cream); opacity: 0; }
+#cta-button { position: absolute; left: 90px; top: 1370px; width: 800px; height: 100px; border-radius: 28px; background: var(--cream); color: var(--green); font: 700 49px/100px "Figtree", sans-serif; text-align: center; opacity: 0; }
+#cta-stores { position: absolute; left: 90px; top: 1490px; width: 800px; text-align: center; font: 600 28px/36px "Figtree", sans-serif; color: var(--cream); opacity: 0; }

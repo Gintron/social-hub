@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions;
 
+use App\Catalog\CatalogVariant;
 use App\Enums\ActorType;
 use App\Enums\ContentFormat;
+use App\Enums\ContentKind;
 use App\Enums\DraftStatus;
 use App\Enums\Platform;
 use App\Enums\VariantStatus;
@@ -66,7 +68,7 @@ final class CreateDraft
                 throw new InvalidArgumentException("Account {$account->name} belongs to another brand than the content item.");
             }
 
-            $settings[$account->id] = $this->settingsFor($account->platform, $channelOptions[$account->platform->value] ?? []);
+            $settings[$account->id] = $this->settingsFor($account->platform, $channelOptions[$account->platform->value] ?? [], $item);
         }
 
         // No template means one per channel: portrait for Facebook and Instagram, vertical for TikTok.
@@ -89,13 +91,16 @@ final class CreateDraft
             $draft->contentItems()->attach($item->id, ['position' => 0, 'checksum' => $item->checksum]);
 
             foreach ($accounts as $account) {
+                // A new-catalog video points to the app, and to it from this channel: one link per video and channel.
+                $catalog = CatalogVariant::fields($item, $account->platform, $brand);
+
                 PostVariant::query()->create([
                     'post_draft_id' => $draft->id,
                     'social_account_id' => $account->id,
                     'platform' => $account->platform,
                     'caption' => $captionOverrides[$account->platform->value] ?? $this->captions->for($account->platform, $item, $brand),
-                    'link_url' => $item->url,
-                    'settings' => $settings[$account->id],
+                    'link_url' => $catalog['link_url'] ?? $item->url,
+                    'settings' => [...$catalog['settings'], ...$settings[$account->id]],
                     'status' => VariantStatus::Pending,
                 ]);
             }
@@ -117,9 +122,10 @@ final class CreateDraft
      * @param  array{format?: ContentFormat|string, settings?: array<string, mixed>}  $options
      * @return array<string, mixed>
      */
-    private function settingsFor(Platform $platform, array $options): array
+    private function settingsFor(Platform $platform, array $options, ContentItem $item): array
     {
-        $format = $options['format'] ?? $platform->defaultFormat();
+        // A leaflet has no picture of its own to post: it is the video, or on a channel without video a link.
+        $format = $options['format'] ?? ($item->kind === ContentKind::Catalog ? CatalogVariant::format($platform) : $platform->defaultFormat());
         $format = $format instanceof ContentFormat ? $format : ContentFormat::from((string) $format);
 
         if (! in_array($format, $platform->formats(), true)) {

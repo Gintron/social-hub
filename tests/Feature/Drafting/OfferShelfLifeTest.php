@@ -183,6 +183,7 @@ final class OfferShelfLifeTest extends TestCase
             'source_id' => $this->source->id,
             'platform' => Platform::FacebookPage,
             'enabled' => true,
+            'requires_approval' => false,
             'daily_cap' => $dailyCap,
         ]);
     }

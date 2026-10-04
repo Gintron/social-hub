@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<title>Katalog — video</title>
+<link rel="stylesheet" href="scene.css">
+</head>
+<body>
+<!--
+  Jedan kadar videa „izašao je novi katalog“ u 1080×1920, nacrtan za trenutak t (scene.js → renderAt).
+  Ne animira se sam: Node (resources/js/catalog-frames.mjs) postavlja t i snima sličicu, pa je svaka
+  sličica deterministična, a provjera izgleda jedna naredba (`--at 2.4`).
+
+  Zaslon aplikacije (#phone) je vjerna kopija Listo aplikacije, mjere u pt iz njezina koda
+  (app/app/katalog/[id].tsx, components/ListCard.tsx, Toast.tsx, lib/theme.ts); "kamera" je transformacija
+  na njemu, kao izrez snimke zaslona u videu A.
+-->
+<div id="frame">
+  <div id="backdrop"></div>
+  <div id="cta-bg"></div>
+  <div id="lockup">
+    <img id="lockup-icon" alt="">
+    <span id="lockup-name"></span>
+    <span id="lockup-site"></span>
+  </div>
+
+  <div id="cta-lockup"><img id="cta-icon" alt=""><span id="cta-name"></span><span id="cta-site"></span></div>
+  <div id="titles"></div>
+
+  <div id="stage"><div id="phone">
+    <div id="viewer" class="screen">
+      <div id="track"></div>
+      <div id="topbar">
+        <div id="back" class="round"><i class="ion">&#xf229;</i></div>
+        <div id="chain-name"></div>
+        <div class="pill" id="search"><i class="ion">&#xf55f;</i></div>
+        <div class="pill" id="counter"></div>
+        <div id="fullscreen"><i class="ion">&#xf2e0;</i></div>
+      </div>
+    </div>
+    <div id="lists" class="screen">
+      <div id="lists-scroll">
+        <div id="lists-header"><div id="lists-title">Liste</div><div class="add-button">＋</div></div>
+        <div id="lists-tabs"><div class="tab active">Moje liste</div><div class="tab">Podijeljeno</div></div>
+        <div id="chain-list" class="section">
+          <div class="section-head">
+            <div class="head-title"><div id="chain-mark"></div><div id="list-chain-name"></div></div>
+            <div class="head-actions"><div class="share">Podijeli</div><div class="kebab"><i class="ion">&#xf2ce;</i></div></div>
+          </div>
+          <div class="group-label">Za kupiti</div>
+          <div id="rows"></div>
+          <div class="add-row"><div class="add-mark">＋</div><div class="add-text">Dopiši</div></div>
+          <div class="total-row"><div class="total-label">Ukupno</div><div id="total-value"></div></div>
+          <div id="total-ring"></div>
+        </div>
+      </div>
+      <div id="tabbar">
+        <div class="tab-item"><div class="tab-icon"><i class="ion">&#xf2b4;</i></div><div class="tab-label">Katalozi</div></div>
+        <div class="tab-item"><div class="tab-icon"><i class="ion">&#xf563;</i></div><div class="tab-label">Traži</div></div>
+        <div class="tab-item active"><div class="tab-icon"><i class="ion check">&#xf21d;</i></div><div class="tab-label">Liste</div></div>
+        <div class="tab-item"><div class="tab-icon"><i class="ion">&#xf56c;</i></div><div class="tab-label">Postavke</div></div>
+      </div>
+    </div>
+    <div id="statusbar">
+      <div id="clock">09:41</div>
+      <div id="island"></div>
+      <div id="status-icons">
+        <svg width="20" height="13" viewBox="0 0 20 13"><rect x="0" y="8" width="3.4" height="5" rx="1"/><rect x="5.5" y="5.5" width="3.4" height="7.5" rx="1"/><rect x="11" y="3" width="3.4" height="10" rx="1"/><rect x="16.5" y="0" width="3.4" height="13" rx="1"/></svg>
+        <svg width="18" height="13" viewBox="0 0 18 13"><path d="M9 12.4 6.6 10a3.4 3.4 0 0 1 4.8 0L9 12.4Zm-4.1-4.1a6.2 6.2 0 0 1 8.2 0l-1.3 1.3a4.4 4.4 0 0 0-5.6 0L4.9 8.3ZM1.6 5a10.8 10.8 0 0 1 14.8 0l-1.3 1.3a9 9 0 0 0-12.2 0L1.6 5Z"/></svg>
+        <svg width="28" height="13" viewBox="0 0 28 13"><rect x="0.5" y="0.5" width="23" height="12" rx="3.6" fill="none" stroke-width="1" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2.4"/><path d="M25 4.5v4c.9-.4 1.5-1.2 1.5-2s-.6-1.6-1.5-2Z" opacity=".5"/></svg>
+      </div>
+    </div>
+  </div>
+  <div id="toast"><div class="toast-badge"><svg viewBox="0 0 14 14" width="14" height="14"><polyline points="3,7.4 6,10.2 11,4.2" fill="none" stroke="#FFFDF8" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="toast-text"><div class="toast-title">Dodano u listu</div><div class="toast-detail"></div></div></div>
+  </div>
+
+  <div id="caption"><span></span></div>
+  <div id="pointer"><div class="ring ring-white"></div><div class="ring ring-green"></div><div class="shadow"></div><div class="body"><div class="dot"></div></div></div>
+
+  <div id="cta">
+    <div id="cta-headline"></div>
+    <div id="cta-link"></div>
+    <div id="cta-button"></div>
+    <div id="cta-stores">App Store · Google Play</div>
+  </div>
+</div>
+<script src="data.js"></script>
+<script src="scene.js"></script>
+</body>
+</html>

@@ -29,6 +29,21 @@ return [
     'min_days_valid' => [
         'deal' => 3,
         'comparison' => 3,
+        // Letak koji istječe za dan-dva ne bi imao što pokazati kupcu koji video vidi s kašnjenjem.
+        'catalog' => 3,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | How long an item stays news
+    |--------------------------------------------------------------------------
+    | Days after `published_at` that automation still posts an item of this kind. A leaflet is
+    | news the day it comes out: without this, the first sync of a source that already holds
+    | a month of leaflets would queue videos for all of them. Kinds not listed never age out
+    | (a deal or a job stays worth posting as long as it is valid).
+    */
+    'max_age_days' => [
+        'catalog' => 3,
     ],
 
     /*

@@ -73,7 +73,8 @@ final class PostingSchedule
         $last = PostDraft::query()
             ->where('brand_id', $brand->id)
             ->where('created_by_type', ActorType::System->value)
-            ->where('status', DraftStatus::Scheduled->value)
+            // A draft waiting for approval still holds its slot: approving it keeps the time it was given.
+            ->whereIn('status', [DraftStatus::Scheduled->value, DraftStatus::PendingApproval->value])
             ->where('scheduled_at', '>=', $earliest->subMinutes(self::SPACING_MINUTES - 1))
             ->max('scheduled_at');
 
