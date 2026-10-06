@@ -102,9 +102,12 @@ Po varijanti se sprema: `link_url` (poveznica) i `settings.tracking` (`url`, `so
 registracija s `source/campaign` može pripisati objavi. Android: Listo bilježi `prijava` s `source/campaign/medium`
 (Play referrer); iOS se izvor vidi samo u App Store Connectu.
 
-- **Facebook stranica i Instagram:** poveznica je **prvi komentar** (`settings.first_comment`, već podržano:
+- **Facebook stranica i Instagram:** poveznica je **prvi komentar** (`settings.first_comment`:
   `FacebookPagePublisher`, `InstagramPublisher`): „👉 Preuzmi Listo: <poveznica>“. Na Facebooku je klikabilna; na
   Instagramu nije (kopira se). Ako Instagram treba kraću adresu, `uselisto.com/instagram?utm_campaign=…` je tipkljiva.
+  Prva živa objava (6. 10. 2026.): Facebook ostavio komentar (`fb.first_comment` 200); Instagram ne, jer token nema
+  `instagram_manage_comments` (`ig.first_comment` 400, `(#10)`). Dozvola ide u Login Configuration u Meta dashboardu i u
+  `config/meta.php`, pa se Instagram račun ponovno povezuje (`docs/deploy-ploi.md`).
 - **TikTok:** komentar ostavlja `LeaveTikTokCommentJob` kroz API čim aplikacija dobije dozvolu, a do tada ga adminu daje kao tekst za lijepljenje (niže).
 
 ### TikTok: prvi komentar (odluka 3. 10. 2026.: komentirati preko API-ja, uz dozvolu)

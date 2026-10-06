@@ -30,6 +30,9 @@ return [
         // The link of a Page post goes in its first comment (FacebookPagePublisher), and commenting
         // as the Page needs this.
         'pages_manage_engagement',
+        // The first comment under an Instagram Reel (InstagramPublisher): without it Graph answers
+        // "(#10) Application does not have permission for this action" on `{media-id}/comments`.
+        'instagram_manage_comments',
     ],
 
     /*

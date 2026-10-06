@@ -122,7 +122,9 @@ Developer dashboard → tvoja app → **Settings → Basic**:
 U **Configurations** napravi konfiguraciju s dozvolama `pages_show_list`, `pages_manage_posts`,
 `pages_read_engagement`, `instagram_basic`, `instagram_content_publish`, a za mjerenje i
 `instagram_manage_insights`, `read_insights`, `pages_read_user_content` (lajkovi i komentari objava
-stranice), `pages_manage_engagement` (hub ostavlja link objave stranice u prvom komentaru), i njezin
+stranice), `pages_manage_engagement` (hub ostavlja link objave stranice u prvom komentaru),
+`instagram_manage_comments` (prvi komentar ispod Instagram Reela; bez nje Graph vraća `(#10) Application does not
+have permission`, potvrđeno 6. 10. 2026.), i njezin
 id upiši u `META_LOGIN_CONFIG_ID`. Nova dozvola u konfiguraciji vrijedi tek kad
 se račun ponovno poveže. Bez konfiguracije hub šalje klasičan `scope` popis iz `config/meta.php`.
 
