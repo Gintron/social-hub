@@ -84,6 +84,15 @@ final class CatalogCopyTest extends TestCase
         $this->assertSame('👉 Preuzmi Listo: https://uselisto.com/app?utm_source=facebook', $comment);
     }
 
+    public function test_an_address_is_typeable_without_scheme_www_query_or_trailing_slash(): void
+    {
+        $this->assertSame('uselisto.com/app', CatalogCopy::typeable('https://uselisto.com/app'));
+        $this->assertSame('uselisto.com/app', CatalogCopy::typeable('https://www.uselisto.com/app/'));
+        $this->assertSame('uselisto.com/app', CatalogCopy::typeable('http://uselisto.com/app?lang=hr&utm_source=tiktok#x'));
+        $this->assertSame('uselisto.com/app', CatalogCopy::typeable('  uselisto.com/app  '));
+        $this->assertSame('uselisto.com', CatalogCopy::typeable('https://uselisto.com/'));
+    }
+
     private function brand(): Brand
     {
         return new Brand(['name' => 'Listo', 'voice' => ['cta' => 'Preuzmi Listo', 'hashtags' => ['listo']]]);

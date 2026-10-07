@@ -33,7 +33,8 @@ final class TikTokFirstCommentTest extends TestCase
     use MakesCatalogItems;
     use RefreshDatabase;
 
-    private const COMMENT = '👉 Preuzmi Listo: https://uselisto.com/app?utm_source=tiktok&utm_medium=social&utm_campaign=katalog-konzum-2026-10-07';
+    /** What the draft's TikTok comment says: the bare address, because it is copied by hand (`catalog_video.link_typed`). */
+    private const COMMENT = '👉 Preuzmi Listo: uselisto.com/app';
 
     protected function setUp(): void
     {

@@ -16,8 +16,10 @@ use InvalidArgumentException;
  * where the video says that link is, and the first comment that holds it.
  *
  * The link is stored on the variant (`link_url`, `settings.tracking`) so a result can be attributed to the post
- * that brought it: the campaign is per catalog, the source per channel. The comment is left by the publisher on
- * Facebook and Instagram and, on TikTok, by LeaveTikTokCommentJob (docs/catalog-video.md).
+ * that brought it: the campaign is per catalog, the source per channel. The exception is a channel whose comment is
+ * copied by hand (`catalog_video.link_typed`: TikTok and Instagram): there the comment is the bare address and nothing is
+ * tracked. The comment is left by the publisher on Facebook and Instagram and, on TikTok, by LeaveTikTokCommentJob
+ * (docs/catalog-video.md).
  */
 final class CatalogVariant
 {
@@ -48,6 +50,14 @@ final class CatalogVariant
         $where = config("catalog_video.link_in.{$platform->value}") === CatalogCopy::WHERE_BIO ? CatalogCopy::WHERE_BIO : CatalogCopy::WHERE_COMMENT;
         $tracked = TrackedLink::for($demo, $platform);
         $settings = ['link_in' => $where];
+
+        // Where the comment is copied by hand, the address alone is what it says: a query on it is what nobody copies. The
+        // comment is not tracked then, so nothing is stored as if it were (`settings.tracking`).
+        if ($where === CatalogCopy::WHERE_COMMENT && $demo->appUrl !== null && (bool) config("catalog_video.link_typed.{$platform->value}", false)) {
+            $settings['first_comment'] = CatalogCopy::comment($demo, CatalogCopy::typeable($demo->appUrl), $brand);
+
+            return ['link_url' => $demo->appUrl, 'settings' => $settings];
+        }
 
         if ($tracked !== null) {
             $settings['tracking'] = $tracked;

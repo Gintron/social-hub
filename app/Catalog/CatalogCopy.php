@@ -106,6 +106,19 @@ final class CatalogCopy
     }
 
     /**
+     * An address as somebody types it: no scheme, no `www.`, no query and no trailing slash
+     * (`https://www.uselisto.com/app?x=1` → `uselisto.com/app`).
+     */
+    public static function typeable(string $url): string
+    {
+        $address = (string) preg_replace('~^[a-z][a-z0-9+.-]*://~i', '', mb_trim($url));
+        $address = (string) preg_replace('~^www\.~i', '', $address);
+        $address = (string) preg_replace('~[?#].*$~', '', $address);
+
+        return mb_rtrim($address, '/');
+    }
+
+    /**
      * @return list<string>
      */
     private static function hashtags(ContentItem $item, Brand $brand): array

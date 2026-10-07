@@ -31,6 +31,18 @@ return [
     ],
 
     /*
+     * Where the link of the comment is copied by hand instead of tapped (Marijan, 7 Oct 2026): nothing in a TikTok or an
+     * Instagram comment can be tapped, and a link with a query on it is too long for anyone to copy. There the comment says
+     * the address alone (`uselisto.com/app`), and the channel is not told apart in Listo (docs/catalog-video.md § Poveznica).
+     * Facebook's comment is tapped, so it keeps the tracked link.
+     */
+    'link_typed' => [
+        'fb_page' => false,
+        'ig_business' => true,
+        'tiktok' => true,
+    ],
+
+    /*
      * The sound the app makes when a product is added (Listo: app/assets/sounds/added.wav), placed on the frame of every
      * tap, and how far below the voice it plays, in dB.
      */

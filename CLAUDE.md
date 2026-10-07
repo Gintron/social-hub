@@ -211,7 +211,11 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   (poziv je „Poveznica do aplikacije je u komentaru“, ne cijena ni ušteda). Glas je dodatak, ne uvjet: bez njega isti
   video s titlovima.
 - **Jedna poveznica po videu i kanalu** (`TrackedLink`): `utm_source` po kanalu, `utm_medium=social`, kampanja iz
-  izvora; sprema se u `post_variants.link_url` i `settings.tracking`. Prvi komentar je poveznica: na Facebooku i
+  izvora; sprema se u `post_variants.link_url` i `settings.tracking`. **Iznimka su TikTok i Instagram**
+  (`catalog_video.link_typed`, Marijan 7. 10. 2026.): u njihovu komentaru se ne može dodirnuti ništa, pa ga ljudi prepisuju,
+  a poveznica s upitom se ne prepisuje — komentar kaže samo `uselisto.com/app` (`CatalogCopy::typeable`), a `settings.tracking`
+  se ne sprema jer komentar ne nosi oznaku. Cijena: Listo ta dva kanala ne razlikuje. Facebook komentar se dodiruje i ostaje
+  praćen. Prvi komentar je poveznica: na Facebooku i
   Instagramu ga ostavlja publisher, na TikToku `LeaveTikTokCommentJob` (`business/comment/create/`, tri minute nakon
   objave, uz provjeru da komentar nije `HIDDEN`) tek kad je `TIKTOK_BUSINESS_COMMENTS=true`, tj. kad aplikacija ima dozvolu
   za komentare; inače i kad komentar ne uspije admin dobije mail s točnim tekstom za lijepljenje (obećanje videa mora

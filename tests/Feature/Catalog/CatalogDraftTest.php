@@ -47,18 +47,38 @@ final class CatalogDraftTest extends TestCase
         $this->assertSame(ContentFormat::Link, $formats['fb_group']);
     }
 
-    public function test_every_channel_gets_its_own_tracked_link_and_it_is_kept_for_attribution(): void
+    public function test_a_channel_whose_link_can_be_tapped_gets_its_own_tracked_link_kept_for_attribution(): void
+    {
+        $draft = $this->draft();
+        $variant = $draft->variants->firstWhere('platform', Platform::FacebookPage);
+        $url = 'https://uselisto.com/app?utm_source=facebook&utm_medium=social&utm_campaign=katalog-konzum-2026-10-07';
+
+        $this->assertSame($url, $variant->link_url);
+        // MySQL keeps JSON keys in its own order; what counts is what is stored, not where.
+        $this->assertEquals(['url' => $url, 'source' => 'facebook', 'medium' => 'social', 'campaign' => 'katalog-konzum-2026-10-07'], $variant->setting('tracking'));
+    }
+
+    public function test_tiktok_and_instagram_say_the_bare_address_because_that_is_what_people_copy(): void
     {
         $draft = $this->draft();
 
-        foreach (['fb_page' => 'facebook', 'ig_business' => 'instagram', 'tiktok' => 'tiktok'] as $platform => $source) {
-            $variant = $draft->variants->firstWhere('platform', Platform::from($platform));
-            $url = "https://uselisto.com/app?utm_source={$source}&utm_medium=social&utm_campaign=katalog-konzum-2026-10-07";
+        foreach ([Platform::InstagramBusiness, Platform::TikTok] as $platform) {
+            $variant = $draft->variants->firstWhere('platform', $platform);
 
-            $this->assertSame($url, $variant->link_url, $platform);
-            // MySQL keeps JSON keys in its own order; what counts is what is stored, not where.
-            $this->assertEquals(['url' => $url, 'source' => $source, 'medium' => 'social', 'campaign' => 'katalog-konzum-2026-10-07'], $variant->setting('tracking'), $platform);
+            $this->assertSame('👉 Preuzmi Listo: uselisto.com/app', $variant->setting('first_comment'), $platform->value);
+            $this->assertSame('https://uselisto.com/app', $variant->link_url, $platform->value);
+            $this->assertNull($variant->setting('tracking'), 'nothing is stored as tracked when the comment does not carry the tracking');
         }
+    }
+
+    public function test_the_bare_address_is_a_choice_of_the_config_and_the_tracked_link_comes_back_with_it(): void
+    {
+        config()->set('catalog_video.link_typed.tiktok', false);
+
+        $tiktok = $this->draft()->variants->firstWhere('platform', Platform::TikTok);
+
+        $this->assertStringContainsString('utm_source=tiktok', (string) $tiktok->setting('first_comment'));
+        $this->assertStringContainsString('utm_source=tiktok', (string) $tiktok->setting('tracking.url'));
     }
 
     public function test_every_channel_that_says_the_link_is_in_the_comment_has_one_to_leave(): void
@@ -69,9 +89,9 @@ final class CatalogDraftTest extends TestCase
             '👉 Preuzmi Listo: https://uselisto.com/app?utm_source=facebook&utm_medium=social&utm_campaign=katalog-konzum-2026-10-07',
             $draft->variants->firstWhere('platform', Platform::FacebookPage)->setting('first_comment'),
         );
-        $this->assertStringContainsString('utm_source=instagram', (string) $draft->variants->firstWhere('platform', Platform::InstagramBusiness)->setting('first_comment'));
+        $this->assertNotNull($draft->variants->firstWhere('platform', Platform::InstagramBusiness)->setting('first_comment'));
         // TikTok's is left by its own job once the post is public (LeaveTikTokCommentJob), or pasted by hand.
-        $this->assertStringContainsString('utm_source=tiktok', (string) $draft->variants->firstWhere('platform', Platform::TikTok)->setting('first_comment'));
+        $this->assertNotNull($draft->variants->firstWhere('platform', Platform::TikTok)->setting('first_comment'));
     }
 
     public function test_the_text_of_each_channel_says_where_the_link_is_and_none_carries_it(): void

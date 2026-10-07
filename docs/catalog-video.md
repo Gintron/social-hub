@@ -103,11 +103,17 @@ registracija s `source/campaign` može pripisati objavi. Android: Listo bilježi
 (Play referrer); iOS se izvor vidi samo u App Store Connectu.
 
 - **Facebook stranica i Instagram:** poveznica je **prvi komentar** (`settings.first_comment`:
-  `FacebookPagePublisher`, `InstagramPublisher`): „👉 Preuzmi Listo: <poveznica>“. Na Facebooku je klikabilna; na
-  Instagramu nije (kopira se). Ako Instagram treba kraću adresu, `uselisto.com/instagram?utm_campaign=…` je tipkljiva.
+  `FacebookPagePublisher`, `InstagramPublisher`): „👉 Preuzmi Listo: <poveznica>“. Na Facebooku je klikabilna i ima
+  oznake kanala. Na Instagramu i TikToku se ne može dodirnuti, pa je tamo komentar **„👉 Preuzmi Listo: uselisto.com/app“**
+  (Marijan, 7. 10. 2026.: prva objava imala je cijelu poveznicu s `utm` upitom, a nitko je ne bi prepisao). Izbor je
+  `catalog_video.link_typed` po kanalu; kad je uključen, varijanta ne sprema `settings.tracking` jer komentar ne nosi oznaku.
+  **Cijena:** gola `/app` Listo bilježi bez kanala (`utm_source=uselisto.com`, mjesto „poveznica“), pa se TikTok i Instagram
+  više ne razlikuju ni po videu. Ako to zatreba, Listo već ima jednako kratke `uselisto.com/tiktok` i `uselisto.com/instagram`
+  (`server/pages/entryLinks.ts`) koje nose izvor, ali vode na naslovnicu, ne izravno u trgovinu (jedan dodir više).
   Prva živa objava (6. 10. 2026.): Facebook ostavio komentar (`fb.first_comment` 200); Instagram ne, jer token nema
-  `instagram_manage_comments` (`ig.first_comment` 400, `(#10)`). Dozvola ide u Login Configuration u Meta dashboardu i u
-  `config/meta.php`, pa se Instagram račun ponovno povezuje (`docs/deploy-ploi.md`).
+  `instagram_manage_comments` (`ig.first_comment` 400, `(#10)`). Dozvola je dodana u Meta dashboardu (use case i Login
+  Configuration) i u `config/meta.php`; nakon ponovnog povezivanja Instagram i TikTok komentar su na idućoj objavi bili
+  vidljivi (potvrdio Marijan).
 - **TikTok:** komentar ostavlja `LeaveTikTokCommentJob` kroz API čim aplikacija dobije dozvolu, a do tada ga adminu daje kao tekst za lijepljenje (niže).
 
 ### TikTok: prvi komentar (odluka 3. 10. 2026.: komentirati preko API-ja, uz dozvolu)
