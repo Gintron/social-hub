@@ -117,6 +117,47 @@ final class VoiceoverPanel
     }
 
     /**
+     * A short sample of one handwritten IPA transcription, without the normal text or automatic IPA pass.
+     *
+     * @param  array<string, mixed>  $state  The form's current `voiceover` values.
+     * @return array{clip: Voiceover, spoken: string, word: string}
+     *
+     * @throws VoiceoverException
+     */
+    public static function sampleIpa(array $state, string $word, string $ipa, ?Brand $brand = null): array
+    {
+        $settings = VoiceoverSettings::fromArray($state);
+
+        if (! $settings->takesIpa()) {
+            throw new VoiceoverException('IPA se može preslušati samo na modelu v4. Odaberi v4 u polju Model.', 'unsupported_ipa');
+        }
+
+        $word = mb_trim(Ipa::normalize($word));
+        $ipa = Ipa::sanitize($ipa);
+
+        if (preg_match('/^\p{L}+$/u', $word) !== 1 || $ipa === null) {
+            throw new VoiceoverException('Unesi jednu riječ i njezin valjani IPA zapis.', 'invalid_ipa');
+        }
+
+        if ($settings->voiceId === null) {
+            throw new VoiceoverException('Glas se ne može preslušati: brend nema odabran glas.', 'not_configured');
+        }
+
+        if (blank(config('elevenlabs.api_key'))) {
+            throw new VoiceoverException('Glas se ne može preslušati: ELEVENLABS_API_KEY nije postavljen.', 'not_configured');
+        }
+
+        // IPA goes straight to v4. This preview does not need OpenAI, even when automatic IPA is enabled.
+        $spoken = '/'.$ipa.'/';
+
+        return [
+            'clip' => app(Synthesizer::class)->clip($spoken, $settings, $brand),
+            'spoken' => $spoken,
+            'word' => $word,
+        ];
+    }
+
+    /**
      * A model's first guess at the IPA of a word being added to a brand's list, for the field to be filled with —
      * or why there is none. Never throws: the form stays as it is.
      *

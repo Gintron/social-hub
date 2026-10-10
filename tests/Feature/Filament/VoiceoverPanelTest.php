@@ -169,6 +169,42 @@ final class VoiceoverPanelTest extends TestCase
         $this->get(route('voiceovers.audio', $clip))->assertOk()->assertHeader('Content-Type', 'audio/mpeg');
     }
 
+    public function test_an_ipa_word_can_be_heard_from_its_unsaved_brand_form_row(): void
+    {
+        config()->set('elevenlabs.api_key', 'test-key');
+        config()->set('openai.api_key', null);
+        $requests = [];
+        FakeSpeech::fake($requests);
+        Http::fake(['*' => Http::response('', 404)]);
+        $brand = Brand::factory()->create();
+
+        $component = Livewire::test(EditBrand::class, ['record' => $brand->getRouteKey()])
+            ->fillForm([
+                'voiceover.voice_id' => 'voice-unsaved',
+                'voiceover.model' => 'eleven_v4',
+                'voiceover.ipa_auto' => true,
+                'voiceover.words' => [['find' => 'Prelistaj', 'ipa' => 'prɛːˈlistaj']],
+            ]);
+
+        $rows = $component->get('data.voiceover.words');
+        $itemKey = array_key_first($rows);
+
+        $component
+            ->callFormComponentAction(
+                'voiceoverWords',
+                TestAction::make('previewIpa')->arguments(['item' => $itemKey]),
+            )
+            ->assertNotified('Probni IPA zapis je spreman');
+
+        $this->assertCount(1, $requests);
+        $this->assertSame('/prɛːˈlistaj/', $requests[0]['text']);
+        $this->assertSame('eleven_v4', $requests[0]['model_id']);
+        $this->assertNull($brand->refresh()->voiceover, 'listening to an unsaved IPA row does not save brand settings');
+
+        $clip = Voiceover::query()->firstOrFail();
+        $this->get(route('voiceovers.audio', $clip))->assertOk()->assertHeader('Content-Type', 'audio/mpeg');
+    }
+
     public function test_a_voice_is_heard_the_way_a_video_would_hear_it_with_the_ipa_in_the_text(): void
     {
         config()->set('elevenlabs.api_key', 'test-key');

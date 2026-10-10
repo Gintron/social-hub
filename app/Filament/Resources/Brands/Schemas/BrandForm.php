@@ -184,6 +184,7 @@ final class BrandForm
                             ->helperText('Za imena koja glas čita krivo (trgovački lanci, kratice). Zamjena vrijedi za cijeli tekst prije nego ga glas čuje. Brojeve, iznose i datume hub sam izgovara.')
                             ->columnSpanFull(),
                         Repeater::make('voiceover.words')->label('Riječi s ručnim izgovorom (IPA)')
+                            ->key('voiceoverWords')
                             ->schema([
                                 TextInput::make('find')->label('Piše se')->required()->maxLength(60)->regex('/^\p{L}+$/u')->placeholder('letka')
                                     ->validationMessages(['regex' => 'Jedna riječ, samo slova.']),
@@ -205,13 +206,60 @@ final class BrandForm
                                             }),
                                     ),
                             ])
+                            ->extraItemActions([
+                                Action::make('previewIpa')
+                                    ->label('Preslušaj IPA')
+                                    ->icon(Heroicon::OutlinedSpeakerWave)
+                                    ->color('gray')
+                                    ->action(function (array $arguments, Component $livewire, Repeater $component, ?Brand $record = null): void {
+                                        $voiceoverState = (array) data_get($livewire, 'data.voiceover', []);
+                                        $itemKey = $arguments['item'] ?? null;
+
+                                        if (! is_string($itemKey)) {
+                                            Notification::make()->title('Ne mogu pronaći riječ u obrascu')->danger()->send();
+
+                                            return;
+                                        }
+
+                                        $row = $component->getItemState($itemKey);
+                                        $find = (string) ($row['find'] ?? '');
+                                        $ipa = (string) ($row['ipa'] ?? '');
+
+                                        if (! filled($find) || ! filled($ipa)) {
+                                            Notification::make()
+                                                ->title('Unesi riječ i IPA transkripciju')
+                                                ->warning()
+                                                ->send();
+
+                                            return;
+                                        }
+
+                                        try {
+                                            $sample = VoiceoverPanel::sampleIpa($voiceoverState, $find, $ipa, $record);
+                                        } catch (VoiceoverException $e) {
+                                            Notification::make()->title('Glas nije izgovoren')->body($e->getMessage())->danger()->send();
+
+                                            return;
+                                        }
+
+                                        Notification::make()
+                                            ->title('Probni IPA zapis je spreman')
+                                            ->body($sample['word'].' → glas čita: '.$sample['spoken'])
+                                            ->actions([
+                                                Action::make('play')->label('Preslušaj')->button()->url(route('voiceovers.audio', $sample['clip']), shouldOpenInNewTab: true),
+                                            ])
+                                            ->success()
+                                            ->persistent()
+                                            ->send();
+                                    }),
+                            ])
                             ->columns(2)
                             ->default([])
                             ->maxItems(200)
                             ->addActionLabel('Dodaj riječ')
                             ->itemLabel(fn (array $state): ?string => filled($state['find'] ?? null) ? $state['find'].' → '.($state['ipa'] ?? '…') : null)
                             ->collapsible()
-                            ->helperText('Riječi koje glas griješi (npr. letka → ˈlɛtka). Naglašeni slog označi znakom ˈ ispred njega (apostrof hub sam pretvara u ˈ). Pravilo vrijedi za točan oblik riječi, velikim ili malim slovom: letak, letka, letku i letci su četiri retka. ✨ predloži prvi IPA (OpenAI), a izgovor onda doradi uhom: „Preslušaj glas“, s IPA-om i bez njega. Isti IPA ide na svaki video ovog brenda.')
+                            ->helperText('Riječi koje glas griješi (npr. letka → ˈlɛtka). Naglašeni slog označi znakom ˈ ispred njega (apostrof hub sam pretvara u ˈ). Pravilo vrijedi za točan oblik riječi, velikim ili malim slovom: letak, letka, letku i letci su četiri retka. ✨ predloži prvi IPA (OpenAI), a izgovor onda doradi uhom: „Preslušaj IPA“ uz riječ ili „Preslušaj glas“, s IPA-om i bez njega. Isti IPA ide na svaki video ovog brenda.')
                             ->columnSpanFull(),
                         Actions::make([
                             Action::make('previewVoiceover')
