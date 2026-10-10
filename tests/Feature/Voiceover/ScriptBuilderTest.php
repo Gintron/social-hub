@@ -73,6 +73,83 @@ final class ScriptBuilderTest extends TestCase
         $this->assertSame('Zatim Kaufland 11,98 €/kg, Konzum 12,49 €/kg.', $script->lines[1]->text);
     }
 
+    public function test_a_comparison_question_answers_without_repeating_najjeftinije(): void
+    {
+        $item = $this->item(ContentKind::Comparison, [
+            'title' => 'Gdje je mljeveno meso ovaj tjedan najjeftinije?',
+            'subtitle' => null,
+            'price' => null,
+            'facts' => [
+                ['label' => 'Spar', 'value' => '6,42 €/kg'],
+                ['label' => 'Kaufland', 'value' => '6,43 €/kg'],
+                ['label' => 'Konzum', 'value' => '6,81 €/kg'],
+            ],
+            'badges' => [],
+        ]);
+        $draft = $this->draft($item, brand: $this->listo());
+
+        $script = $this->script($draft);
+
+        $this->assertSame('Gdje je mljeveno meso ovaj tjedan najjeftinije? U trgovini Spar, 6,42 €/kg.', $script->lines[0]->text);
+        $this->assertSame('Zatim Kaufland 6,43 €/kg, Konzum 6,81 €/kg.', $script->lines[1]->text);
+        $this->assertSame([], app(ScriptGuard::class)->check($script, $draft->contentItems));
+    }
+
+    public function test_a_comparison_recognizes_najjeftinije_regardless_of_case_and_punctuation(): void
+    {
+        foreach ([
+            'Mljeveno meso: NAJJEFTINIJE!' => 'Mljeveno meso: NAJJEFTINIJE! U trgovini Spar, 6,42 €/kg.',
+            'Najjeftinije, mljeveno meso' => 'Najjeftinije, mljeveno meso. U trgovini Spar, 6,42 €/kg.',
+            'Meso po najjeftinijem izboru' => 'Meso po najjeftinijem izboru. Najjeftinije: Spar, 6,42 €/kg.',
+        ] as $title => $expected) {
+            $item = $this->item(ContentKind::Comparison, [
+                'title' => $title,
+                'subtitle' => null,
+                'price' => null,
+                'facts' => [['label' => 'Spar', 'value' => '6,42 €/kg']],
+                'badges' => [],
+            ]);
+
+            $script = $this->script($this->draft($item, brand: $this->listo()));
+
+            $this->assertSame($expected, $script->lines[0]->text);
+        }
+    }
+
+    public function test_a_comparison_question_without_prices_keeps_only_its_title(): void
+    {
+        $item = $this->item(ContentKind::Comparison, [
+            'title' => 'Gdje je mljeveno meso ovaj tjedan najjeftinije?',
+            'subtitle' => null,
+            'price' => null,
+            'facts' => [],
+            'badges' => [],
+        ]);
+
+        $script = $this->script($this->draft($item, brand: $this->listo()));
+
+        $this->assertSame($item->title, $script->lines[0]->text);
+        $this->assertSame('', $script->lines[1]->text);
+    }
+
+    public function test_a_roundup_comparison_also_answers_without_repeating_najjeftinije(): void
+    {
+        $item = $this->item(ContentKind::Comparison, [
+            'title' => 'Gdje je mljeveno meso ovaj tjedan najjeftinije?',
+            'subtitle' => null,
+            'price' => null,
+            'facts' => [['label' => 'Spar', 'value' => '6,42 €/kg']],
+            'badges' => [],
+        ]);
+        $draft = $this->draft($item, brand: $this->listo(), digest: true, title: 'Usporedba cijena');
+
+        $script = $this->script($draft);
+
+        $this->assertSame('Usporedba cijena.', $script->lines[0]->text);
+        $this->assertSame('Gdje je mljeveno meso ovaj tjedan najjeftinije? U trgovini Spar, 6,42 €/kg.', $script->lines[1]->text);
+        $this->assertSame([], app(ScriptGuard::class)->check($script, $draft->contentItems));
+    }
+
     public function test_a_roundup_of_one_shop_names_it_once_on_the_cover(): void
     {
         $draft = $this->draft([$this->deal('Kruh bijeli 500 g', 149), $this->deal('Mlijeko 1 l', 99, 40)], digest: true, brand: $this->listo(), title: 'Top 2 akcije u Konzumu');

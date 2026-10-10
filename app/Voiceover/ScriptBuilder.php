@@ -214,10 +214,16 @@ final class ScriptBuilder
         $figure = Highlights::figure($item);
         $line = $this->sentence($this->title($item->title));
 
+        if ($figure === null) {
+            return $line;
+        }
+
+        $lead = preg_match('/(?<![\p{L}\p{N}])najjeftinije(?![\p{L}\p{N}])/iu', $line) === 1
+            ? 'U trgovini'
+            : 'Najjeftinije:';
+
         // The cheapest row and whose it is: a price per kilogram with no shop beside it answers nothing.
-        return $figure === null
-            ? $line
-            : "{$line} Najjeftinije: {$figure['label']}, {$figure['value']}.";
+        return "{$line} {$lead} {$figure['label']}, {$figure['value']}.";
     }
 
     private function comparisonDetails(ContentItem $item): string
