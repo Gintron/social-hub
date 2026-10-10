@@ -10,7 +10,7 @@ use App\Enums\ContentKind;
 use App\Filament\Support\VoiceoverPanel;
 use App\Models\Brand;
 use App\Rendering\VideoRenderer;
-use App\Voiceover\Stress;
+use App\Voiceover\Ipa;
 use App\Voiceover\VoiceoverException;
 use App\Voiceover\VoiceoverSettings;
 use Filament\Actions\Action;
@@ -30,6 +30,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
@@ -118,10 +119,10 @@ final class BrandForm
                     ->collapsible(),
 
                 Section::make('Voice-over (ElevenLabs)')
-                    ->description('Videi (Reels i TikTok) dobivaju glas koji izgovara ono što je na slajdovima: proizvod, cijenu, popust i poziv brenda. Tekst se piše iz podataka stavke, iznosi se provjeravaju kao i u tekstu objave, OpenAI mu prije glasa označi naglaske, a glas se plaća samo jednom po rečenici. Kanal ili pravilo automatske objave mogu voice-over uključiti ili isključiti za sebe.')
+                    ->description('Videi (Reels i TikTok) dobivaju glas koji izgovara ono što je na slajdovima: proizvod, cijenu, popust i poziv brenda. Tekst se piše iz podataka stavke, iznosi se provjeravaju kao i u tekstu objave, riječi koje glas griješi dobivaju izgovor u IPA koji si odabrao uhom, a glas se plaća samo jednom po rečenici. Kanal ili pravilo automatske objave mogu voice-over uključiti ili isključiti za sebe.')
                     ->schema([
                         Placeholder::make('voiceover_status')->label('Veza')
-                            ->content(fn (Get $get): string => VoiceoverPanel::status((string) $get('voiceover.accents')))
+                            ->content(fn (Get $get): string => VoiceoverPanel::status((string) $get('voiceover.ipa'), (string) $get('voiceover.model'), (array) $get('voiceover.words'), filled($get('voiceover.ipa_auto')) ? (bool) $get('voiceover.ipa_auto') : null))
                             ->columnSpanFull(),
                         Toggle::make('voiceover.enabled')->label('Videi ovog brenda dobivaju voice-over')
                             ->default(false)
@@ -140,19 +141,24 @@ final class BrandForm
                         Select::make('voiceover.model')->label('Model')
                             ->options((array) config('elevenlabs.models', []))
                             ->placeholder(fn (): string => 'Zadano ('.(config('elevenlabs.models')[config('elevenlabs.model')] ?? config('elevenlabs.model')).')')
-                            ->helperText('Novi model isprobaj preslušavanjem prije nego ga uključiš.'),
-                        Select::make('voiceover.accents')->label('Naglasci')
+                            ->helperText('IPA u tekstu čita samo v4 (provjereno uhom); drugim modelima se IPA ne šalje. Novi model isprobaj preslušavanjem prije nego ga uključiš.'),
+                        Select::make('voiceover.ipa')->label('Zapis izgovora (IPA)')
                             ->options([
-                                Stress::ACUTE => 'Akut na naglašenom samoglasniku (kúća)',
-                                Stress::CAPS => 'Veliko slovo na naglašenom samoglasniku (kUća)',
-                                Stress::OFF => 'Isključeno: glas čita tekst kakav jest',
+                                Ipa::TAG => 'Oznaka phoneme uz riječ (zadano; +~45 znakova po takvoj riječi)',
+                                Ipa::SLASH => 'IPA između kosih crta: /ˈlɛtka/ (+2 znaka)',
+                                Ipa::BARE => 'Samo IPA umjesto riječi: ˈlɛtka (bez dodatnih znakova)',
+                                Ipa::OFF => 'Isključeno: glas čita tekst kakav jest',
                             ])
-                            ->placeholder(fn (): string => 'Zadano ('.match (VoiceoverSettings::defaultAccents()) {
-                                Stress::CAPS => 'veliko slovo',
-                                Stress::OFF => 'isključeno',
-                                default => 'akut',
+                            ->placeholder(fn (): string => 'Zadano ('.match (VoiceoverSettings::defaultIpa()) {
+                                Ipa::SLASH => 'kose crte',
+                                Ipa::BARE => 'samo IPA',
+                                Ipa::OFF => 'isključeno',
+                                default => 'oznaka phoneme',
                             }.')')
-                            ->helperText('OpenAI svaku rečenicu prije glasa pregleda i označi naglasak u riječima koje bi glas mogao krivo naglasiti (imena, posuđenice, riječi koje se pišu jednako). Ne mijenja nijednu riječ. Traži OPENAI_API_KEY. Što glas s oznakom napravi čuje se samo na uho: „Preslušaj glas“.'),
+                            ->helperText('Kako se IPA riječi iz popisa dolje umeće u tekst koji glas čita. Plaća se samo za riječi s popisa. Kako koji zapis zvuči čuje se samo na uho: „Preslušaj glas“.'),
+                        Toggle::make('voiceover.ipa_auto')->label('OpenAI predlaže izgovor i za ostale riječi (eksperimentalno)')
+                            ->helperText('Zadano isključeno. Pravi test (2. 10. 2026.): model je odabrao Listo i Konzum, ne letku, i obični tekst je zvučao bolje. Traži OPENAI_API_KEY.')
+                            ->columnSpanFull(),
                         TextInput::make('voiceover.speed')->label('Brzina')->numeric()
                             ->minValue(VoiceoverSettings::MIN_SPEED)->maxValue(VoiceoverSettings::MAX_SPEED)->step(0.05)
                             ->placeholder('1,05')
@@ -177,6 +183,36 @@ final class BrandForm
                             ->collapsible()
                             ->helperText('Za imena koja glas čita krivo (trgovački lanci, kratice). Zamjena vrijedi za cijeli tekst prije nego ga glas čuje. Brojeve, iznose i datume hub sam izgovara.')
                             ->columnSpanFull(),
+                        Repeater::make('voiceover.words')->label('Riječi s ručnim izgovorom (IPA)')
+                            ->schema([
+                                TextInput::make('find')->label('Piše se')->required()->maxLength(60)->regex('/^\p{L}+$/u')->placeholder('letka')
+                                    ->validationMessages(['regex' => 'Jedna riječ, samo slova.']),
+                                TextInput::make('ipa')->label('IPA')->required()->maxLength(60)->placeholder('ˈlɛtka')
+                                    ->suffixAction(
+                                        Action::make('suggestIpa')
+                                            ->icon(Heroicon::OutlinedSparkles)
+                                            ->tooltip('Predloži izgovor (OpenAI); upiši riječ prvo')
+                                            ->action(function (Get $get, Set $set): void {
+                                                $suggestion = VoiceoverPanel::suggestIpa((string) $get('find'));
+
+                                                if ($suggestion['ipa'] === null) {
+                                                    Notification::make()->title('Nema prijedloga')->body($suggestion['error'])->warning()->send();
+
+                                                    return;
+                                                }
+
+                                                $set('ipa', $suggestion['ipa']);
+                                            }),
+                                    ),
+                            ])
+                            ->columns(2)
+                            ->default([])
+                            ->maxItems(200)
+                            ->addActionLabel('Dodaj riječ')
+                            ->itemLabel(fn (array $state): ?string => filled($state['find'] ?? null) ? $state['find'].' → '.($state['ipa'] ?? '…') : null)
+                            ->collapsible()
+                            ->helperText('Riječi koje glas griješi (npr. letka → ˈlɛtka). Naglašeni slog označi znakom ˈ ispred njega (apostrof hub sam pretvara u ˈ). Pravilo vrijedi za točan oblik riječi, velikim ili malim slovom: letak, letka, letku i letci su četiri retka. ✨ predloži prvi IPA (OpenAI), a izgovor onda doradi uhom: „Preslušaj glas“, s IPA-om i bez njega. Isti IPA ide na svaki video ovog brenda.')
+                            ->columnSpanFull(),
                         Actions::make([
                             Action::make('previewVoiceover')
                                 ->label('Preslušaj glas')
@@ -187,10 +223,13 @@ final class BrandForm
                                 ->modalSubmitActionLabel('Izgovori')
                                 ->schema([
                                     Textarea::make('text')->label('Tekst')->rows(3)->required()->maxLength(300)->default(VoiceoverPanel::SAMPLE),
+                                    Toggle::make('without_ipa')->label('Bez IPA-a')
+                                        ->helperText('Za usporedbu: izgovori isti tekst kao da nijedna riječ nema IPA. Pokreni jednom s i jednom bez.')
+                                        ->default(false),
                                 ])
                                 ->action(function (array $data, Component $livewire, ?Brand $record = null): void {
                                     try {
-                                        $sample = VoiceoverPanel::sample((array) data_get($livewire, 'data.voiceover', []), (string) $data['text'], $record);
+                                        $sample = VoiceoverPanel::sample((array) data_get($livewire, 'data.voiceover', []), (string) $data['text'], $record, withoutIpa: (bool) ($data['without_ipa'] ?? false));
                                     } catch (VoiceoverException $e) {
                                         Notification::make()->title('Glas nije izgovoren')->body($e->getMessage())->danger()->send();
 

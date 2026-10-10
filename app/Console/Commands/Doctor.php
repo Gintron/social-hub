@@ -134,16 +134,16 @@ final class Doctor extends Command
             $client = app(OpenAiClient::class);
 
             if (! $client->configured()) {
-                throw new RuntimeException('OPENAI_API_KEY not set (hub:agent-draft ne može pisati objave, a voice-over s naglascima ne može nastati)');
+                throw new RuntimeException('OPENAI_API_KEY not set (hub:agent-draft ne može pisati objave, a voice-over s izgovorom (IPA) ne može nastati)');
             }
 
             $captions = (string) config('openai.model');
-            $accents = (string) (config('openai.accents.model') ?: $captions);
+            $ipa = (string) (config('openai.ipa.model') ?: $captions);
 
             // Asking for the model is free and answers the two things that go wrong: a key that does not work
             // and a model name that is not (or no longer) there.
             try {
-                foreach (array_unique([$captions, $accents]) as $model) {
+                foreach (array_unique([$captions, $ipa]) as $model) {
                     $client->model($model);
                 }
             } catch (OpenAiException $e) {
@@ -151,11 +151,11 @@ final class Doctor extends Command
             }
 
             return sprintf(
-                'tekstovi: %s (%s), naglasci: %s (%s)',
+                'tekstovi: %s (%s), izgovor: %s (%s)',
                 $captions,
                 config('openai.effort') ?: 'bez razmišljanja',
-                $accents,
-                config('openai.accents.effort') ?: config('openai.effort') ?: 'bez razmišljanja',
+                $ipa,
+                config('openai.ipa.effort') ?: config('openai.effort') ?: 'bez razmišljanja',
             );
         }, $ok, fatal: false);
 
@@ -213,6 +213,23 @@ final class Doctor extends Command
             }
 
             return $enabled->pluck('slug')->implode(', ');
+        }, $ok, fatal: false);
+
+        $rows[] = $this->check('Izgovor (IPA) u voice-overu', function (): string {
+            $brands = Brand::query()->get()->filter(fn (Brand $brand): bool => $brand->voiceoverSettings()->words !== [] || $brand->voiceoverSettings()->ipaAuto);
+            $ignored = $brands->filter(fn (Brand $brand): bool => $brand->voiceoverSettings()->ipaIgnored());
+
+            if ($ignored->isNotEmpty()) {
+                throw new RuntimeException('model ne čita IPA u tekstu (samo '.implode(' i ', (array) config('elevenlabs.ipa_models')).'), pa se izgovor ne šalje: '.$ignored
+                    ->map(fn (Brand $brand): string => $brand->slug.' ('.$brand->voiceoverSettings()->model.')')
+                    ->implode(', '));
+            }
+
+            return $brands->isEmpty() ? 'nijedan brend nema riječi s ručnim izgovorom' : $brands->map(function (Brand $brand): string {
+                $settings = $brand->voiceoverSettings();
+
+                return $brand->slug.' ('.$settings->ipaStyle().', '.count($settings->words).' riječi'.($settings->autoIpa() ? ', + OpenAI' : '').')';
+            })->implode(', ');
         }, $ok, fatal: false);
 
         $rows[] = $this->check('Admin e-mails', function (): string {

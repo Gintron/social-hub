@@ -185,6 +185,30 @@ final class SpokenCroatian
     }
 
     /**
+     * The words a pronunciation list makes the voice say (its `say` side), in lower case. What a pronunciation gives is
+     * what is heard, so no IPA is put on those words (Phonetizer::prepare), even where the brand also has an IPA for
+     * the same word. The written side is gone from the line once `speak` has run, so it needs no entry here.
+     *
+     * @param  array<string, string>  $pronunciations  Written => spoken, as VoiceoverSettings keeps them.
+     * @return list<string>
+     */
+    public static function pronounced(array $pronunciations): array
+    {
+        $words = [];
+
+        foreach ($pronunciations as $spoken) {
+            foreach (Ipa::words(Ipa::normalize((string) $spoken)) as $word) {
+                $words[mb_strtolower($word['text'])] = true;
+            }
+        }
+
+        return array_keys($words);
+    }
+
+    /**
+     * Written Croatian in, what the voice reads out: the pronunciation list first, then the rules for numbers, amounts,
+     * dates and the rest. The IPA of the brand's words (Phonetizer) comes after this, on the text this returns.
+     *
      * @param  array<string, string>  $pronunciations  How this brand spells names for the voice: written => spoken.
      */
     public function speak(string $text, array $pronunciations = []): string

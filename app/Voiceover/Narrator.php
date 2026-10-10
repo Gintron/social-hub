@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
 
 /**
  * A video's voice from start to finish: write what it says (or take what a person wrote), check it,
- * spell it out, have the stress marked, have every line spoken — from the cache where it has been said
+ * spell it out, have the words' IPA written, have every line spoken — from the cache where it has been said
  * before — and hand the renderer the clips.
  *
  * It throws VoiceoverException when it cannot. The caller decides what that costs; for a render it
@@ -24,7 +24,7 @@ final class Narrator
         private readonly ScriptBuilder $builder,
         private readonly ScriptGuard $guard,
         private readonly SpokenCroatian $spoken,
-        private readonly Accenter $accents,
+        private readonly Phonetizer $phonetizer,
         private readonly Synthesizer $synthesizer,
     ) {}
 
@@ -110,9 +110,11 @@ final class Narrator
             return null;
         }
 
-        // Asked for the whole video at once: one request, and a model that sees the roundup marks the same
-        // name the same way on every slide. Nothing is spoken (or paid for) until this has answered.
-        $spoken = $this->accents->prepare($spoken, $settings->accents);
+        // The words the brand has an IPA for are put right here, after the pronunciation list has spelled out the names (a word that
+        // the list says gets no IPA). When a model is asked for more (an experiment), it is asked for the whole video at once: one
+        // request, and a model that sees the roundup writes the same name the same way on every slide. Nothing is spoken (or paid
+        // for) until this has answered.
+        $spoken = $this->phonetizer->prepare($spoken, $settings->ipaStyle(), $settings->words, $settings->autoIpa(), SpokenCroatian::pronounced($settings->pronunciations));
 
         $clips = [];
 

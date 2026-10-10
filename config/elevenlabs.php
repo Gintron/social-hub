@@ -22,15 +22,34 @@ return [
      */
     'model' => env('ELEVENLABS_MODEL', 'eleven_v4'),
 
+    /*
+     * The models that read IPA put into the text. Only v4: it is the one checked live (2026-10-02) with IPA in the
+     * text. A model is not sent IPA until it is listed here, because it is not known what another one makes of it
+     * (Multilingual v2 and Flash v2.5 were seen to leave out a word that had a pronunciation-dictionary rule). A line
+     * for any other model is spoken as it is, and `hub:doctor` says so. A newer model goes here only after it has been
+     * heard with `hub:voiceover-test --compare`.
+     */
+    'ipa_models' => ['eleven_v4'],
+
     'output_format' => 'mp3_44100_128',
 
     /*
-     * How the stress that OpenAI marks in a line (App\Voiceover\Accenter) is told to the voice: `acute` puts an
-     * acute on the stressed vowel ("kúća"), `caps` makes it a capital ("kUća" — the trick ElevenLabs suggests
-     * for models without phoneme tags), `off` sends the text as it is and asks nothing of OpenAI. A brand
-     * may choose for itself. What a voice makes of either is heard, not read: hub:voiceover-test --compare.
+     * How the words a voice says wrongly are put right: a brand lists them with their IPA (Brendovi → Voice-over → Riječi s
+     * ručnim izgovorom; a person chose it by ear) and the hub puts it into the text the voice reads — as `tag`
+     * (`<phoneme alphabet="ipa" ph="ˈlɛtka">letka</phoneme>`: the word stays, the sound beside it; about 45 more characters for
+     * every such word, and ElevenLabs bills by the character), `slash` (`/ˈlɛtka/` in place of the word, 2 more) or `bare`
+     * (`ˈlɛtka` in place of it, none more). `off` sends the text as it is. A brand may choose for itself. How each sounds is heard,
+     * not read: hub:voiceover-test --compare. `tag` is the default because it is closest to the pronunciation dictionary that
+     * sounded better in the Listo TikTok ad, and a few words of a few lines cost next to nothing.
      */
-    'accents' => env('VOICEOVER_ACCENTS', 'acute'),
+    'ipa' => env('VOICEOVER_IPA', 'tag'),
+
+    /*
+     * Also have OpenAI (App\Voiceover\Phonetizer) write the IPA of the words it thinks a voice says wrongly. Off: on 2026-10-02 a
+     * real answer (Listo and Konzum, not letka) did not sound better than the plain text (Marijan's ear), while IPA chosen by a
+     * person for the right words (letak, letka) did. Needs OPENAI_API_KEY.
+     */
+    'ipa_auto' => (bool) env('VOICEOVER_IPA_AUTO', false),
 
     'http_timeout' => (int) env('ELEVENLABS_HTTP_TIMEOUT', 45),
 

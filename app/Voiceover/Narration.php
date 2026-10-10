@@ -44,8 +44,8 @@ final readonly class Narration
             'clips' => array_map(fn (?NarrationClip $clip): ?array => $clip === null ? null : [
                 'voiceover_id' => $clip->voiceoverId,
                 'seconds' => round($clip->seconds, 2),
-                // What the voice was given: numbers spelled out and the stress marked. It is what a person who
-                // knows Croatian checks the marks against.
+                // What the voice was given: numbers spelled out, names by the pronunciation list, and the IPA of the
+                // brand's words put in. It is what a person who knows Croatian checks the transcriptions against.
                 'spoken' => $clip->spoken,
             ], $this->clips),
         ];

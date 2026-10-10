@@ -6,10 +6,10 @@ namespace App\Console\Commands;
 
 use App\Models\Brand;
 use App\Models\Voiceover;
-use App\Voiceover\Accenter;
 use App\Voiceover\ElevenLabsClient;
+use App\Voiceover\Ipa;
+use App\Voiceover\Phonetizer;
 use App\Voiceover\SpokenCroatian;
-use App\Voiceover\Stress;
 use App\Voiceover\Synthesizer;
 use App\Voiceover\VoiceoverException;
 use App\Voiceover\VoiceoverSettings;
@@ -21,13 +21,15 @@ final class VoiceoverTest extends Command
         {text? : What to say (default: a sample deal line)}
         {--brand= : Brand slug: its voice, model, speed and pronunciations}
         {--voice= : Voice id, instead of the brand\'s}
-        {--accents= : How the stress is told to the voice: acute, caps or off (default: the brand\'s)}
-        {--compare : Speak the line in every style of stress marking, to hear which one the voice makes the most of}
+        {--ipa= : How the IPA of the words is put into the text: tag, slash, bare or off (default: the brand\'s)}
+        {--word=* : A word with its IPA to try, as "word=ipa" (repeat for several), on top of the brand\'s own; nothing is saved}
+        {--auto : Also have OpenAI write the IPA of other words (default: as the brand has it)}
+        {--compare : Speak the line without IPA and in every style of it, to hear which one the voice makes the most of}
         {--list-voices : List the account\'s voices and stop}';
 
     protected $description = 'Speak one line with ElevenLabs the way a video would, and show what the voice received';
 
-    public function handle(ElevenLabsClient $client, SpokenCroatian $spoken, Accenter $accenter, Synthesizer $synthesizer): int
+    public function handle(ElevenLabsClient $client, SpokenCroatian $spoken, Phonetizer $phonetizer, Synthesizer $synthesizer): int
     {
         if (! $client->configured()) {
             $this->error('ELEVENLABS_API_KEY nije postavljen (.env).');
@@ -44,14 +46,17 @@ final class VoiceoverTest extends Command
             $settings = $brand?->voiceoverSettings() ?? VoiceoverSettings::fromArray([]);
 
             if (filled($this->option('voice'))) {
-                $settings = VoiceoverSettings::fromArray([
-                    'voice_id' => (string) $this->option('voice'),
-                    'model' => $settings->model,
-                    'speed' => $settings->speed,
-                    'stability' => $settings->stability,
-                    'accents' => $settings->accents,
-                    'pronunciations' => array_map(fn (string $find, string $say): array => ['find' => $find, 'say' => $say], array_keys($settings->pronunciations), $settings->pronunciations),
-                ]);
+                $settings = $settings->withVoice((string) $this->option('voice'));
+            }
+
+            $extra = $this->extraWords();
+
+            if ($extra === null) {
+                return self::FAILURE;
+            }
+
+            if ($extra !== [] || $this->option('auto')) {
+                $settings = $settings->withIpa($settings->ipa, [...$settings->words, ...$extra], $this->option('auto') ? true : null);
             }
 
             if ($settings->voiceId === null) {
@@ -69,20 +74,30 @@ final class VoiceoverTest extends Command
                 return self::FAILURE;
             }
 
-            $requested = filled($this->option('accents')) ? (string) $this->option('accents') : $settings->accents;
+            $requested = filled($this->option('ipa')) ? (string) $this->option('ipa') : $settings->ipa;
 
-            if (! in_array($requested, Stress::STYLES, true)) {
-                $this->error('--accents mora biti acute, caps ili off.');
+            if (! in_array($requested, Ipa::STYLES, true)) {
+                $this->error('--ipa mora biti tag, slash, bare ili off.');
 
                 return self::FAILURE;
             }
 
-            $styles = $this->option('compare') ? Stress::STYLES : [$requested];
+            if (! $settings->takesIpa() && $requested !== Ipa::OFF) {
+                $this->warn("Model {$settings->model} ne čita IPA u tekstu (samo ".implode(' i ', (array) config('elevenlabs.ipa_models')).'): izgovor se ne šalje, svi isječci su obični tekst.');
+                $requested = Ipa::OFF;
+            }
+
+            if ($settings->words === [] && ! $settings->ipaAuto && $requested !== Ipa::OFF) {
+                $this->warn('Brend nema riječi s ručnim izgovorom (a nijedna nije dana s --word, ni --auto): sve će zvučati kao obični tekst.');
+            }
+
+            $styles = $this->option('compare') && $settings->takesIpa() ? Ipa::STYLES : [$requested];
             $rows = [];
 
             foreach ($styles as $style) {
-                // The marks are asked for once and kept, so comparing three styles costs three clips and one request.
-                $said = $accenter->prepare([$words], $style)[0];
+                // A model's IPA (--auto) is asked for once and kept, so comparing four styles costs four clips and at most one request.
+                // The words the pronunciation list has said get no IPA, as in a video (Phonetizer::prepare).
+                $said = $phonetizer->prepare([$words], $style, $settings->words, $settings->autoIpa(), SpokenCroatian::pronounced($settings->pronunciations))[0];
                 $cached = Voiceover::query()->where('hash', Synthesizer::hash($said, $settings))->exists();
                 $rows[] = [$style, $said, $synthesizer->clip($said, $settings, $brand), $cached];
             }
@@ -99,7 +114,7 @@ final class VoiceoverTest extends Command
         }
 
         $this->newLine();
-        $this->table(['Naglasci', 'Glas', 'Model', 'Brzina', 'Znakova', 'Kredita', 'Trajanje', 'Glasnoća', 'Izvor'], array_map(fn (array $row): array => [
+        $this->table(['Izgovor', 'Glas', 'Model', 'Brzina', 'Znakova', 'Kredita', 'Trajanje', 'Glasnoća', 'Izvor'], array_map(fn (array $row): array => [
             $row[0],
             $settings->voiceId,
             $settings->model,
@@ -116,6 +131,31 @@ final class VoiceoverTest extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The `--word word=ipa` options as a list of words with their IPA; null (and a message) when one is not of that shape.
+     *
+     * @return array<string, string>|null
+     */
+    private function extraWords(): ?array
+    {
+        $words = [];
+
+        foreach ((array) $this->option('word') as $given) {
+            [$word, $ipa] = array_pad(explode('=', (string) $given, 2), 2, '');
+            $word = mb_trim($word);
+
+            if (preg_match('/^\p{L}+$/u', $word) !== 1 || Ipa::sanitize($ipa) === null) {
+                $this->error("--word mora biti oblika riječ=ipa (npr. --word=\"letka=ˈlɛtka\"), a dobio sam „{$given}“.");
+
+                return null;
+            }
+
+            $words[$word] = Ipa::sanitize($ipa);
+        }
+
+        return $words;
     }
 
     private function voices(ElevenLabsClient $client): int

@@ -7,16 +7,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Where a model put the stress in one line of a voice-over (see App\Voiceover\Accenter): the answer,
- * kept, so the line is marked the same way in every video.
+ * How a model said the words of one line of a voice-over are pronounced (see App\Voiceover\Phonetizer): the answer,
+ * kept, so the line is transcribed the same way in every video.
  *
  * @property int $id
  * @property string $hash
  * @property string $text
- * @property list<array{word: int, at: int}> $marks
+ * @property list<array{word: int, ipa: string}> $marks
  * @property string $model
  */
-final class VoiceoverAccent extends Model
+final class VoiceoverTranscription extends Model
 {
     protected $fillable = ['hash', 'text', 'marks', 'model'];
 

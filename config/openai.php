@@ -8,8 +8,8 @@ return [
     | OpenAI
     |--------------------------------------------------------------------------
     | The hub's one AI provider. It writes the captions of the drafting agent (hub:agent-draft) and
-    | marks where the stress falls in what a voice-over is about to say (App\Voiceover\Accenter).
-    | Without a key the agent does not run, and a brand that wants stress marked gets no voice.
+    | writes how the words of what a voice-over is about to say are pronounced, in IPA (App\Voiceover\Phonetizer).
+    | Without a key the agent does not run, and a brand that wants IPA put into the text gets no voice.
     */
     'api_key' => env('OPENAI_API_KEY'),
 
@@ -39,15 +39,15 @@ return [
     'max_output_tokens' => (int) env('OPENAI_MAX_OUTPUT_TOKENS', 16000),
 
     /*
-     * The voice-over's stress marks. Blank model or effort means "the same as for captions". The answer is a
-     * handful of words; the ceiling is room to think, which counts against it, and a render that runs out of it
-     * goes without a voice. The model is the part that matters: stress in Croatian is something it has to know
-     * rather than work out.
+     * The voice-over's IPA. Blank model or effort means "the same as for captions". The answer is a handful of
+     * words; the ceiling is room to think, which counts against it, and a render that runs out of it goes without a
+     * voice. The model is the part that matters: how Croatian is stressed is something it has to know rather than
+     * work out.
      */
-    'accents' => [
-        'model' => env('OPENAI_ACCENT_MODEL'),
-        'effort' => env('OPENAI_ACCENT_EFFORT'),
-        'max_output_tokens' => (int) env('OPENAI_ACCENT_MAX_OUTPUT_TOKENS', 12000),
-        'timeout' => (int) env('OPENAI_ACCENT_TIMEOUT', 60),
+    'ipa' => [
+        'model' => env('OPENAI_IPA_MODEL'),
+        'effort' => env('OPENAI_IPA_EFFORT'),
+        'max_output_tokens' => (int) env('OPENAI_IPA_MAX_OUTPUT_TOKENS', 12000),
+        'timeout' => (int) env('OPENAI_IPA_TIMEOUT', 60),
     ],
 ];

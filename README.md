@@ -10,7 +10,7 @@ Plan i odluke: `~/.claude/plans/imam-tri-projkekta-radim-hr-pure-quill.md`.
 ## Stack
 
 Laravel 13 · PHP 8.4 · MySQL · Filament 5 · spatie/browsershot (Chromium) · spatie/image · Sanctum ·
-laravel/mcp · OpenAI API (tekstovi i naglasci) · ElevenLabs (glas). Lokalno Sail (Docker), produkcija Ploi bez Dockera
+laravel/mcp · OpenAI API (tekstovi, prijedlog izgovora) · ElevenLabs (glas). Lokalno Sail (Docker), produkcija Ploi bez Dockera
 ([docs/deploy-ploi.md](docs/deploy-ploi.md)).
 
 ## Lokalno
@@ -37,7 +37,7 @@ Panel: http://localhost:8100/admin
 | `hub:verify-accounts` | Provjeri Meta tokene, označi one koje treba ponovno povezati |
 | `hub:render-video [--brand=] [--kind=] [--count=] [--seconds=] [--voiceover]` | Uspravni 9:16 slideshow (MP4) za Reels i TikTok, po želji s glasom |
 | `hub:render-storyboard {manifest} --brand= --output=` | Pregled videa iz JSON scenarija s trajanjima kadrova (i `say` po kadru za glas); ne stvara nacrt ni objavu |
-| `hub:voiceover-test [tekst] [--brand=] [--voice=] [--accents=] [--compare] [--list-voices]` | Izgovori jednu rečenicu ElevenLabsom i pokaži što je glas primio i koliko je koštalo; `--compare` je izgovori uz svaki način zapisa naglasaka |
+| `hub:voiceover-test [tekst] [--brand=] [--voice=] [--word=riječ=ipa] [--ipa=] [--auto] [--compare] [--list-voices]` | Izgovori jednu rečenicu ElevenLabsom i pokaži što je glas primio i koliko je koštalo; `--word` isproba IPA riječi prije spremanja, `--compare` je izgovori bez IPA-a i uz svaki način zapisa |
 | `hub:prune-voiceovers [--days=60]` | Obriši stare zvučne isječke s diska (tjedno iz schedulera); zapisi ostaju |
 | `hub:refresh-tiktok-tokens` | Osvježi TikTok tokene prije isteka (satno iz schedulera) |
 | `hub:agent-draft [brend] [--limit=] [--dry-run]` | OpenAI piše tekstove za nove kandidate i ostavlja ih na odobrenje |
@@ -120,8 +120,8 @@ prijelazima, tihim zvučnim zapisom i `faststart` zaglavljem — jedan video ide
 Na nacrtu je to akcija **Renderiraj video**, a kanal se prebaci na reel u postavkama varijante.
 
 **Voice-over.** Brend može uključiti glas (ElevenLabs) koji izgovara što je na slajdovima: proizvod,
-cijenu, popust, rok i poziv brenda. Tekst se piše iz podataka stavke, iznosi se provjeravaju, OpenAI mu
-prije glasa označi naglaske (bez da išta promijeni u riječima), a ako glas ne uspije video izlazi bez njega. Postavke, cijena i ograničenja: [docs/voiceover.md](docs/voiceover.md).
+cijenu, popust, rok i poziv brenda. Tekst se piše iz podataka stavke, iznosi se provjeravaju; riječi koje glas griješi
+(npr. „letka“) brend ima na popisu s izgovorom u IPA, a hub ga umeće u tekst. Ako glas ne uspije, video izlazi bez njega. Postavke, cijena i ograničenja: [docs/voiceover.md](docs/voiceover.md).
 
 TikTok traži dvoje što se ne rješava kodom: prolazak **audita** (do tada su objave samo privatne) i
 **verificiranu domenu** s koje TikTok povlači video. Detalji su u [docs/tiktok.md](docs/tiktok.md).

@@ -31,15 +31,15 @@ final class DoctorOpenAiTest extends TestCase
         config()->set('openai.api_key', 'test-key');
         config()->set('openai.model', 'gpt-6-sol');
         config()->set('openai.effort', 'medium');
-        config()->set('openai.accents.model', 'gpt-6-astra');
-        config()->set('openai.accents.effort', 'low');
+        config()->set('openai.ipa.model', 'gpt-6-astra');
+        config()->set('openai.ipa.effort', 'low');
         Http::fake([
             'api.openai.com/v1/models/gpt-6-sol' => Http::response(['id' => 'gpt-6-sol']),
             'api.openai.com/v1/models/gpt-6-astra' => Http::response(['id' => 'gpt-6-astra']),
             '*' => Http::response('', 200),
         ]);
 
-        $this->artisan('hub:doctor', ['--skip-render' => true])->expectsOutputToContain('tekstovi: gpt-6-sol (medium), naglasci: gpt-6-astra (low)');
+        $this->artisan('hub:doctor', ['--skip-render' => true])->expectsOutputToContain('tekstovi: gpt-6-sol (medium), izgovor: gpt-6-astra (low)');
 
         Http::assertSent(fn ($request): bool => $request->url() === 'https://api.openai.com/v1/models/gpt-6-astra');
     }

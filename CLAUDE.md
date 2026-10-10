@@ -191,16 +191,23 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Slajd čeka riječi, ne obrnuto.** `VideoRenderer::fitNarration` produžuje slajd na trajanje njegovog retka (nikad
   kraće nego bez glasa); glazba se ispod glasa stišava `sidechaincompress`-om. Ne rezati retke da stanu u zadano
   trajanje: Facebook Reel smije 90 s, proračun znakova (`elevenlabs.max_characters_per_video`) je ograda za to.
-- **Jedan AI provider: OpenAI.** Tekstove objava (`OpenAiCaptionWriter`) i naglaske za voice-over (`Accenter`) traži isti
+- **Jedan AI provider: OpenAI.** Tekstove objava (`OpenAiCaptionWriter`) i izgovor riječi za voice-over (`Phonetizer`) traži isti
   klijent, `App\Ai\OpenAiClient` (Responses API, stroga JSON shema, `store: false`). Postavke su u `config/openai.php`
   (`OPENAI_*`), ime modela nikad u kodu. Novi AI poziv ide kroz taj klijent i hvata `OpenAiException`. Anthropic je
   maknut (Marijan, 29. 09. 2026.); ne uvoditi ga natrag kao drugi put.
-- **Model smije označiti naglasak, ne promijeniti riječ.** Svaki redak koji glas čita prolazi kroz `Accenter` prije
-  ElevenLabsa. Odgovor je mjesto oznake (riječ, samoglasnik), a `Stress::position` odbacuje sve što nije ista riječ s
-  jednim naglaskom na samoglasniku. Odgovor se sprema (`voiceover_accents`): model ne odgovori dvaput isto, a redak s
-  drugim oznakama je za ElevenLabs novi tekst i novi račun. OpenAI koji ne odgovori znači video bez glasa
-  (`accents_*`), ne glas bez naglasaka; jedini put bez OpenAI-ja je *Naglasci: Isključeno* na brendu. Kako glas čita
-  oznaku (akut ili veliko slovo) nije provjereno, već se bira uhom: `hub:voiceover-test --compare`.
+- **Izgovor riječi bira čovjek, uhom; hub ga umeće u tekst.** Brend ima popis riječ → IPA (`brands.voiceover.words`, panel *Riječi
+  s ručnim izgovorom*). `Phonetizer::prepare` ga umetne u svaki redak koji ima tu riječ, **poslije** *Izgovor imena* a prije ElevenLabsa:
+  riječ koju izgovor imena daje glasu (`SpokenCroatian::pronounced`) ne dobiva IPA ni s popisa ni od modela. Umetanje je `Ipa::render` kao
+  `tag` (`<phoneme alphabet="ipa" ph="…">riječ</phoneme>`, zadano), `slash` (`/…/`) ili `bare`. Tekst s IPA-om čita **samo** model iz
+  `elevenlabs.ipa_models` (sada samo `eleven_v4`); drugi model dobiva tekst bez IPA-a. Nema ElevenLabsova rječnika (nema DELETE-a,
+  verzije su zaključane — to je bila slijepa ulica). Pravilo je za **točan oblik riječi** (bilo koja veličina slova): padeži su zasebni
+  retci. `Ipa::sanitize` pazi da IPA ne može prekinuti oznaku. Ključ isječka je tekst s IPA-om, pa izmjena izgovora plaća samo retke s
+  tom riječi. OpenAI **nikad sam ne piše u tekst**: `ipa_auto` (`VOICEOVER_IPA_AUTO`, zadano isključen; `Phonetizer::marks`) je
+  eksperiment koji se uključuje ručno, a `Ipa::clean` (IPA mora nalikovati riječi) drži sve što model vrati. OpenAI služi za ✨ prijedlog
+  IPA-a jedne riječi u panelu (`IpaSuggester`), koji čovjek potvrđuje uhom prije spremanja. Zašto ne model: 2. 10. 2026. model je sam
+  odabrao Listo i Konzum (ne letku), a obični tekst je zvučao bolje, dok je ručno odabran IPA za letak/letka u Listo TikTok reklami
+  zvučao bolje. Kako koji zapis zvuči nije provjereno, već se bira uhom: `hub:voiceover-test --word="letka=ˈlɛtka" --compare`.
+  Ako `ipa_auto` zakaže, video izlazi bez glasa (`ipa_*`).
 
 - **Video „izašao je novi katalog“ je scena, ne slideshow** (`docs/catalog-video.md`). Izvor šalje `kind: catalog` s
   blokom `raw.demo` (tri proizvoda koje dodir doista dodaje: Listo ih bira istom logikom kao aplikacija); hub ga čita

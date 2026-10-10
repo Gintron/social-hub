@@ -25,7 +25,7 @@ use App\Models\SocialAccount;
 use App\Models\Source;
 use App\Models\User;
 use App\Models\Voiceover;
-use App\Voiceover\Stress;
+use App\Voiceover\Ipa;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -128,7 +128,9 @@ final class VoiceoverPanelTest extends TestCase
                 'voiceover.speed' => 1.1,
                 'voiceover.music' => 'quiet',
                 'voiceover.outro' => 'Preuzmi Listo besplatno.',
-                'voiceover.accents' => 'caps',
+                'voiceover.ipa' => 'bare',
+                'voiceover.ipa_auto' => true,
+                'voiceover.words' => [['find' => 'letka', 'ipa' => "'lɛtka"], ['find' => 'Letak', 'ipa' => '/ˈlɛːtak/']],
                 'voiceover.pronunciations' => [['find' => 'SPAR', 'say' => 'Spar'], ['find' => 'DM', 'say' => 'de em']],
             ])
             ->call('save')
@@ -137,7 +139,9 @@ final class VoiceoverPanelTest extends TestCase
         $settings = $brand->refresh()->voiceoverSettings();
         $this->assertSame('eleven_v4', $settings->model);
         $this->assertSame(1.1, $settings->speed);
-        $this->assertSame('caps', $settings->accents);
+        $this->assertSame('bare', $settings->ipa);
+        $this->assertTrue($settings->ipaAuto);
+        $this->assertSame(['letka' => 'ˈlɛtka', 'Letak' => 'ˈlɛːtak'], $settings->words, 'the IPA is kept the way it will be sent');
         $this->assertSame(-20.0, $settings->musicGainDb());
         $this->assertSame('Preuzmi Listo besplatno.', $settings->outro);
         $this->assertSame(['SPAR' => 'Spar', 'DM' => 'de em'], $settings->pronunciations);
@@ -165,29 +169,29 @@ final class VoiceoverPanelTest extends TestCase
         $this->get(route('voiceovers.audio', $clip))->assertOk()->assertHeader('Content-Type', 'audio/mpeg');
     }
 
-    public function test_a_voice_is_heard_the_way_a_video_would_hear_it_with_the_stress_marked(): void
+    public function test_a_voice_is_heard_the_way_a_video_would_hear_it_with_the_ipa_in_the_text(): void
     {
         config()->set('elevenlabs.api_key', 'test-key');
         config()->set('openai.api_key', 'test-key');
         $requests = [];
         FakeSpeech::fake($requests);
         Http::fake([
-            'api.openai.com/*' => Http::response(FakeOpenAi::answer(['marks' => [['line' => 0, 'word' => 2, 'marked' => 'Kónzumu']]])),
+            'api.openai.com/*' => Http::response(FakeOpenAi::answer(['marks' => [['line' => 0, 'word' => 2, 'ipa' => 'ˈkɔnzumu']]])),
             '*' => Http::response('', 404),
         ]);
         $brand = Brand::factory()->create();
 
         Livewire::test(EditBrand::class, ['record' => $brand->getRouteKey()])
-            ->fillForm(['voiceover.voice_id' => 'voice-unsaved', 'voiceover.accents' => 'acute'])
+            ->fillForm(['voiceover.voice_id' => 'voice-unsaved', 'voiceover.ipa' => 'slash', 'voiceover.ipa_auto' => true])
             ->callAction(TestAction::make('previewVoiceover')->schemaComponent('voiceoverActions'), ['text' => 'Kruh u Konzumu.'])
             ->assertNotified('Probni zapis je spreman');
 
-        // The sample is spoken from the line as a video's would be: the marks are in it.
+        // The sample is spoken from the line as a video's would be: the IPA is in it.
         $this->assertCount(1, $requests);
-        $this->assertSame('Kruh u Kónzumu.', $requests[0]['text']);
+        $this->assertSame('Kruh u /ˈkɔnzumu/.', $requests[0]['text']);
     }
 
-    public function test_a_voice_cannot_be_heard_with_the_stress_on_and_no_key_for_it_and_the_form_says_so(): void
+    public function test_a_voice_cannot_be_heard_with_the_ipa_on_and_no_key_for_it_and_the_form_says_so(): void
     {
         config()->set('elevenlabs.api_key', 'test-key');
         config()->set('openai.api_key', null);
@@ -195,8 +199,8 @@ final class VoiceoverPanelTest extends TestCase
         $brand = Brand::factory()->create();
 
         Livewire::test(EditBrand::class, ['record' => $brand->getRouteKey()])
-            ->fillForm(['voiceover.voice_id' => 'voice-unsaved', 'voiceover.accents' => 'acute'])
-            ->assertSee('Naglasci')
+            ->fillForm(['voiceover.voice_id' => 'voice-unsaved', 'voiceover.ipa' => 'slash', 'voiceover.ipa_auto' => true])
+            ->assertSee('Riječi s ručnim izgovorom (IPA)')
             ->callAction(TestAction::make('previewVoiceover')->schemaComponent('voiceoverActions'), ['text' => 'Bok'])
             ->assertNotified('Glas nije izgovoren');
 
@@ -204,23 +208,88 @@ final class VoiceoverPanelTest extends TestCase
         Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'text-to-speech') || str_contains($request->url(), 'api.openai.com'));
     }
 
-    public function test_the_status_line_says_whether_the_stress_can_be_marked(): void
+    public function test_a_voice_is_heard_with_the_chosen_words_and_without_them(): void
+    {
+        config()->set('elevenlabs.api_key', 'test-key');
+        config()->set('openai.api_key', null);
+        $requests = [];
+        FakeSpeech::fake($requests);
+        Http::fake(['*' => Http::response('', 404)]);
+        $brand = Brand::factory()->create();
+
+        $form = Livewire::test(EditBrand::class, ['record' => $brand->getRouteKey()])
+            ->fillForm(['voiceover.voice_id' => 'voice-unsaved', 'voiceover.words' => [['find' => 'letka', 'ipa' => 'ˈlɛtka']]]);
+
+        $form->callAction(TestAction::make('previewVoiceover')->schemaComponent('voiceoverActions'), ['text' => 'S letka ravno.'])
+            ->assertNotified('Probni zapis je spreman');
+        $form->callAction(TestAction::make('previewVoiceover')->schemaComponent('voiceoverActions'), ['text' => 'S letka ravno.', 'without_ipa' => true])
+            ->assertNotified('Probni zapis je spreman');
+
+        $this->assertSame(['S <phoneme alphabet="ipa" ph="ˈlɛtka">letka</phoneme> ravno.', 'S letka ravno.'], array_column($requests, 'text'));
+        $this->assertNull($brand->refresh()->voiceover, 'listening does not save anything');
+    }
+
+    public function test_a_model_may_suggest_the_ipa_of_a_word_and_never_fills_in_what_is_not_one(): void
+    {
+        config()->set('openai.api_key', 'test-key');
+        Http::fake(['api.openai.com/*' => Http::sequence()
+            ->push(FakeOpenAi::answer(['ipa' => "'lɛtka"]))
+            ->push(FakeOpenAi::answer(['ipa' => 'ˈmatʃku']))
+            ->push(FakeOpenAi::answer(['ipa' => '<b>ˈlɛtka</b>']))]);
+
+        $this->assertSame(['ipa' => 'ˈlɛtka', 'error' => null], VoiceoverPanel::suggestIpa('letka'));
+        $this->assertNull(VoiceoverPanel::suggestIpa('listu')['ipa'], 'the IPA of another word is refused');
+        $this->assertStringContainsString('Upiši ga rukom', (string) VoiceoverPanel::suggestIpa('letka')['error']);
+        $this->assertStringContainsString('Upiši prvo riječ', (string) VoiceoverPanel::suggestIpa('dvije riječi')['error']);
+        $this->assertStringContainsString('Upiši prvo riječ', (string) VoiceoverPanel::suggestIpa('')['error']);
+
+        config()->set('openai.api_key', null);
+        $this->assertStringContainsString('OPENAI_API_KEY', (string) VoiceoverPanel::suggestIpa('letka')['error']);
+    }
+
+    public function test_a_row_of_words_needs_one_word_and_its_ipa(): void
+    {
+        $brand = Brand::factory()->create();
+
+        Livewire::test(EditBrand::class, ['record' => $brand->getRouteKey()])
+            ->fillForm(['voiceover.voice_id' => 'voice-1', 'voiceover.words' => [['find' => 'dvije riječi', 'ipa' => 'ˈlɛtka']]])
+            ->call('save')
+            ->assertHasFormErrors();
+    }
+
+    public function test_the_status_line_says_what_the_ipa_does_and_when_a_key_is_missing(): void
     {
         config()->set('elevenlabs.api_key', null);
         config()->set('openai.api_key', null);
         config()->set('openai.model', 'gpt-6-sol');
-        config()->set('openai.accents.model', null);
+        config()->set('openai.ipa.model', null);
+        $words = [['find' => 'letka', 'ipa' => 'ˈlɛtka']];
 
-        $this->assertStringContainsString('Naglasci su isključeni', VoiceoverPanel::status(Stress::OFF));
-        $this->assertStringContainsString('OPENAI_API_KEY', VoiceoverPanel::status(Stress::ACUTE));
-        $this->assertStringContainsString('OPENAI_API_KEY', VoiceoverPanel::status(Stress::CAPS));
+        $this->assertStringContainsString('Izgovor (IPA) je isključen', VoiceoverPanel::status(Ipa::OFF));
+        $this->assertStringContainsString('Izgovor: 0 ručnih riječi.', VoiceoverPanel::status(Ipa::TAG));
+        $this->assertStringContainsString('Izgovor: 1 ručnih riječi.', VoiceoverPanel::status(Ipa::TAG, 'eleven_v4', $words));
+        // Only a model that is asked to write IPA needs a key for it.
+        $this->assertStringContainsString('OPENAI_API_KEY', VoiceoverPanel::status(Ipa::SLASH, 'eleven_v4', $words, true));
 
         config()->set('openai.api_key', 'test-key');
-        config()->set('openai.accents.model', 'gpt-6-astra');
+        config()->set('openai.ipa.model', 'gpt-6-astra');
 
-        $this->assertStringContainsString('OpenAI je spojen: naglaske označuje gpt-6-astra', VoiceoverPanel::status(Stress::ACUTE));
-        // What the form has not chosen is what the environment says (off in the tests).
-        $this->assertStringContainsString('Naglasci su isključeni', VoiceoverPanel::status(''));
+        $this->assertStringContainsString('OpenAI (gpt-6-astra) piše IPA i za ostale', VoiceoverPanel::status(Ipa::SLASH, 'eleven_v4', $words, true));
+        // What the form has not chosen is what the environment says (the tag, with no model asked, in the tests).
+        $this->assertStringContainsString('Izgovor: 1 ručnih riječi.', VoiceoverPanel::status('', null, $words));
+    }
+
+    public function test_the_status_line_says_when_the_model_does_not_read_the_ipa(): void
+    {
+        // The panel offers this model too, and it is not one that reads IPA: only v4 is in elevenlabs.ipa_models.
+        config()->set('elevenlabs.models', ['eleven_v4' => 'v4', 'eleven_multilingual_v2' => 'Multilingual v2 (ne čita IPA)']);
+        config()->set('elevenlabs.api_key', null);
+        $words = [['find' => 'letka', 'ipa' => 'ˈlɛtka']];
+
+        $this->assertStringContainsString('ne čita IPA u tekstu (samo eleven_v4), pa se izgovor ne šalje', VoiceoverPanel::status(Ipa::TAG, 'eleven_multilingual_v2', $words));
+        $this->assertStringNotContainsString('ne čita IPA', VoiceoverPanel::status(Ipa::TAG, 'eleven_multilingual_v2', []), 'no words, nothing to be ignored');
+        $this->assertStringContainsString('Izgovor: 1 ručnih riječi.', VoiceoverPanel::status(Ipa::TAG, 'eleven_v4', $words));
+        $this->assertStringContainsString('Izgovor: 1 ručnih riječi.', VoiceoverPanel::status(Ipa::TAG, '', $words), 'the default model reads it');
     }
 
     public function test_only_a_hub_admin_can_listen_to_a_clip(): void
@@ -405,7 +474,7 @@ final class VoiceoverPanelTest extends TestCase
             ->assertSee('Voice-over · 96 znakova')
             ->assertSee('Kruh bijeli za 1,49 €.')
             ->assertSee('slajd samo uz glazbu')
-            // What the voice was given, with its numbers spelled out and its stress marked: where a wrong mark is caught.
+            // What the voice was given, with its numbers spelled out and the IPA of its words put in: where a wrong transcription is caught.
             ->assertSee('Glas čita: Preuzmi Lísto.')
             ->assertSee('Glas čita: Kruh bijeli za jedan euro i četrdeset devet centi.');
     }

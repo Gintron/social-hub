@@ -234,20 +234,20 @@ final class NarratorTest extends TestCase
         }
     }
 
-    public function test_the_stress_is_marked_before_anything_is_spoken(): void
+    public function test_the_ipa_of_the_words_is_written_before_anything_is_spoken(): void
     {
         config()->set('openai.api_key', 'test-key');
         config()->set('openai.model', 'gpt-6-sol');
         Http::fake(['api.openai.com/*' => Http::response(FakeOpenAi::answer(['marks' => [
-            ['line' => 0, 'word' => 3, 'marked' => 'gráma'],
-            ['line' => 0, 'word' => 6, 'marked' => 'Kónzum'],
+            ['line' => 0, 'word' => 3, 'ipa' => 'ˈɡrama'],
+            ['line' => 0, 'word' => 6, 'ipa' => 'ˈkɔnzum'],
         ]]))]);
-        $draft = $this->draft(voiceover: ['accents' => 'acute']);
+        $draft = $this->draft(voiceover: ['ipa' => 'slash', 'ipa_auto' => true]);
 
         $narration = app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
 
-        // The voice gets the line with the marks, and everything else in it as it was.
-        $this->assertSame('Kruh bijeli petsto gráma u trgovini Kónzum za jedan euro i četrdeset devet centi.', $this->requests[0]['text']);
+        // The voice gets the line with the IPA, and everything else in it as it was.
+        $this->assertSame('Kruh bijeli petsto /ˈɡrama/ u trgovini /ˈkɔnzum/ za jedan euro i četrdeset devet centi.', $this->requests[0]['text']);
         $this->assertSame('Popust dvadeset pet posto. Vrijedi do tridesetog rujna.', $this->requests[1]['text']);
 
         // One question to OpenAI for the three slides, not one for each.
@@ -258,11 +258,49 @@ final class NarratorTest extends TestCase
         $this->assertSame('Kruh bijeli 500 g u trgovini Konzum za 1,49 €.', $narration->describe()['script'][0]['text'], 'the script is still the text as written');
     }
 
+    public function test_the_words_a_brand_chose_reach_the_voice_without_openai(): void
+    {
+        config()->set('openai.api_key', null);
+        $draft = $this->draft(voiceover: ['words' => [['find' => 'Konzum', 'ipa' => "'kɔnzum"], ['find' => 'letka', 'ipa' => 'ˈlɛtka']]]);
+
+        $narration = app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
+
+        // The default way of writing it is the tag, and the line that has no such word is as it was.
+        $this->assertSame('Kruh bijeli petsto grama u trgovini <phoneme alphabet="ipa" ph="ˈkɔnzum">Konzum</phoneme> za jedan euro i četrdeset devet centi.', $this->requests[0]['text']);
+        $this->assertSame('Popust dvadeset pet posto. Vrijedi do tridesetog rujna.', $this->requests[1]['text']);
+        $this->assertSame('Preuzmi Listo. Dodaj prvi proizvod s <phoneme alphabet="ipa" ph="ˈlɛtka">letka</phoneme>.', $this->requests[2]['text']);
+        $this->assertSame($this->requests[0]['text'], $narration->describe()['clips'][0]['spoken']);
+        Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'api.openai.com'));
+    }
+
+    public function test_a_brand_with_chosen_words_and_the_ipa_switched_off_is_spoken_to_as_written(): void
+    {
+        $draft = $this->draft(voiceover: ['ipa' => 'off', 'words' => [['find' => 'Konzum', 'ipa' => 'ˈkɔnzum']]]);
+
+        app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
+
+        $this->assertStringContainsString('trgovini Konzum za', $this->requests[0]['text']);
+    }
+
+    public function test_the_style_of_the_ipa_decides_what_the_voice_receives(): void
+    {
+        config()->set('openai.api_key', 'test-key');
+        Http::fake(['api.openai.com/*' => Http::response(FakeOpenAi::answer(['marks' => [['line' => 0, 'word' => 6, 'ipa' => 'ˈkɔnzum']]]))]);
+
+        foreach (['tag', 'bare'] as $style) {
+            $draft = $this->draft(voiceover: ['ipa' => $style, 'ipa_auto' => true]);
+            app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
+        }
+
+        $this->assertStringContainsString('<phoneme alphabet="ipa" ph="ˈkɔnzum">Konzum</phoneme> za', $this->requests[0]['text']);
+        $this->assertStringContainsString('trgovini ˈkɔnzum za', array_column($this->requests, 'text')[3]);
+    }
+
     public function test_the_second_video_with_the_same_words_asks_openai_nothing_and_speaks_nothing(): void
     {
         config()->set('openai.api_key', 'test-key');
-        Http::fake(['api.openai.com/*' => Http::sequence()->push(FakeOpenAi::answer(['marks' => [['line' => 0, 'word' => 6, 'marked' => 'Kónzum']]]))]);
-        $draft = $this->draft(voiceover: ['accents' => 'acute']);
+        Http::fake(['api.openai.com/*' => Http::sequence()->push(FakeOpenAi::answer(['marks' => [['line' => 0, 'word' => 6, 'ipa' => 'ˈkɔnzum']]]))]);
+        $draft = $this->draft(voiceover: ['ipa' => 'slash', 'ipa_auto' => true]);
         $scenes = app(ScenePlanner::class)->forDraft($draft);
 
         app(Narrator::class)->narrate($draft, $scenes);
@@ -272,17 +310,17 @@ final class NarratorTest extends TestCase
         $this->assertCount(1, Http::recorded(fn (Request $request): bool => str_contains($request->url(), 'api.openai.com')));
     }
 
-    public function test_a_voice_is_not_made_without_the_marks(): void
+    public function test_a_voice_is_not_made_without_the_ipa(): void
     {
         config()->set('openai.api_key', 'test-key');
         Http::fake(['api.openai.com/*' => Http::response(['error' => ['message' => 'Incorrect API key', 'type' => 'invalid_request_error', 'code' => 'invalid_api_key']], 401)]);
-        $draft = $this->draft(voiceover: ['accents' => 'acute']);
+        $draft = $this->draft(voiceover: ['ipa' => 'slash', 'ipa_auto' => true]);
 
         try {
             app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
-            $this->fail('A line that could not be checked for stress must not be spoken.');
+            $this->fail('A line whose words could not be transcribed must not be spoken.');
         } catch (VoiceoverException $e) {
-            $this->assertSame('accents_invalid_key', $e->errorCode);
+            $this->assertSame('ipa_invalid_key', $e->errorCode);
             $this->assertTrue($e->needsAttention());
         }
 
@@ -290,10 +328,10 @@ final class NarratorTest extends TestCase
         $this->assertSame(0, Voiceover::query()->count());
     }
 
-    public function test_a_brand_that_turns_the_stress_off_needs_no_openai_at_all(): void
+    public function test_a_brand_that_turns_the_ipa_off_needs_no_openai_at_all(): void
     {
         config()->set('openai.api_key', null);
-        $draft = $this->draft(voiceover: ['accents' => 'off']);
+        $draft = $this->draft(voiceover: ['ipa' => 'off']);
 
         $narration = app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
 
@@ -302,14 +340,43 @@ final class NarratorTest extends TestCase
         Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'api.openai.com'));
     }
 
-    public function test_a_brand_that_wants_the_stress_marked_cannot_speak_without_a_key_for_it(): void
+    public function test_a_model_that_does_not_read_ipa_is_spoken_to_without_it_and_without_openai(): void
+    {
+        // The panel offers this model too, and it is not one that reads IPA: only v4 is in elevenlabs.ipa_models.
+        config()->set('elevenlabs.models', ['eleven_v4' => 'v4', 'eleven_multilingual_v2' => 'Multilingual v2 (ne čita IPA)']);
+        config()->set('openai.api_key', null);
+        $draft = $this->draft(voiceover: ['ipa' => 'slash', 'ipa_auto' => true, 'model' => 'eleven_multilingual_v2', 'words' => [['find' => 'Konzum', 'ipa' => 'ˈkɔnzum']]]);
+
+        $narration = app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
+
+        $this->assertNotNull($narration);
+        $this->assertStringNotContainsString('/', $this->requests[0]['text'], 'IPA a voice does not read would be read aloud as noise');
+        $this->assertSame('eleven_multilingual_v2', $narration->model);
+    }
+
+    public function test_a_word_the_pronunciation_list_says_gets_no_ipa_while_the_brands_other_words_keep_theirs(): void
+    {
+        // The list says "letku" as "letka", and the brand has an IPA for "letka": the voice is given what the list says, not the IPA
+        // on top of it. "Konzum" is not on the list, so it keeps its IPA.
+        $draft = $this->draft(voiceover: [
+            'ipa' => 'slash',
+            'pronunciations' => [['find' => 'letku', 'say' => 'letka']],
+            'words' => [['find' => 'letka', 'ipa' => 'ˈlɛtka'], ['find' => 'Konzum', 'ipa' => 'ˈkɔnzum']],
+        ]);
+
+        app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft), ['Konzum i letku.', '', '']);
+
+        $this->assertSame('/ˈkɔnzum/ i letka.', $this->requests[0]['text']);
+    }
+
+    public function test_a_brand_that_wants_ipa_cannot_speak_without_a_key_for_it(): void
     {
         config()->set('openai.api_key', null);
-        $draft = $this->draft(voiceover: ['accents' => 'acute']);
+        $draft = $this->draft(voiceover: ['ipa' => 'slash', 'ipa_auto' => true]);
 
         try {
             app(Narrator::class)->narrate($draft, app(ScenePlanner::class)->forDraft($draft));
-            $this->fail('Marking the stress needs OpenAI.');
+            $this->fail('Writing the IPA needs OpenAI.');
         } catch (VoiceoverException $e) {
             $this->assertSame('not_configured', $e->errorCode);
             $this->assertStringContainsString('OPENAI_API_KEY', $e->getMessage());

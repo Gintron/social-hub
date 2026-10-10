@@ -203,6 +203,11 @@ final class SpokenCroatianTest extends TestCase
         $this->assertSame('Nova ponuda u de emu i u Sparu.', $spoken);
     }
 
+    public function test_the_words_a_pronunciation_says_are_listed_in_lower_case_and_the_written_side_is_not(): void
+    {
+        $this->assertSame(['kon', 'zum', 'letka'], SpokenCroatian::pronounced(['Konzum' => 'Kon-zum', 'letku' => 'LETKA']));
+    }
+
     public function test_a_pronunciation_only_matches_whole_words_and_ignores_case(): void
     {
         $spoken = (new SpokenCroatian)->speak('Listo, listopad i LISTO', ['listo' => 'Lisdo']);

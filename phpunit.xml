@@ -27,8 +27,9 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
-        <!-- Stress marking asks OpenAI; the tests that are about it turn it on and fake the answer. -->
-        <env name="VOICEOVER_ACCENTS" value="off"/>
+        <!-- Words with an IPA are written as a tag by default; a model writing more of them (OpenAI) is off unless a test turns it on and fakes the answer. -->
+        <env name="VOICEOVER_IPA" value="tag"/>
+        <env name="VOICEOVER_IPA_AUTO" value="false"/>
         <env name="OPENAI_API_KEY" value=""/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

@@ -227,7 +227,7 @@ final class RenderCatalogVideoJobTest extends TestCase
         $brand = Brand::factory()->create([
             'slug' => 'uselisto', 'name' => 'Listo', 'site_url' => 'https://uselisto.com',
             'voice' => ['cta' => 'Preuzmi Listo'],
-            'voiceover' => $voice ? ['enabled' => true, 'voice_id' => 'voice-1', 'accents' => 'off'] : null,
+            'voiceover' => $voice ? ['enabled' => true, 'voice_id' => 'voice-1'] : null,
         ]);
 
         // The leaflet's pictures are fetched from here, not from Listo.

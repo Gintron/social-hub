@@ -7,10 +7,11 @@ namespace App\Filament\Support;
 use App\Ai\OpenAiClient;
 use App\Models\Brand;
 use App\Models\Voiceover;
-use App\Voiceover\Accenter;
 use App\Voiceover\ElevenLabsClient;
+use App\Voiceover\Ipa;
+use App\Voiceover\IpaSuggester;
+use App\Voiceover\Phonetizer;
 use App\Voiceover\SpokenCroatian;
-use App\Voiceover\Stress;
 use App\Voiceover\Synthesizer;
 use App\Voiceover\VoiceoverException;
 use App\Voiceover\VoiceoverSettings;
@@ -61,18 +62,23 @@ final class VoiceoverPanel
     }
 
     /**
-     * Whether the hub can speak at all, how much of the plan is left, and whether the stress can be marked.
+     * Whether the hub can speak at all, how much of the plan is left, and what is said about the words' IPA.
      *
-     * @param  string|null  $accents  What the form has chosen for the stress; null or blank is the default.
+     * @param  string|null  $ipa  What the form has chosen for the way IPA is written; null or blank is the default.
+     * @param  string|null  $model  The form's model; null or blank is the default.
+     * @param  array<mixed>  $words  The form's rows of words with an IPA.
+     * @param  bool|null  $auto  Whether the form has a model write IPA too; null is the default.
      */
-    public static function status(?string $accents = null): string
+    public static function status(?string $ipa = null, ?string $model = null, array $words = [], ?bool $auto = null): string
     {
-        $accents = in_array($accents, Stress::STYLES, true) ? $accents : VoiceoverSettings::defaultAccents();
+        $settings = VoiceoverSettings::fromArray(['model' => $model, 'ipa' => $ipa, 'words' => $words, 'ipa_auto' => $auto]);
 
         return self::speech().' '.match (true) {
-            $accents === Stress::OFF => 'Naglasci su isključeni: glas čita tekst kakav jest.',
-            ! app(OpenAiClient::class)->configured() => 'OpenAI nije spojen: postavi OPENAI_API_KEY — bez njega glas ne nastaje, osim ako se naglasci isključe.',
-            default => 'OpenAI je spojen: naglaske označuje '.(config('openai.accents.model') ?: config('openai.model')).'.',
+            $settings->ipaIgnored() => 'Model '.$settings->model.' ne čita IPA u tekstu (samo '.implode(' i ', (array) config('elevenlabs.ipa_models')).'), pa se izgovor ne šalje: glas čita tekst kakav jest.',
+            $settings->ipa === Ipa::OFF => 'Izgovor (IPA) je isključen: glas čita tekst kakav jest.',
+            $settings->autoIpa() && ! app(OpenAiClient::class)->configured() => 'OpenAI nije spojen: postavi OPENAI_API_KEY — bez njega glas ne nastaje, osim ako se isključi „model piše izgovor i za ostale riječi“.',
+            $settings->autoIpa() => 'Izgovor: '.count($settings->words).' ručnih riječi, a OpenAI ('.(config('openai.ipa.model') ?: config('openai.model')).') piše IPA i za ostale.',
+            default => 'Izgovor: '.count($settings->words).' ručnih riječi.',
         };
     }
 
@@ -81,13 +87,18 @@ final class VoiceoverPanel
      * receives them, so the way numbers are spelled can be checked by ear and by eye.
      *
      * @param  array<string, mixed>  $state  The form's `voiceover` values.
+     * @param  bool  $withoutIpa  Speak it as if no word had an IPA, to hear what the IPA changes.
      * @return array{clip: Voiceover, spoken: string}
      *
      * @throws VoiceoverException
      */
-    public static function sample(array $state, string $text, ?Brand $brand = null): array
+    public static function sample(array $state, string $text, ?Brand $brand = null, bool $withoutIpa = false): array
     {
         $settings = VoiceoverSettings::fromArray($state);
+
+        if ($withoutIpa) {
+            $settings = $settings->withIpa(Ipa::OFF);
+        }
 
         if (($reason = $settings->whyNot()) !== null) {
             throw new VoiceoverException("Glas se ne može preslušati: {$reason}.", 'not_configured');
@@ -99,10 +110,33 @@ final class VoiceoverPanel
             throw new VoiceoverException('Nema što izgovoriti.', 'empty_script');
         }
 
-        // The way a video's lines go: with the stress marked, so what is heard here is what will be heard there.
-        [$spoken] = app(Accenter::class)->prepare([$spoken], $settings->accents);
+        // The way a video's lines go: with the IPA of the words in the text, so what is heard here is what will be heard there.
+        [$spoken] = app(Phonetizer::class)->prepare([$spoken], $settings->ipaStyle(), $settings->words, $settings->autoIpa(), SpokenCroatian::pronounced($settings->pronunciations));
 
         return ['clip' => app(Synthesizer::class)->clip($spoken, $settings, $brand), 'spoken' => $spoken];
+    }
+
+    /**
+     * A model's first guess at the IPA of a word being added to a brand's list, for the field to be filled with —
+     * or why there is none. Never throws: the form stays as it is.
+     *
+     * @return array{ipa: string|null, error: string|null}
+     */
+    public static function suggestIpa(string $word): array
+    {
+        if (preg_match('/^\p{L}+$/u', mb_trim($word)) !== 1) {
+            return ['ipa' => null, 'error' => 'Upiši prvo riječ (samo slova).'];
+        }
+
+        try {
+            $ipa = app(IpaSuggester::class)->suggest($word);
+        } catch (VoiceoverException $e) {
+            return ['ipa' => null, 'error' => $e->getMessage()];
+        }
+
+        return $ipa === null
+            ? ['ipa' => null, 'error' => 'Model nije vratio izgovor koji bi bio ta riječ. Upiši ga rukom.']
+            : ['ipa' => $ipa, 'error' => null];
     }
 
     /**

@@ -43,9 +43,9 @@ final class VoiceoverUnavailable extends Notification implements ShouldQueue
                 'quota_exceeded' => 'Plan na ElevenLabsu nema dovoljno znakova: pričekaj obnovu ili nadogradi plan.',
                 'invalid_key', 'missing_permissions' => 'Provjeri ELEVENLABS_API_KEY na poslužitelju i da ključ smije koristiti text-to-speech.',
                 'voice_not_found' => 'Odaberi glas ponovno u postavkama brenda (Voice-over).',
-                'accents_quota_exceeded' => 'Na OpenAI računu nema kredita (Billing): dopuni ga, ili isključi naglaske na brendu (Voice-over → Naglasci). Bez naglasaka glas se ne radi.',
-                'accents_invalid_key', 'accents_forbidden', 'accents_not_configured' => 'Provjeri OPENAI_API_KEY na poslužitelju i da projekt smije koristiti model naglasaka. Bez naglasaka glas se ne radi.',
-                'accents_model_not_found' => 'Model naglasaka (OPENAI_ACCENT_MODEL, inače OPENAI_MODEL) ne postoji ili ga ključ ne smije koristiti: provjeri ime modela (hub:doctor).',
+                'ipa_quota_exceeded' => 'Na OpenAI računu nema kredita (Billing): dopuni ga, ili isključi izgovor u IPA na brendu (Voice-over → Izgovor). Bez izgovora glas se ne radi.',
+                'ipa_invalid_key', 'ipa_forbidden', 'ipa_not_configured' => 'Provjeri OPENAI_API_KEY na poslužitelju i da projekt smije koristiti model izgovora. Bez izgovora glas se ne radi.',
+                'ipa_model_not_found' => 'Model izgovora (OPENAI_IPA_MODEL, inače OPENAI_MODEL) ne postoji ili ga ključ ne smije koristiti: provjeri ime modela (hub:doctor).',
                 default => 'Provjeri postavke u Brendovi → Voice-over.',
             })
             ->action('Otvori brendove', url('/admin/brands'));
