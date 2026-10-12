@@ -37,6 +37,17 @@ final class QuoteCaptionTest extends TestCase
         }
     }
 
+    public function test_where_the_words_are_from_stands_under_the_reference_on_every_channel(): void
+    {
+        $item = $this->quote(['body_text' => 'Jeruzalemska Biblija, Kršćanska sadašnjost']);
+
+        foreach ([Platform::FacebookPage, Platform::FacebookGroup, Platform::InstagramBusiness, Platform::TikTok] as $platform) {
+            $caption = (new CaptionBuilder)->for($platform, $item, $this->brand(['hashtags' => []]));
+
+            $this->assertStringStartsWith("Ljubi bližnjega svoga kao samoga sebe.\n— Mk 12,31\n\nJeruzalemska Biblija, Kršćanska sadašnjost", $caption, $platform->value);
+        }
+    }
+
     public function test_a_page_points_at_the_first_comment_with_the_sources_own_label_and_a_group_pastes_the_link(): void
     {
         $item = $this->quote(['cta' => ['label' => 'Read the whole chapter', 'url' => 'https://verses.test/mk/12']]);

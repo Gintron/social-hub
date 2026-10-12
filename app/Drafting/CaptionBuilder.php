@@ -368,9 +368,10 @@ final class CaptionBuilder
     }
 
     /**
-     * A quote is posted as itself: the words, whose they are, and the brand's hashtags. The hub adds
-     * no wording of its own (no label, no call to action in a language it picked), so one builder
-     * serves a brand in any language; a line under the quote is the source's `cta.label`, if it sent one.
+     * A quote is posted as itself: the words, whose they are, where they are from (`body_text`, in full:
+     * the edition, the author) and the brand's hashtags. The hub adds no wording of its own (no label,
+     * no call to action in a language it picked), so one builder serves a brand in any language; a line
+     * under the quote is the source's `cta.label`, if it sent one.
      */
     private function quote(Platform $platform, ContentItem $item, Brand $brand): string
     {
@@ -389,6 +390,7 @@ final class CaptionBuilder
 
         return self::tidy(implode("\n\n", array_filter([
             filled($item->subtitle) ? $words."\n— ".mb_trim((string) $item->subtitle) : $words,
+            TemplateData::excerpt($item->body_text, 200),
             $under,
             implode(' ', array_slice($hashtags, 0, $platform === Platform::FacebookPage ? 3 : self::FEW_HASHTAGS)),
         ], fn (?string $section): bool => filled($section))));

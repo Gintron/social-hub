@@ -133,6 +133,7 @@ jeziku; boje i logo daje brend, riječi daje izvor. Predložak `kinds/quote-*` c
 |---|---|
 | `title` | **Sam tekst**, onako kako ga treba objaviti (navodnici, ako ih treba, idu ovdje). Do 300 znakova; za video do ~27 riječi, jer je slajd najviše 10 s na ekranu. |
 | `subtitle` | Čiji je ili odakle je (osoba, knjiga i stih). Ide ispod teksta i u opis objave nakon crte. |
+| `body_text` | Neobavezno: odakle je tekst u cijelosti (izdanje, autor), do 200 znakova. Ide u opis objave ispod reference, ne na karticu. |
 | `facts`, `badges`, `price` | Prazni. Citat nema brojke; hub ih ne crta. |
 | `cta.label` | Neobavezno: redak ispod opisa na Facebook stranici („👇 …“), link ide u prvi komentar. Hub ne dodaje vlastitu riječ, pa se jezik retka bira ovdje. |
 | `url` | Javna stranica citata (obavezna kao i za svaku stavku; `LinkPreflight` je provjerava prije objave). Na Facebook stranici ide u prvi komentar kao „👉 url“ **i bez** `cta.label`, pa neka bude stranica na koju vrijedi poslati ljude. |
