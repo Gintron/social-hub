@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use Carbon\CarbonImmutable;
+
 /**
  * Builds valid Social Feed v1 payloads for tests.
  */
@@ -30,7 +32,7 @@ final class FeedPayload
             'priority' => 4,
             'tags' => ['konobar', 'split'],
             'published_at' => '2026-09-05T07:10:00Z',
-            'expires_at' => '2026-10-05T00:00:00Z',
+            'expires_at' => CarbonImmutable::now()->addMonth()->startOfDay()->toIso8601ZuluString(),
             'updated_at' => '2026-09-05T07:10:00Z',
             'raw' => ['offer_id' => 4, 'tier' => 'premium'],
         ], $overrides);

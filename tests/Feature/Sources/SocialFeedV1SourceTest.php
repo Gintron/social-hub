@@ -83,7 +83,9 @@ final class SocialFeedV1SourceTest extends TestCase
 
     public function test_maps_item_fields(): void
     {
-        Http::fake([self::URL.'*' => Http::response(FeedPayload::page([FeedPayload::item('job:9')]))]);
+        Http::fake([self::URL.'*' => Http::response(FeedPayload::page([
+            FeedPayload::item('job:9', ['expires_at' => '2026-10-05T00:00:00Z']),
+        ]))]);
 
         [$item] = iterator_to_array(app(SocialFeedV1Source::class)->fetch($this->source(), null), false);
 
