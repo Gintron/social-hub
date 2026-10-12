@@ -70,7 +70,7 @@ final class IngestController extends Controller
 
         $model->forceFill(['last_synced_at' => $seenAt, 'last_error' => null])->save();
 
-        if ($created > 0) {
+        if ($created > 0 || $model->brand?->auto_lineup) {
             $this->autoPublish->execute($model);
         }
 

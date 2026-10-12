@@ -110,6 +110,13 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   (`Approved`…`PartiallyPublished`) po `scheduled_at`, i one koje je napravio čovjek; zaustavlja samo automatiku.
   Kad je dan pun, `ApplyAutoPublishRules` staje, a `ScheduleDigest` preskoči seriju (danas i dan na koji pada
   termin). Prazno = bez limita.
+- **Lineup po terminima** (`brands.auto_lineup`, `App\Actions\AutoLineup`): brend s uključenim prekidačem ne puni
+  stavke odmah po sinkronizaciji, nego po terminu objave (`brands.posting_windows`). Termin se puni 30 min prije
+  otvaranja (sinkronizacija, ingest i `hub:auto-lineup` u :30). Dnevni limit se dijeli po terminima (5 nad 3 daje
+  2, 2, 1; limit manji od broja termina daje jednu po terminu). Vrsta ide po `brands.lineup_priority` (zadano
+  katalog, usporedba, akcija); vrsta koja nije na popisu se ne objavljuje. Stavka kataloga bez `raw.demo` se
+  preskače prije nego što se nacrt spremi, da termin ne ostane zauzet bez medija. `ApplyAutoPublishRules` za
+  ostale brendove radi kao prije.
 - **Pregledi su automatika, ne novi kanal**: `brands.digests` je lista serija (`App\Drafting\DigestSeries`:
   dani, vrijeme, broj, vrsta, **oznaka**, format FB/IG; TikTok je uvijek video). Gradi ih `hub:auto-digest` (satno, sat
   unaprijed) kroz `App\Actions\ScheduleDigest` — svaku seriju jednom na dan (`post_drafts.digest_series`),

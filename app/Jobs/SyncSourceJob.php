@@ -46,8 +46,9 @@ final class SyncSourceJob implements ShouldBeUnique, ShouldQueue
             'unchanged' => $result->unchanged,
         ]);
 
-        // Only new items can produce new drafts, so this is a no-op on a sync that changed nothing.
-        if ($result->created > 0) {
+        // Only new items can produce new drafts, so this is a no-op on a sync that changed nothing. A brand
+        // on the lineup is the exception: an open posting window is filled from what is already there.
+        if ($result->created > 0 || $source->brand?->auto_lineup) {
             $autoPublish->execute($source);
         }
     }

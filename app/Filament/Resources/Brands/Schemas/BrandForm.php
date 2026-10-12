@@ -348,6 +348,20 @@ final class BrandForm
                                 TimePicker::make('from')->label('Od')->seconds(false)->required(),
                                 TimePicker::make('to')->label('Do')->seconds(false)->required(),
                             ])->columns(2)->default([['from' => '08:00', 'to' => '20:00']])->reorderable(false),
+                        Toggle::make('auto_lineup')->label('Jedna automatska objava po terminu')
+                            ->helperText('Svaki termin objave dobije jednu objavu, po redoslijedu ispod. Zakazuje se pola sata prije termina, pa stavka koja izađe kasnije ide u idući termin.')
+                            ->live(),
+                        Repeater::make('lineup_priority')->label('Redoslijed vrsta')
+                            ->visible(fn (Get $get): bool => (bool) $get('auto_lineup'))
+                            ->helperText('Prva vrsta ide prva. Vrsta koja nije na popisu se ne objavljuje automatski. Prazan popis = ništa.')
+                            ->simple(Select::make('kind')->options([
+                                'catalog' => 'Katalog (letak)',
+                                'comparison' => 'Usporedba',
+                                'deal' => 'Akcija',
+                            ])->required())
+                            ->reorderableWithButtons()
+                            ->addActionLabel('Dodaj vrstu')
+                            ->default(['catalog', 'comparison', 'deal']),
                     ]),
             ]);
     }

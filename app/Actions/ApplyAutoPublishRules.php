@@ -49,6 +49,7 @@ final class ApplyAutoPublishRules
         private readonly PostingSchedule $schedule,
         private readonly LinkPreflight $links,
         private readonly DailyPostLimit $dailyLimit,
+        private readonly AutoLineup $lineup,
     ) {}
 
     /**
@@ -56,6 +57,11 @@ final class ApplyAutoPublishRules
      */
     public function execute(Source $source): int
     {
+        // A brand on the lineup takes one item per posting window, whichever source it came from.
+        if ($source->brand?->auto_lineup) {
+            return $this->lineup->fill($source->brand);
+        }
+
         $rules = $source->autoPublishRules()->where('enabled', true)->get();
 
         if ($rules->isEmpty()) {

@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Storage;
  * @property array<string, mixed>|null $voice
  * @property array<int, array{day?: string, from: string, to: string}>|null $posting_windows
  * @property int|null $daily_post_limit
+ * @property bool $auto_lineup
+ * @property list<string>|null $lineup_priority
  * @property array<array-key, array{path?: string|null, title?: string|null, license?: string|null}>|null $audio_tracks
  * @property array<string, mixed>|null $voiceover
  * @property array<array-key, array<string, mixed>>|null $digests
@@ -38,7 +40,7 @@ final class Brand extends Model
     public const AUDIO_DISK = 'public';
 
     protected $fillable = [
-        'slug', 'name', 'site_url', 'logo_path', 'colors', 'voice', 'posting_windows', 'daily_post_limit', 'audio_tracks', 'voiceover', 'digests', 'timezone',
+        'slug', 'name', 'site_url', 'logo_path', 'colors', 'voice', 'posting_windows', 'daily_post_limit', 'auto_lineup', 'lineup_priority', 'audio_tracks', 'voiceover', 'digests', 'timezone',
     ];
 
     public function sources(): HasMany
@@ -159,6 +161,8 @@ final class Brand extends Model
             'audio_tracks' => 'array',
             'voiceover' => 'array',
             'digests' => 'array',
+            'auto_lineup' => 'boolean',
+            'lineup_priority' => 'array',
         ];
     }
 

@@ -111,7 +111,7 @@ final class PostingSchedule
      *
      * @return list<array{0: int, 1: int}>
      */
-    private function windows(Brand $brand): array
+    public function windows(Brand $brand): array
     {
         $windows = [];
 
