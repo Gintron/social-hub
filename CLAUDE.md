@@ -95,6 +95,15 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   prođe za 12:00, a za 12:45 ne), `DigestBuilder::pick` uz `scheduledAt`. Oglasi, članci i događaji nisu pod tim
   pravilom (samo `live()`). Agent i MCP ga mjere od sada, jer vrijeme objave određuje čovjek; ručno odabranu
   stavku pravilo ne blokira. Usporedba istječe s prvom ponudom (`expires_at` = najraniji `valid_to`).
+- **Citat je opći oblik, ne sadržaj neke domene.** `kind=quote`: `title` je sam tekst, `subtitle` čiji je ili odakle.
+  Hub ne zna što je tekst, na kojem je jeziku ni iz kojeg je prijevoda — stihovi, kalendar i licenca žive u izvoru.
+  Zato `CaptionBuilder::quote` ne piše nijednu vlastitu riječ (redak ispod teksta je `cta.label` izvora, na njegovu
+  jeziku), a predložak ne mijenja velika/mala slova reference („Iv 3,16“ velikim slovima je druga knjiga).
+  Kartica citata drži se koliko treba za čitanje (`Scene::readingSeconds`, najviše 10 s: izvor šalje kratke tekstove,
+  hub ih ne reže). „Jedan citat dnevno uz pregled“ je postavka, ne kod: pravilo s `daily_cap` 1 i „Traži odobrenje“,
+  izvor koji daje prozor [danas, sutra] s `priority` što pada s datumom i `expires_at` = kraj dana. Pazi:
+  `isPostableAt()` za vrste bez `min_days_valid` ne mjeri `expires_at` prema terminu, samo prema sada — nacrt
+  napravljen nakon prozora objave dobije termin sutra i `PublishVariantJob` ga preskoči kao istekao.
 - **Dnevni limit brenda** (`brands.daily_post_limit`, `App\Support\DailyPostLimit`): koliko objava automatika smije
   staviti na jedan lokalni dan brenda, **zajedno** — pojedinačne stavke svih izvora i pregledi. `daily_cap` pravila
   to ne može obećati (po kanalu je, a pregledi mu ne podliježu). Broje se nacrti koji izlaze ili su izašli

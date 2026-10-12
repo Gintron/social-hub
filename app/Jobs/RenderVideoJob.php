@@ -111,6 +111,7 @@ final class RenderVideoJob implements ShouldQueue
                 $this->secondsPerSlide,
                 audioPath: $brand->audioTrackPath($this->audio, $draft->id),
                 motion: $this->motion,
+                slideSeconds: $this->slideSeconds($scenes),
                 narration: $narration,
             );
 
@@ -131,6 +132,30 @@ final class RenderVideoJob implements ShouldQueue
             $variant->media()->sync([$asset->id => ['position' => 0]]);
             $variant->markRendered();
         }
+    }
+
+    /**
+     * Explicit holds, only for a video that has a slide worth more time than the default — a quote is
+     * read, not glanced at. Every other video keeps the renderer's own holds, the end card included.
+     *
+     * @param  list<Scene>  $scenes
+     * @return list<float>|null
+     */
+    private function slideSeconds(array $scenes): ?array
+    {
+        $reading = array_map(fn (Scene $scene): ?float => $scene->readingSeconds(), $scenes);
+
+        if (array_all($reading, fn (?float $seconds): bool => $seconds === null)) {
+            return null;
+        }
+
+        return array_map(
+            fn (Scene $scene, ?float $seconds): float => $seconds ?? ($scene->role === Scene::CLOSING
+                ? VideoRenderer::END_CARD_SECONDS
+                : max(1.5, $this->secondsPerSlide)),
+            $scenes,
+            $reading,
+        );
     }
 
     /**

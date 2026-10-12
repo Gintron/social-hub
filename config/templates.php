@@ -18,6 +18,9 @@ return [
     'kinds/generic-portrait' => ['view' => 'templates.kinds.generic', 'width' => 1080, 'height' => 1350, 'kinds' => ['article', 'event', 'generic'], 'label' => 'Općenito — portret'],
     'kinds/comparison-square' => ['view' => 'templates.kinds.comparison', 'width' => 1080, 'height' => 1080, 'kinds' => ['comparison'], 'label' => 'Usporedba — kvadrat'],
     'kinds/comparison-portrait' => ['view' => 'templates.kinds.comparison', 'width' => 1080, 'height' => 1350, 'kinds' => ['comparison'], 'label' => 'Usporedba — portret'],
+    // Citat: samo tekst i čiji je. Iza vrsta, a prije skupa slajdova: defaultFor() uzima prvi ključ koji odgovara.
+    'kinds/quote-square' => ['view' => 'templates.kinds.quote', 'width' => 1080, 'height' => 1080, 'kinds' => ['quote'], 'label' => 'Citat — kvadrat'],
+    'kinds/quote-portrait' => ['view' => 'templates.kinds.quote', 'width' => 1080, 'height' => 1350, 'kinds' => ['quote'], 'label' => 'Citat — portret'],
 
     // Vertikalni format 9:16 za Reels i TikTok; isti pogledi, druga visina.
     'kinds/job-story' => ['view' => 'templates.kinds.job', 'width' => 1080, 'height' => 1920, 'kinds' => ['job'], 'label' => 'Oglas — story 9:16'],
@@ -26,6 +29,7 @@ return [
     'kinds/deal-story' => ['view' => 'templates.kinds.deal', 'width' => 1080, 'height' => 1920, 'kinds' => ['deal'], 'label' => 'Akcija — story 9:16'],
     'kinds/generic-story' => ['view' => 'templates.kinds.generic', 'width' => 1080, 'height' => 1920, 'kinds' => ['article', 'event', 'generic'], 'label' => 'Općenito — story 9:16'],
     'kinds/comparison-story' => ['view' => 'templates.kinds.comparison', 'width' => 1080, 'height' => 1920, 'kinds' => ['comparison'], 'label' => 'Usporedba — story 9:16'],
+    'kinds/quote-story' => ['view' => 'templates.kinds.quote', 'width' => 1080, 'height' => 1920, 'kinds' => ['quote'], 'label' => 'Citat — story 9:16'],
 
     // Digest: naslovnica i slajdovi za carousel od više stavki odjednom.
     'kinds/digest-cover' => ['view' => 'templates.kinds.digest-cover', 'width' => 1080, 'height' => 1080, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Digest — naslovnica'],
@@ -46,9 +50,9 @@ return [
     'kinds/comparison-hook-square' => ['view' => 'templates.kinds.comparison-hook', 'width' => 1080, 'height' => 1080, 'kinds' => ['comparison'], 'label' => 'Usporedba, udica — kvadrat'],
     'kinds/comparison-hook-portrait' => ['view' => 'templates.kinds.comparison-hook', 'width' => 1080, 'height' => 1350, 'kinds' => ['comparison'], 'label' => 'Usporedba, udica — portret'],
     'kinds/comparison-hook-story' => ['view' => 'templates.kinds.comparison-hook', 'width' => 1080, 'height' => 1920, 'kinds' => ['comparison'], 'label' => 'Usporedba, udica — story 9:16'],
-    'kinds/cta-square' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1080, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Poziv na akciju — kvadrat'],
-    'kinds/cta-portrait' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1350, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Poziv na akciju — portret'],
-    'kinds/cta-story' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1920, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Poziv na akciju — story 9:16'],
+    'kinds/cta-square' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1080, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'quote'], 'label' => 'Poziv na akciju — kvadrat'],
+    'kinds/cta-portrait' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1350, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'quote'], 'label' => 'Poziv na akciju — portret'],
+    'kinds/cta-story' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1920, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'quote'], 'label' => 'Poziv na akciju — story 9:16'],
     // A product feature uses a real screenshot and one instruction, for carousels and video alike.
     'kinds/feature-portrait' => ['view' => 'templates.kinds.feature', 'width' => 1080, 'height' => 1350, 'kinds' => ['generic'], 'label' => 'Demonstracija — portret'],
     'kinds/feature-story' => ['view' => 'templates.kinds.feature', 'width' => 1080, 'height' => 1920, 'kinds' => ['generic'], 'label' => 'Demonstracija — story 9:16'],

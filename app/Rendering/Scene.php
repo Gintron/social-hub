@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Rendering;
 
+use App\Enums\ContentKind;
 use App\Models\ContentItem;
 
 /**
@@ -29,4 +30,23 @@ final readonly class Scene
         /** The item the slide is about; null for a roundup's cover and end card, which speak for the whole draft. */
         public ?ContentItem $item = null,
     ) {}
+
+    /**
+     * How long this slide has to stay up to be read, when that is more than the default hold: a quote
+     * is its whole text, and three seconds is long enough for a headline, not a sentence. Null leaves
+     * the hold to the renderer, which is what every other slide gets.
+     */
+    public function readingSeconds(): ?float
+    {
+        if ($this->role !== self::CARD || $this->item?->kind !== ContentKind::Quote) {
+            return null;
+        }
+
+        $words = count(preg_split('/\s+/u', mb_trim((string) $this->item->title), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+
+        // A second to take the card in, then about three words a second. A slide is held at most ten
+        // seconds (VideoRenderer), so a text of more than ~27 words is read faster than that: the
+        // source keeps what it sends for a video short, the hub does not cut it.
+        return min(10.0, max(4.0, 1.0 + $words / 3));
+    }
 }

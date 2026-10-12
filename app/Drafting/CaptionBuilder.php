@@ -54,6 +54,10 @@ final class CaptionBuilder
             return $catalog;
         }
 
+        if ($item->kind === ContentKind::Quote) {
+            return $this->quote($platform, $item, $brand);
+        }
+
         return match ($platform) {
             Platform::InstagramBusiness => $this->instagram($item, $brand),
             Platform::TikTok => $this->tiktok($item, $brand),
@@ -361,6 +365,50 @@ final class CaptionBuilder
         $cta = $activation !== '' ? mb_trim((string) data_get($brand->voice, 'cta', ''))."\n".$activation."\n" : '';
 
         return mb_trim($cta.'🔗 Link u biu → '.$host);
+    }
+
+    /**
+     * A quote is posted as itself: the words, whose they are, and the brand's hashtags. The hub adds
+     * no wording of its own (no label, no call to action in a language it picked), so one builder
+     * serves a brand in any language; a line under the quote is the source's `cta.label`, if it sent one.
+     */
+    private function quote(Platform $platform, ContentItem $item, Brand $brand): string
+    {
+        $words = mb_trim((string) $item->title);
+        $sections = [filled($item->subtitle) ? $words."\n— ".mb_trim((string) $item->subtitle) : $words];
+
+        $label = mb_trim((string) ($item->cta['label'] ?? ''));
+
+        if ($label !== '' && filled($item->url)) {
+            $line = match ($platform) {
+                // A Page's link is its first comment (FacebookPagePublisher); this line points down at it.
+                Platform::FacebookPage => '👇 '.self::bold($label),
+                Platform::FacebookGroup => self::bold($label).":\n".$item->url,
+                default => null,
+            };
+
+            if ($line !== null) {
+                $sections[] = $line;
+            }
+        }
+
+        $feed = in_array($platform, [Platform::InstagramBusiness, Platform::TikTok], true);
+
+        if ($feed && ($pitch = $this->pitch($brand)) !== null) {
+            $sections[] = $pitch;
+        }
+
+        $hashtags = match ($platform) {
+            Platform::FacebookPage => array_slice($this->hashtags($item, $brand, fixedOnly: true), 0, 3),
+            Platform::FacebookGroup => [],
+            default => array_slice($this->hashtags($item, $brand), 0, self::FEW_HASHTAGS),
+        };
+
+        if ($hashtags !== []) {
+            $sections[] = implode(' ', $hashtags);
+        }
+
+        return self::tidy(implode("\n\n", $sections));
     }
 
     private function isComparison(ContentItem $item): bool

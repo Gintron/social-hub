@@ -12,5 +12,7 @@ return [
     'job' => ['job-hook', 'job', 'job-cta'],
     'deal' => ['deal-hook', 'deal', 'cta'],
     'comparison' => ['comparison-hook', 'comparison', 'cta'],
+    // Citat nema udicu: tekst je sam svoja udica. Kartica, pa poziv na akciju brenda.
+    'quote' => ['quote', 'cta'],
     'default' => ['generic', 'cta'],
 ];

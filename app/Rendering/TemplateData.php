@@ -83,6 +83,7 @@ final class TemplateData
             ContentKind::Generic => '📌',
             ContentKind::Comparison => '⚖️',
             ContentKind::Catalog => '📖',
+            ContentKind::Quote => '💬',
         };
     }
 

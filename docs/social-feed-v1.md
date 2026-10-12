@@ -76,7 +76,7 @@ kriva ovlast → `403`.
 | Polje | Tip | Obavezno | Napomena |
 |---|---|---|---|
 | `id` | string | da | Stabilan i jedinstven unutar izvora. Hub ga koristi za idempotenciju (`unique(source_id, external_id)`). Preporuka: `"<vrsta>:<id>"`. |
-| `kind` | enum | da | `job`, `deal`, `article`, `event`, `generic`, `comparison`, `catalog`. Određuje zadani predložak slike i caption builder. |
+| `kind` | enum | da | `job`, `deal`, `article`, `event`, `generic`, `comparison`, `catalog`, `quote`. Određuje zadani predložak slike i caption builder. |
 | `title` | string | da | Do 300 znakova. |
 | `subtitle` | string | ne | Tvrtka / trgovački lanac / autor. |
 | `body_text` | string | ne | **Čisti tekst bez HTML-a.** `\n` za novi red, `• ` za natuknice. Stranica radi HTML→tekst, ne hub. |
@@ -122,6 +122,27 @@ kao i jednu stavku.
 | `images` | `primary` je proizvod prvog retka (udica ga pokazuje uz najnižu brojku), ostali `gallery`. |
 | `raw.rows[]` | Neobavezno, isti redoslijed kao `facts`: `chain_name` (mora biti jednak `label`), `title` (proizvod i pakiranje), `price_cents`, `logo` i `image` (apsolutni URL-ovi). Redak kojemu `chain_name` ne odgovara hub prikaže bez tih dodataka. |
 | `expires_at` | Kad prva od ponuda istječe: nakon toga usporedba više nije točna. |
+
+## Citat (`kind: quote`)
+
+Tekst koji se objavljuje kao on sam: izreka, stih, misao dana. Hub ne zna što je tekst ni na kojem je
+jeziku; boje i logo daje brend, riječi daje izvor. Predložak `kinds/quote-*` crta tekst velikim slovima
+i izvor ispod; video je kartica pa poziv na akciju brenda.
+
+| Polje | Značenje u citatu |
+|---|---|
+| `title` | **Sam tekst**, onako kako ga treba objaviti (navodnici, ako ih treba, idu ovdje). Do 300 znakova; za video do ~27 riječi, jer je slajd najviše 10 s na ekranu. |
+| `subtitle` | Čiji je ili odakle je (osoba, knjiga i stih). Ide ispod teksta i u opis objave nakon crte. |
+| `facts`, `badges`, `price` | Prazni. Citat nema brojke; hub ih ne crta. |
+| `cta.label` | Neobavezno: redak ispod opisa na Facebook stranici („👇 …“), link ide u prvi komentar. Hub ne dodaje vlastitu riječ, pa se jezik retka bira ovdje. |
+| `url` | Javna stranica citata (obavezna kao i za svaku stavku; `LinkPreflight` je provjerava prije objave). |
+| `tags` | Hashtagovi uz one koje brend ima zadane (`voice.hashtags`); najviše 5 na Instagramu i TikToku, na Facebook stranici samo brendovi (do 3). |
+| `raw.emoji` | Neobavezno: oznaka uz stavku umjesto zadane 💬. |
+| `expires_at` | Kraj dana na koji citat pripada: zakašnjeli ne izlazi kao današnji, preskače se. |
+| `priority` | Što je dan bliži, veća brojka: hub bira prvo po prioritetu, pa po `published_at` silazno. |
+
+Jedna objava dnevno nije svojstvo vrste nego postavka: pravilo automatske objave s `Najviše dnevno` = 1,
+jedan prozor objave na brendu i uključeno „Traži odobrenje“.
 
 ## Katalog (`kind: catalog`)
 
