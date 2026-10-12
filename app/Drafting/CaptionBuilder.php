@@ -375,40 +375,23 @@ final class CaptionBuilder
     private function quote(Platform $platform, ContentItem $item, Brand $brand): string
     {
         $words = mb_trim((string) $item->title);
-        $sections = [filled($item->subtitle) ? $words."\n— ".mb_trim((string) $item->subtitle) : $words];
-
         $label = mb_trim((string) ($item->cta['label'] ?? ''));
+        $pointed = $label !== '' && filled($item->url);
 
-        if ($label !== '' && filled($item->url)) {
-            $line = match ($platform) {
-                // A Page's link is its first comment (FacebookPagePublisher); this line points down at it.
-                Platform::FacebookPage => '👇 '.self::bold($label),
-                Platform::FacebookGroup => self::bold($label).":\n".$item->url,
-                default => null,
-            };
-
-            if ($line !== null) {
-                $sections[] = $line;
-            }
-        }
-
-        $feed = in_array($platform, [Platform::InstagramBusiness, Platform::TikTok], true);
-
-        if ($feed && ($pitch = $this->pitch($brand)) !== null) {
-            $sections[] = $pitch;
-        }
-
-        $hashtags = match ($platform) {
-            Platform::FacebookPage => array_slice($this->hashtags($item, $brand, fixedOnly: true), 0, 3),
-            Platform::FacebookGroup => [],
-            default => array_slice($this->hashtags($item, $brand), 0, self::FEW_HASHTAGS),
+        [$under, $hashtags] = match ($platform) {
+            // A Page's link is its first comment (FacebookPagePublisher); this line points down at it.
+            Platform::FacebookPage => [$pointed ? '👇 '.self::bold($label) : null, $this->hashtags($item, $brand, fixedOnly: true)],
+            // A group post is pasted by a person: the link stays in the text, and no tags.
+            Platform::FacebookGroup => [$pointed ? self::bold($label).":\n".$item->url : null, []],
+            // Where a link cannot be followed, the brand's own sentence stands in for it.
+            default => [$this->pitch($brand), $this->hashtags($item, $brand)],
         };
 
-        if ($hashtags !== []) {
-            $sections[] = implode(' ', $hashtags);
-        }
-
-        return self::tidy(implode("\n\n", $sections));
+        return self::tidy(implode("\n\n", array_filter([
+            filled($item->subtitle) ? $words."\n— ".mb_trim((string) $item->subtitle) : $words,
+            $under,
+            implode(' ', array_slice($hashtags, 0, $platform === Platform::FacebookPage ? 3 : self::FEW_HASHTAGS)),
+        ], fn (?string $section): bool => filled($section))));
     }
 
     private function isComparison(ContentItem $item): bool

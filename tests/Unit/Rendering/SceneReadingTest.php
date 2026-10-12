@@ -27,6 +27,12 @@ final class SceneReadingTest extends TestCase
         $this->assertSame(7.0, $this->scene($text)->readingSeconds());
     }
 
+    public function test_a_text_written_without_spaces_is_measured_by_its_characters(): void
+    {
+        // One "word" of 120 characters: a second to arrive and six to read, not the four-second floor.
+        $this->assertSame(7.0, $this->scene(str_repeat('愛', 120))->readingSeconds());
+    }
+
     public function test_the_hold_never_passes_what_a_slide_may_be_on_screen(): void
     {
         $this->assertSame(10.0, $this->scene(str_repeat('riječ ', 60))->readingSeconds());

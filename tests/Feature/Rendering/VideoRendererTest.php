@@ -181,6 +181,68 @@ final class VideoRendererTest extends TestCase
         $this->assertEquals([1.5, 4.0], $video->params['slide_seconds']);
     }
 
+    public function test_a_slide_that_has_to_be_read_is_held_longer_and_the_end_card_keeps_its_own_hold(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+        $brand = Brand::factory()->create();
+        $closing = $this->slide($brand);
+        $closing->update(['template_key' => 'kinds/cta-story']);
+
+        $video = app(VideoRenderer::class)->slideshow($brand, collect([$this->slide($brand), $closing]), minimumSeconds: [7.5, null], motion: false);
+
+        $this->assertEquals([7.5, VideoRenderer::END_CARD_SECONDS], $video->params['slide_seconds']);
+    }
+
+    public function test_a_minimum_hold_only_grows_a_slide_and_never_past_the_longest_one_may_stay(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+        $brand = Brand::factory()->create();
+
+        // 2 s is less than the default hold; 40 s is more than a slide may stay up.
+        $video = app(VideoRenderer::class)->slideshow($brand, collect([$this->slide($brand), $this->slide($brand)]), minimumSeconds: [2.0, 40.0], motion: false);
+
+        $this->assertEquals([3.0, VideoRenderer::MAX_SLIDE_SECONDS], $video->params['slide_seconds']);
+    }
+
+    public function test_a_minimum_hold_does_not_make_a_long_default_hold_fail_the_render(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+        $brand = Brand::factory()->create();
+
+        $video = app(VideoRenderer::class)->slideshow($brand, collect([$this->slide($brand), $this->slide($brand)]), secondsPerSlide: 12.0, minimumSeconds: [6.0, null], motion: false);
+
+        $this->assertEquals([12.0, 12.0], $video->params['slide_seconds']);
+    }
+
+    public function test_a_direct_roundups_cover_keeps_its_short_hold_beside_a_card_that_has_to_be_read(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+        $brand = Brand::factory()->create(['voice' => ['video_style' => 'direct']]);
+        $cover = $this->slide($brand);
+        $cover->update(['template_key' => 'kinds/digest-cover-story']);
+        $closing = $this->slide($brand);
+        $closing->update(['template_key' => 'kinds/cta-story']);
+
+        $video = app(VideoRenderer::class)->slideshow($brand, collect([$cover, $this->slide($brand), $closing]), minimumSeconds: [null, 8.0, null], motion: false);
+
+        $this->assertEquals([2.5, 8.0, 3.5], $video->params['slide_seconds']);
+    }
+
+    public function test_a_storyboard_somebody_wrote_is_not_stretched_by_a_minimum(): void
+    {
+        Storage::fake('public');
+        config()->set('hub.media_disk', 'public');
+        $brand = Brand::factory()->create();
+
+        $video = app(VideoRenderer::class)->slideshow($brand, collect([$this->slide($brand), $this->slide($brand)]), slideSeconds: [2.0, 2.0], minimumSeconds: [9.0, 9.0], motion: false);
+
+        $this->assertEquals([2.0, 2.0], $video->params['slide_seconds']);
+    }
+
     public function test_a_storyboard_with_missing_timings_is_rejected(): void
     {
         Storage::fake('public');

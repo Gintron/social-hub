@@ -126,8 +126,8 @@ kao i jednu stavku.
 ## Citat (`kind: quote`)
 
 Tekst koji se objavljuje kao on sam: izreka, stih, misao dana. Hub ne zna što je tekst ni na kojem je
-jeziku; boje i logo daje brend, riječi daje izvor. Predložak `kinds/quote-*` crta tekst velikim slovima
-i izvor ispod; video je kartica pa poziv na akciju brenda.
+jeziku; boje i logo daje brend, riječi daje izvor. Predložak `kinds/quote-*` crta tekst krupnim slovima
+(sitnijim što je dulji) i izvor ispod, onako kako je napisan; video je kartica pa poziv na akciju brenda.
 
 | Polje | Značenje u citatu |
 |---|---|
@@ -135,7 +135,7 @@ i izvor ispod; video je kartica pa poziv na akciju brenda.
 | `subtitle` | Čiji je ili odakle je (osoba, knjiga i stih). Ide ispod teksta i u opis objave nakon crte. |
 | `facts`, `badges`, `price` | Prazni. Citat nema brojke; hub ih ne crta. |
 | `cta.label` | Neobavezno: redak ispod opisa na Facebook stranici („👇 …“), link ide u prvi komentar. Hub ne dodaje vlastitu riječ, pa se jezik retka bira ovdje. |
-| `url` | Javna stranica citata (obavezna kao i za svaku stavku; `LinkPreflight` je provjerava prije objave). |
+| `url` | Javna stranica citata (obavezna kao i za svaku stavku; `LinkPreflight` je provjerava prije objave). Na Facebook stranici ide u prvi komentar kao „👉 url“ **i bez** `cta.label`, pa neka bude stranica na koju vrijedi poslati ljude. |
 | `tags` | Hashtagovi uz one koje brend ima zadane (`voice.hashtags`); najviše 5 na Instagramu i TikToku, na Facebook stranici samo brendovi (do 3). |
 | `raw.emoji` | Neobavezno: oznaka uz stavku umjesto zadane 💬. |
 | `expires_at` | Kraj dana na koji citat pripada: zakašnjeli ne izlazi kao današnji, preskače se. |

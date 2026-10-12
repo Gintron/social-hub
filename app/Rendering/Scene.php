@@ -42,11 +42,15 @@ final readonly class Scene
             return null;
         }
 
-        $words = count(preg_split('/\s+/u', mb_trim((string) $this->item->title), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        $text = mb_trim((string) $this->item->title);
+        $words = count(preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: []);
 
-        // A second to take the card in, then about three words a second. A slide is held at most ten
-        // seconds (VideoRenderer), so a text of more than ~27 words is read faster than that: the
-        // source keeps what it sends for a video short, the hub does not cut it.
-        return min(10.0, max(4.0, 1.0 + $words / 3));
+        // A second to take the card in, then about three words a second. Words are what a reader of most
+        // languages counts and characters what a text written without spaces is made of, so whichever
+        // says more. A slide is held at most MAX_SLIDE_SECONDS, so a text of more than ~27 words is read
+        // faster than that: the source keeps what it sends for a video short, the hub does not cut it.
+        $reading = max($words / 3, mb_strlen($text) / 20);
+
+        return min(VideoRenderer::MAX_SLIDE_SECONDS, max(4.0, 1.0 + $reading));
     }
 }

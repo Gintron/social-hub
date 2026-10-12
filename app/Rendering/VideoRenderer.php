@@ -51,6 +51,11 @@ final class VideoRenderer
     public const END_CARD_SECONDS = 3.5;
 
     /**
+     * The longest one slide stays up, whoever sets it: a storyboard, or the time a text needs to be read.
+     */
+    public const MAX_SLIDE_SECONDS = 10.0;
+
+    /**
      * Stored as the asset's template_key, so a draft's video can be found and reused.
      */
     public const TEMPLATE_KEY = 'video/slideshow';
@@ -89,6 +94,9 @@ final class VideoRenderer
      * @param  string|null  $audioPath  Absolute path to a track to play underneath; null keeps a silent track.
      * @param  list<float>|null  $slideSeconds  Explicit storyboard timings, one per slide.
      * @param  Narration|null  $narration  What is said over the slides, one clip each (null where a slide is left to the music).
+     * @param  list<float|null>|null  $minimumSeconds  What each slide needs to be read, one per slide (null where the default
+     *                                                 is enough). A hold only grows to it, up to MAX_SLIDE_SECONDS, so the end
+     *                                                 card and a roundup's cover keep their own rules; a storyboard is left as written.
      */
     public function slideshow(
         Brand $brand,
@@ -100,6 +108,7 @@ final class VideoRenderer
         bool $motion = true,
         ?array $slideSeconds = null,
         ?Narration $narration = null,
+        ?array $minimumSeconds = null,
     ): MediaAsset {
         if ($slides->isEmpty()) {
             throw new RuntimeException('Video treba barem jedan slajd.');
@@ -140,7 +149,7 @@ final class VideoRenderer
         $durations = $this->durations($count, $secondsPerSlide, $lastSlideSeconds);
 
         if ($slideSeconds !== null) {
-            if (count($slideSeconds) !== $count || array_any($slideSeconds, fn ($seconds): bool => ! is_numeric($seconds) || ! is_finite((float) $seconds) || $seconds < 1.5 || $seconds > 10)) {
+            if (count($slideSeconds) !== $count || array_any($slideSeconds, fn ($seconds): bool => ! is_numeric($seconds) || ! is_finite((float) $seconds) || $seconds < 1.5 || $seconds > self::MAX_SLIDE_SECONDS)) {
                 throw new RuntimeException('Svaki slajd treba trajanje od 1,5 do 10 sekundi.');
             }
 
@@ -150,6 +159,12 @@ final class VideoRenderer
             $durations[0] = $slides->first()->template_key === 'kinds/job-digest-cover-story'
                 ? max(3.0, $secondsPerSlide)
                 : min($jobVideo ? 2.4 : 2.5, $secondsPerSlide);
+        }
+
+        if ($slideSeconds === null && $minimumSeconds !== null) {
+            foreach ($durations as $i => $seconds) {
+                $durations[$i] = max($seconds, min(self::MAX_SLIDE_SECONDS, (float) ($minimumSeconds[$i] ?? 0.0)));
+            }
         }
 
         if ($narration !== null) {

@@ -21,6 +21,7 @@
     default => 54,
   };
   $size = (int) round($base * $scale);
+  $serif = '"Noto Serif", "Liberation Serif", "DejaVu Serif", Georgia, serif';
 @endphp
 
 @section('styles')
@@ -28,9 +29,9 @@
   .quote { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
            text-align: center; padding: {{ $story ? '200px 90px 40px' : '60px 84px 40px' }}; gap: {{ $story ? 44 : 32 }}px;
            background: radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 60%), {{ $brand['primary'] }}; }
-  .quote .mark { font-family: "Noto Serif", "Liberation Serif", "DejaVu Serif", Georgia, serif; font-size: {{ (int) round(220 * $scale) }}px;
+  .quote .mark { font-family: {!! $serif !!}; font-size: {{ (int) round(220 * $scale) }}px;
                  line-height: .6; height: {{ (int) round(110 * $scale) }}px; color: {{ $brand['accent'] }}; font-weight: 700; }
-  .quote .text { font-family: "Noto Serif", "Liberation Serif", "DejaVu Serif", Georgia, serif; font-weight: 600;
+  .quote .text { font-family: {!! $serif !!}; font-weight: 600;
                  font-size: {{ $size }}px; line-height: 1.22; letter-spacing: -0.3px; white-space: pre-line;
                  text-wrap: balance; overflow-wrap: break-word; max-width: 100%; }
   .quote .rule { width: 120px; height: 6px; border-radius: 3px; background: {{ $brand['accent'] }}; }
@@ -43,7 +44,7 @@
   <div class="quote">
     <div class="mark">“</div>
     <div class="text">{{ $item['title'] }}</div>
-    @if($item['subtitle'])
+    @if(filled($item['subtitle']))
       <div class="rule"></div>
       <div class="source">{{ $item['subtitle'] }}</div>
     @endif
