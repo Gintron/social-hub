@@ -120,6 +120,16 @@ final class Doctor extends Command
             return 'ključ i tajna postavljeni';
         }, $ok, fatal: false);
 
+        $rows[] = $this->check('YouTube config', function (): string {
+            foreach (['client_id', 'client_secret'] as $key) {
+                if (blank(config("youtube.{$key}"))) {
+                    throw new RuntimeException('YOUTUBE_'.mb_strtoupper($key).' not set (YouTube Shorts isključeni)');
+                }
+            }
+
+            return 'Google klijent postavljen, privatnost '.config('youtube.privacy');
+        }, $ok, fatal: false);
+
         $rows[] = $this->check('Meta app config', function (): string {
             foreach (['app_id', 'app_secret'] as $key) {
                 if (blank(config("meta.{$key}"))) {

@@ -171,6 +171,10 @@ final class EditPostDraft extends EditRecord
                 'delivery' => (string) $variant->setting('delivery', 'direct'),
                 'privacy_level' => (string) $variant->setting('privacy_level', config('tiktok.default_privacy_level', 'SELF_ONLY')),
                 'auto_add_music' => (bool) $variant->setting('auto_add_music', true),
+                // Only a YouTube channel has a visibility to choose; the others would carry an unused key.
+                ...($variant->platform === Platform::YouTube
+                    ? ['privacy' => (string) $variant->setting('privacy', config('youtube.privacy', 'public'))]
+                    : []),
             ]])
             ->all();
 
@@ -199,7 +203,7 @@ final class EditPostDraft extends EditRecord
                 $variant,
                 caption: array_key_exists('caption', $state) ? (string) $state['caption'] : null,
                 enabled: array_key_exists('enabled', $state) ? (bool) $state['enabled'] : null,
-                settings: Arr::only($state, ['delivery', 'privacy_level', 'auto_add_music']),
+                settings: Arr::only($state, ['delivery', 'privacy_level', 'privacy', 'auto_add_music']),
             );
         }
 

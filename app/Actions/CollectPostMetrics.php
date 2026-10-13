@@ -10,6 +10,7 @@ use App\Metrics\Contracts\MetricsFetcher;
 use App\Metrics\FacebookMetrics;
 use App\Metrics\InstagramMetrics;
 use App\Metrics\TikTokMetrics;
+use App\Metrics\YouTubeMetrics;
 use App\Models\PostMetric;
 use App\Models\PostVariant;
 use Carbon\CarbonImmutable;
@@ -36,6 +37,7 @@ final class CollectPostMetrics
         private readonly InstagramMetrics $instagram,
         private readonly FacebookMetrics $facebook,
         private readonly TikTokMetrics $tiktok,
+        private readonly YouTubeMetrics $youtube,
     ) {}
 
     public function execute(PostVariant $variant): ?PostMetric
@@ -73,7 +75,7 @@ final class CollectPostMetrics
         return PostVariant::query()
             ->with(['latestMetric', 'account'])
             ->whereIn('status', [VariantStatus::Published->value, VariantStatus::ManualDone->value])
-            ->whereIn('platform', [Platform::FacebookPage->value, Platform::InstagramBusiness->value, Platform::TikTok->value])
+            ->whereIn('platform', [Platform::FacebookPage->value, Platform::InstagramBusiness->value, Platform::TikTok->value, Platform::YouTube->value])
             ->whereNotNull('external_post_id')
             ->where(fn ($query) => $query
                 ->where('published_at', '>=', $now->subDays(self::STOP_AFTER_DAYS))
@@ -100,6 +102,7 @@ final class CollectPostMetrics
             Platform::InstagramBusiness => $this->instagram,
             Platform::FacebookPage => $this->facebook,
             Platform::TikTok => $this->tiktok,
+            Platform::YouTube => $this->youtube,
             // A group post is pasted by a person; there is no API to ask.
             Platform::FacebookGroup => null,
         };

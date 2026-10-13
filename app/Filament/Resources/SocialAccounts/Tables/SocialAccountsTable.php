@@ -10,6 +10,8 @@ use App\Models\SocialAccount;
 use App\Publishing\Exceptions\PublishException;
 use App\Publishing\Meta\GraphClient;
 use App\Publishing\TikTok\Business\TikTokBusinessClient;
+use App\Publishing\YouTube\YouTubeClient;
+use App\Publishing\YouTube\YouTubeTokens;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -40,9 +42,11 @@ final class SocialAccountsTable
                         && ($record->platform !== Platform::TikTok || config('tiktok.driver') === 'business'))
                     ->action(function (SocialAccount $record): void {
                         try {
-                            $answer = $record->platform === Platform::TikTok
-                                ? self::tiktok($record)
-                                : self::meta($record);
+                            $answer = match ($record->platform) {
+                                Platform::TikTok => self::tiktok($record),
+                                Platform::YouTube => self::youtube($record),
+                                default => self::meta($record),
+                            };
                             $record->forceFill(['status' => AccountStatus::Active, 'last_verified_at' => now()])->save();
                             Notification::make()->title('Token radi')->body($answer)->success()->send();
                         } catch (PublishException $e) {
@@ -61,6 +65,15 @@ final class SocialAccountsTable
         $me = app(GraphClient::class)->get($record->external_id, ['fields' => 'id,name,username'], (string) $record->access_token, 'verify');
 
         return 'Graph API vraća: '.($me['name'] ?? $me['username'] ?? $me['id'] ?? '?');
+    }
+
+    private static function youtube(SocialAccount $record): string
+    {
+        $token = app(YouTubeTokens::class)->accessTokenFor($record);
+        $data = app(YouTubeClient::class)->get('channels', ['part' => 'snippet', 'mine' => 'true'], $token, 'verify');
+        $channel = $data['items'][0] ?? null;
+
+        return 'YouTube vraća: '.(is_array($channel) ? (string) ($channel['snippet']['title'] ?? $channel['id'] ?? '?') : 'nema kanala');
     }
 
     private static function tiktok(SocialAccount $record): string

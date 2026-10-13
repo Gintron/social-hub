@@ -59,6 +59,20 @@ final class ListSocialAccounts extends ListRecords
                     $livewire->redirect(route($route, ['brand' => (int) $data['brand_id']]), navigate: false);
                 }),
 
+            Action::make('connect_youtube')
+                ->label('Poveži YouTube')
+                ->icon(Heroicon::OutlinedPlayCircle)
+                ->color('gray')
+                ->modalDescription('Otvara Google dijalog za pristanak. Prijavi se Google računom koji upravlja kanalom brenda i odaberi taj kanal. Hub traži pravo na upload videa i čitanje statistike kanala.')
+                ->modalSubmitActionLabel('Nastavi na Google')
+                ->visible(fn (): bool => filled(config('youtube.client_id')))
+                ->schema([
+                    Select::make('brand_id')->label('Brend')->options(Brand::query()->orderBy('name')->pluck('name', 'id'))->required(),
+                ])
+                ->action(function (array $data, Component $livewire): void {
+                    $livewire->redirect(route('youtube.connect', ['brand' => (int) $data['brand_id']]), navigate: false);
+                }),
+
             Action::make('discover')
                 ->label('Zalijepi token ručno')
                 ->icon(Heroicon::OutlinedCloudArrowDown)

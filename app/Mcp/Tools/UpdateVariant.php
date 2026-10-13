@@ -34,6 +34,7 @@ final class UpdateVariant extends Tool
             'enabled' => ['nullable', 'boolean'],
             'format' => ['nullable', 'string', 'in:'.implode(',', array_column(ContentFormat::cases(), 'value'))],
             'voiceover' => ['nullable', 'boolean'],
+            'privacy' => ['nullable', 'string', 'in:public,unlisted,private'],
         ]);
 
         $variant = PostVariant::query()->with(['account', 'media', 'draft'])->find($validated['variant_id']);
@@ -55,6 +56,7 @@ final class UpdateVariant extends Tool
                 $variant,
                 caption: filled($validated['caption'] ?? null) ? (string) $validated['caption'] : null,
                 enabled: isset($validated['enabled']) ? (bool) $validated['enabled'] : null,
+                settings: filled($validated['privacy'] ?? null) ? ['privacy' => (string) $validated['privacy']] : [],
             );
         } catch (InvalidArgumentException $e) {
             return Response::make(Response::error($e->getMessage()));
@@ -72,8 +74,9 @@ final class UpdateVariant extends Tool
             'variant_id' => $schema->integer()->description('Variant id from hub.list_drafts.')->required(),
             'caption' => $schema->string()->description('Replacement text for this channel.'),
             'enabled' => $schema->boolean()->description('false parks this channel so publishing skips it.'),
-            'format' => $schema->string()->description('image, carousel, video or link. Facebook page: all four; Instagram: image, carousel, video (Reel); TikTok: video only; Facebook group: image, carousel, link.'),
+            'format' => $schema->string()->description('image, carousel, video or link. Facebook page: all four; Instagram: image, carousel, video (Reel); TikTok and YouTube Shorts: video only; Facebook group: image, carousel, link.'),
             'voiceover' => $schema->boolean()->description('true narrates this channel\'s video with the brand\'s ElevenLabs voice, false makes it music only. Video channels only; the brand needs a voice chosen.'),
+            'privacy' => $schema->string()->description('YouTube Shorts only: public, unlisted or private. While the project is not audited Google keeps uploads private whatever is asked.'),
         ];
     }
 }

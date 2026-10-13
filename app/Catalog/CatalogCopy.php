@@ -23,6 +23,9 @@ final class CatalogCopy
 
     public const WHERE_BIO = 'bio';
 
+    /** A YouTube video's link is its description, where it is clickable: nothing is posted after the video. */
+    public const WHERE_DESCRIPTION = 'description';
+
     /**
      * The four sentences, in the order they are said: the news, what to do, the call, where the link is.
      *
@@ -43,9 +46,23 @@ final class CatalogCopy
      */
     public static function linkSentence(string $where): string
     {
-        return $where === self::WHERE_BIO
-            ? 'Poveznica do aplikacije je u biografiji.'
-            : 'Poveznica do aplikacije je u komentaru.';
+        return match ($where) {
+            self::WHERE_BIO => 'Poveznica do aplikacije je u biografiji.',
+            self::WHERE_DESCRIPTION => 'Poveznica do aplikacije je u opisu.',
+            default => 'Poveznica do aplikacije je u komentaru.',
+        };
+    }
+
+    /**
+     * Where a platform's video says its link is: what config/catalog_video.php names, and a comment otherwise.
+     */
+    public static function where(Platform $platform): string
+    {
+        return match (config("catalog_video.link_in.{$platform->value}")) {
+            self::WHERE_BIO => self::WHERE_BIO,
+            self::WHERE_DESCRIPTION => self::WHERE_DESCRIPTION,
+            default => self::WHERE_COMMENT,
+        };
     }
 
     /**

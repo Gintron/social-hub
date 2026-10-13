@@ -42,12 +42,13 @@ final class PrepareVariantMedia
     ) {}
 
     /**
-     * Vertical for TikTok, where a photo or video fills the screen; 4:5 portrait elsewhere, the
-     * tallest image a Facebook or Instagram feed shows uncropped — more of the screen than a square.
+     * Vertical for TikTok and YouTube Shorts, where a photo or video fills the screen; 4:5 portrait
+     * elsewhere, the tallest image a Facebook or Instagram feed shows uncropped — more of the screen
+     * than a square.
      */
     public static function orientation(Platform $platform): string
     {
-        return $platform === Platform::TikTok ? 'story' : 'portrait';
+        return in_array($platform, [Platform::TikTok, Platform::YouTube], true) ? 'story' : 'portrait';
     }
 
     public static function digestCover(string $orientation): string

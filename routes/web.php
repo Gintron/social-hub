@@ -7,6 +7,7 @@ use App\Http\Controllers\Meta\MetaWebhookController;
 use App\Http\Controllers\TikTok\TikTokBusinessOAuthController;
 use App\Http\Controllers\TikTok\TikTokOAuthController;
 use App\Http\Controllers\VoiceoverAudioController;
+use App\Http\Controllers\YouTube\YouTubeOAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
@@ -35,6 +36,13 @@ Route::middleware(['web', 'auth'])->group(function (): void {
      */
     Route::get('/tiktok/business/connect/{brand}', [TikTokBusinessOAuthController::class, 'connect'])->name('tiktok.business.connect');
     Route::get('/tiktok/business/callback/', [TikTokBusinessOAuthController::class, 'callback'])->name('tiktok.business.callback');
+
+    /*
+     * YouTube through Google's OAuth. The redirect URI registered in the Google client must equal
+     * YOUTUBE_REDIRECT_URI exactly. See docs/youtube.md.
+     */
+    Route::get('/youtube/connect/{brand}', [YouTubeOAuthController::class, 'connect'])->name('youtube.connect');
+    Route::get('/youtube/callback', [YouTubeOAuthController::class, 'callback'])->name('youtube.callback');
 
     // Listening to a voice sample from the brand form; the clips are on a private disk.
     Route::get('/voiceovers/{voiceover}/audio', VoiceoverAudioController::class)->name('voiceovers.audio');

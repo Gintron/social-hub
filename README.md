@@ -94,6 +94,7 @@ razmiču 45 minuta da deset novih oglasa ne postane deset objava u istoj minuti.
 | Instagram Reels | isti spremnik s `media_type=REELS`, naslovnica je prvi slajd videa |
 | Facebook Reels | upload sesija na `rupload.facebook.com`, pa `finish` s opisom |
 | TikTok | `creator_info` → `video/init` (PULL_FROM_URL) → čekanje na `PUBLISH_COMPLETE` |
+| YouTube Shorts | Google OAuth, pa resumable upload: sesija s `snippet`/`status`, zatim `PUT` videa na `Location`; `201` s `id`-em. Postavljanje i audit u [docs/youtube.md](docs/youtube.md) |
 
 Prije svakog Instagram poziva hub provjeri format, omjer, veličinu, duljinu teksta, broj hashtagova i
 dnevnu kvotu, pa greške dolaze kao razumljiva poruka, a ne kao Metin „Invalid parameter".

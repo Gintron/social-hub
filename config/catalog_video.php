@@ -22,12 +22,14 @@ return [
      * The call to action the video says and shows, by the owner's decision of 3 Oct 2026: where the link is, not what the
      * app costs. `comment` is true on Facebook and on Instagram, where the hub leaves the first comment. TikTok has
      * no commenting in the hub (docs/catalog-video.md § TikTok), so what a TikTok video should say is open: `bio`
-     * says "Poveznica do aplikacije je u biografiji." and changes nothing else.
+     * says "Poveznica do aplikacije je u biografiji." and changes nothing else. YouTube has `description`: the link is in the
+     * description, where it is clickable, so nothing is posted after the video (the caption carries the tracked address).
      */
     'link_in' => [
         'fb_page' => 'comment',
         'ig_business' => 'comment',
         'tiktok' => 'comment',
+        'youtube' => 'description',
     ],
 
     /*
@@ -40,6 +42,7 @@ return [
         'fb_page' => false,
         'ig_business' => true,
         'tiktok' => true,
+        'youtube' => false,
     ],
 
     /*

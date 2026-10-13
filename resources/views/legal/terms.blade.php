@@ -17,7 +17,7 @@
 
     <p>
         Social Hub je interni alat za planiranje i objavljivanje sadržaja na društvenim mrežama
-        (Facebook, Instagram, TikTok) u ime brendova studentski-poslovi.hr, radim.hr i uselisto.com
+        (Facebook, Instagram, TikTok, YouTube) u ime brendova studentski-poslovi.hr, radim.hr i uselisto.com
         (Listo). Nije samostalan proizvod niti javna usluga — nema registracije, korisničkih računa ni
         funkcija namijenjenih krajnjim potrošačima.
     </p>
@@ -30,7 +30,7 @@
 
     <h2>Povezivanje društvenih računa</h2>
     <p>
-        Vlasnik poslovnog Facebook, Instagram ili TikTok računa svjesno povezuje taj račun s alatom
+        Vlasnik poslovnog Facebook, Instagram, TikTok ili YouTube računa svjesno povezuje taj račun s alatom
         (OAuth prijavom kroz službeni dijalog dotične mreže) kako bi alat u njegovo ime objavljivao
         sadržaj koji tim unaprijed pripremi, pregleda i odobri. Svaka objava prolazi kroz ljudsko
         odobrenje prije nego što ode na mrežu; alat sam ne odlučuje što objaviti.

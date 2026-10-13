@@ -16,9 +16,11 @@ use App\Models\AgentRun;
 use App\Models\Brand;
 use App\Models\ContentItem;
 use App\Models\PostDraft;
+use App\Models\PostVariant;
 use App\Models\SocialAccount;
 use App\Models\Source;
 use App\Notifications\DraftsAwaitingApproval;
+use App\Publishing\YouTube\YouTubePreflight;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -220,6 +222,28 @@ final class AgentDrafterTest extends TestCase
         $this->artisan('hub:agent-draft')
             ->expectsOutputToContain('OPENAI_API_KEY')
             ->assertFailed();
+    }
+
+    public function test_a_youtube_channel_gets_the_agent_title_and_description_with_its_link_and_tags(): void
+    {
+        [$brand] = $this->brandWithItems(1);
+        SocialAccount::factory()->for($brand)->create(['platform' => Platform::YouTube, 'external_id' => 'UC123']);
+
+        $this->writer->queue(FakeCaptionWriter::captions(
+            tiktok: "Konobar/ica u Splitu\n\nPosluživanje i rad u smjenama.",
+            hashtags: '#posao #split',
+        ));
+
+        app(AgentDrafter::class)->run($brand, limit: 1);
+
+        $variant = PostVariant::query()->where('platform', Platform::YouTube)->firstOrFail();
+        [$title, $description] = YouTubePreflight::split($variant->caption);
+
+        // The TikTok text is the same title and description; the Short adds its link and tags.
+        $this->assertSame('Konobar/ica u Splitu', $title);
+        $this->assertStringContainsString('Posluživanje i rad u smjenama.', $description);
+        $this->assertStringContainsString('🔗 ', $variant->caption);
+        $this->assertStringEndsWith('#Shorts #posao #split', $variant->caption);
     }
 
     /**

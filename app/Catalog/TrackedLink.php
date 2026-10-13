@@ -47,6 +47,7 @@ final class TrackedLink
             Platform::TikTok => 'tiktok',
             Platform::InstagramBusiness => 'instagram',
             Platform::FacebookPage => 'facebook',
+            Platform::YouTube => 'youtube',
             // A group post is pasted by hand and is not one of the measured channels.
             Platform::FacebookGroup => null,
         };

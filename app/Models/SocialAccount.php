@@ -66,6 +66,11 @@ final class SocialAccount extends Model
             return true;
         }
 
+        // The access token is traded for a fresh one when it is used (YouTubeTokens), so only the grant matters.
+        if ($this->platform->refreshesTokenOnUse()) {
+            return filled($this->refresh_token);
+        }
+
         return filled($this->access_token)
             && ($this->token_expires_at === null || $this->token_expires_at->isFuture());
     }

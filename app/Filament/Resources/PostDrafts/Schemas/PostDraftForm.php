@@ -13,10 +13,12 @@ use App\Enums\VariantStatus;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
 use App\Publishing\FormatCheck;
+use App\Publishing\YouTube\YouTubePreflight;
 use App\Rendering\Scene;
 use App\Rendering\ScenePlanner;
 use App\Rendering\TemplateRegistry;
 use App\Rendering\VideoRenderer;
+use App\Support\Utf16;
 use App\Voiceover\Narrator;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
@@ -166,6 +168,18 @@ final class PostDraftForm
                             // API for Business has no privacy level: a direct post is public.
                             ->visible(fn (Get $get): bool => $platform === Platform::TikTok && $get("{$path}.delivery") !== 'inbox'
                                 && config('tiktok.driver') !== 'business'),
+
+                        Select::make("{$path}.privacy")
+                            ->label('Vidljivost na YouTubeu')
+                            ->options([
+                                'public' => 'Javno',
+                                'unlisted' => 'Nepopisano (samo tko ima poveznicu)',
+                                'private' => 'Privatno (samo ti)',
+                            ])
+                            ->selectablePlaceholder(false)
+                            ->disabled($locked)
+                            ->helperText('Dok projekt ne prođe YouTube audit, Google uploade iz njega ostavi privatnima, bez greške. Hub zapisuje što je Google vratio.')
+                            ->visible($platform === Platform::YouTube),
                     ]),
 
                     Group::make([
@@ -203,6 +217,7 @@ final class PostDraftForm
             Platform::InstagramBusiness => 'Instagram',
             Platform::FacebookGroup => 'FB grupa',
             Platform::TikTok => 'TikTok',
+            Platform::YouTube => 'YouTube',
         };
 
         return $nameAccount && filled($variant->account?->name) ? "{$platform} · {$variant->account->name}" : $platform;
@@ -219,13 +234,19 @@ final class PostDraftForm
     }
 
     /**
-     * A video on Meta goes out as a Reel; people know it by that name.
+     * A video on Meta goes out as a Reel and on YouTube as a Short; people know it by that name.
      */
     private static function formatLabel(Platform $platform, ContentFormat $format): string
     {
-        return $format === ContentFormat::Video && in_array($platform, [Platform::FacebookPage, Platform::InstagramBusiness], true)
-            ? 'Reel'
-            : $format->label();
+        if ($format !== ContentFormat::Video) {
+            return $format->label();
+        }
+
+        return match ($platform) {
+            Platform::FacebookPage, Platform::InstagramBusiness => 'Reel',
+            Platform::YouTube => 'Short',
+            default => $format->label(),
+        };
     }
 
     private static function formatHelp(Platform $platform): string
@@ -234,6 +255,7 @@ final class PostDraftForm
             Platform::FacebookPage => 'Link: samo tekst s pregledom stranice. Reel: uspravni video.',
             Platform::InstagramBusiness => 'Carousel: 2–10 slika istog omjera. Reel: uspravni video.',
             Platform::TikTok => 'Uvijek video: slajdovi s pokretom i zvukom.',
+            Platform::YouTube => 'Uvijek video: uspravni Short, do 3 minute.',
             Platform::FacebookGroup => 'Tekst i medij zalijepiš u grupu ručno.',
         };
     }
@@ -489,6 +511,17 @@ final class PostDraftForm
     {
         $length = mb_strlen($caption);
         $hashtags = preg_match_all('/#[\p{L}\p{N}_]+/u', $caption);
+
+        if ($platform === Platform::YouTube) {
+            [$title, $description] = YouTubePreflight::split($caption);
+            $titleUnits = Utf16::length($title);
+            $titleLimit = (int) config('youtube.title_chars', 100);
+            $descriptionBytes = mb_strlen($description, '8bit');
+            $descriptionLimit = (int) config('youtube.description_bytes', 5000);
+            $warn = $titleUnits > $titleLimit ? ' — NASLOV PREDUGAČAK' : '';
+
+            return "naslov {$titleUnits}/{$titleLimit}{$warn} · opis {$descriptionBytes}/{$descriptionLimit} B · {$hashtags} hashtagova";
+        }
 
         if ($platform === Platform::InstagramBusiness) {
             $limit = (int) config('hub.limits.ig_caption_chars', 2200);

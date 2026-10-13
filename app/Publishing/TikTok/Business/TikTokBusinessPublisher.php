@@ -11,6 +11,7 @@ use App\Publishing\Contracts\Publisher;
 use App\Publishing\Exceptions\PermanentPublishException;
 use App\Publishing\Exceptions\TransientPublishException;
 use App\Publishing\PublishResult;
+use App\Support\Utf16;
 
 /**
  * Publishing through TikTok API for Business (Accounts API).
@@ -87,25 +88,6 @@ final class TikTokBusinessPublisher implements Publisher
         return new PublishResult((string) $shareId, null, ['share_id' => $shareId], handedToCreator: $inbox);
     }
 
-    private static function utf16Cut(string $text, int $max): string
-    {
-        $units = 0;
-        $out = '';
-
-        foreach (mb_str_split($text) as $char) {
-            $width = mb_ord($char) > 0xFFFF ? 2 : 1;
-
-            if ($units + $width > $max) {
-                break;
-            }
-
-            $units += $width;
-            $out .= $char;
-        }
-
-        return $out;
-    }
-
     /**
      * @param  array<string, mixed>  $settings
      * @return array<string, mixed>
@@ -119,7 +101,7 @@ final class TikTokBusinessPublisher implements Publisher
         }
 
         return [
-            'caption' => self::utf16Cut($caption, self::MAX_CAPTION),
+            'caption' => Utf16::cut($caption, self::MAX_CAPTION),
             ...$this->disclosure($variant),
             'disable_comment' => (bool) $variant->setting('disable_comment', (bool) ($settings['comment_disabled'] ?? false)),
             'disable_duet' => (bool) $variant->setting('disable_duet', (bool) ($settings['duet_disabled'] ?? false)),

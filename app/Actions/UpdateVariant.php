@@ -18,7 +18,7 @@ final class UpdateVariant
      * Settings a person or the agent may set here; anything else is the hub's own bookkeeping.
      */
     public const EDITABLE_SETTINGS = [
-        'delivery', 'privacy_level', 'disable_comment', 'disable_duet', 'disable_stitch',
+        'delivery', 'privacy_level', 'privacy', 'disable_comment', 'disable_duet', 'disable_stitch',
         'auto_add_music', 'first_comment', 'share_to_feed', 'voiceover', 'ai_generated',
     ];
 

@@ -13,6 +13,7 @@ enum Platform: string implements HasColor, HasLabel
     case InstagramBusiness = 'ig_business';
     case FacebookGroup = 'fb_group';
     case TikTok = 'tiktok';
+    case YouTube = 'youtube';
 
     public function label(): string
     {
@@ -21,6 +22,7 @@ enum Platform: string implements HasColor, HasLabel
             self::InstagramBusiness => 'Instagram',
             self::FacebookGroup => 'Facebook grupa (ručno)',
             self::TikTok => 'TikTok',
+            self::YouTube => 'YouTube Shorts',
         };
     }
 
@@ -38,7 +40,19 @@ enum Platform: string implements HasColor, HasLabel
     }
 
     /**
+     * Platforms whose access token is traded for a fresh one when it is used, not kept alive by a
+     * schedule: Google's lasts an hour. For these an expired access token is no reason to refuse the
+     * account; the refresh token is what has to be there (SocialAccount::isUsable()).
+     */
+    public function refreshesTokenOnUse(): bool
+    {
+        return $this === self::YouTube;
+    }
+
+    /**
      * What this channel can post, in the order the review screen offers it.
+     *
+     * YouTube Shorts is a video too: one vertical file, which is all the upload takes.
      *
      * TikTok is always a video — the same slides, set to motion and sound. Its API for Business
      * publishes nothing else, and a photo format saved earlier (a rule, a digest series) falls back
@@ -51,7 +65,7 @@ enum Platform: string implements HasColor, HasLabel
         return match ($this) {
             self::FacebookPage => [ContentFormat::Image, ContentFormat::Carousel, ContentFormat::Video, ContentFormat::Link],
             self::InstagramBusiness => [ContentFormat::Image, ContentFormat::Carousel, ContentFormat::Video],
-            self::TikTok => [ContentFormat::Video],
+            self::TikTok, self::YouTube => [ContentFormat::Video],
             // A group post is pasted by hand; a video would have to be downloaded and uploaded again.
             self::FacebookGroup => [ContentFormat::Image, ContentFormat::Carousel, ContentFormat::Link],
         };
@@ -59,7 +73,7 @@ enum Platform: string implements HasColor, HasLabel
 
     public function defaultFormat(): ContentFormat
     {
-        return $this === self::TikTok ? ContentFormat::Video : ContentFormat::Image;
+        return in_array($this, [self::TikTok, self::YouTube], true) ? ContentFormat::Video : ContentFormat::Image;
     }
 
     /**
@@ -82,6 +96,7 @@ enum Platform: string implements HasColor, HasLabel
             self::InstagramBusiness => 'danger',
             self::FacebookGroup => 'gray',
             self::TikTok => 'gray',
+            self::YouTube => 'danger',
         };
     }
 }

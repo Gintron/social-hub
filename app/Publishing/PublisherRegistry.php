@@ -11,6 +11,7 @@ use App\Publishing\Meta\FacebookPagePublisher;
 use App\Publishing\Meta\InstagramPublisher;
 use App\Publishing\TikTok\Business\TikTokBusinessPublisher;
 use App\Publishing\TikTok\TikTokPublisher;
+use App\Publishing\YouTube\YouTubePublisher;
 use Illuminate\Contracts\Container\Container;
 
 final class PublisherRegistry
@@ -25,6 +26,7 @@ final class PublisherRegistry
             Platform::TikTok => $this->container->make(
                 config('tiktok.driver') === 'business' ? TikTokBusinessPublisher::class : TikTokPublisher::class,
             ),
+            Platform::YouTube => $this->container->make(YouTubePublisher::class),
             Platform::FacebookGroup => throw new PermanentPublishException('Facebook groups are posted manually; there is no API.', 'manual_only'),
         };
     }

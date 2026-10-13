@@ -42,7 +42,7 @@
         <div class="{{ $box }}" style="font-size:14px;line-height:1.5">
             Još nema očitanja za ovo razdoblje. Pregledi stižu nekoliko sati nakon objave; ako ih nema ni
             nakon dana, računima nedostaju dozvole za uvide (<code>instagram_manage_insights</code>,
-            <code>read_insights</code>, TikTok <code>video.list</code>) — dodaj ih i ponovno poveži račune.
+            <code>read_insights</code>, TikTok <code>video.list</code>, YouTube <code>youtube.readonly</code>) — dodaj ih i ponovno poveži račune.
         </div>
     @else
         @foreach ($this->getBreakdowns() as $title => $rows)

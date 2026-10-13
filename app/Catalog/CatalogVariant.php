@@ -47,7 +47,7 @@ final class CatalogVariant
             return ['link_url' => null, 'settings' => []];
         }
 
-        $where = config("catalog_video.link_in.{$platform->value}") === CatalogCopy::WHERE_BIO ? CatalogCopy::WHERE_BIO : CatalogCopy::WHERE_COMMENT;
+        $where = CatalogCopy::where($platform);
         $tracked = TrackedLink::for($demo, $platform);
         $settings = ['link_in' => $where];
 

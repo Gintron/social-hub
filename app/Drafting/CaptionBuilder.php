@@ -6,11 +6,13 @@ namespace App\Drafting;
 
 use App\Catalog\CatalogCopy;
 use App\Catalog\CatalogDemo;
+use App\Catalog\TrackedLink;
 use App\Enums\ContentKind;
 use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\ContentItem;
 use App\Rendering\TemplateData;
+use App\Support\Utf16;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -19,7 +21,8 @@ use InvalidArgumentException;
  * agent's text fails validation, and the baseline the agent is compared against.
  *
  * One shape per network: a Facebook group gets the full listing (the studentski-poslovi
- * FacebookPostFormatter layout, contacts included); a Page, Instagram and TikTok open with the hook.
+ * FacebookPostFormatter layout, contacts included); a Page, Instagram and TikTok open with the hook, and a
+ * YouTube Short with its title.
  */
 final class CaptionBuilder
 {
@@ -27,6 +30,11 @@ final class CaptionBuilder
      * Hashtags per single post where a network rewards a few relevant ones over a wall of them.
      */
     private const FEW_HASHTAGS = 5;
+
+    /**
+     * Hashtags on a YouTube Short, after #Shorts. A description is read rather than searched, so few.
+     */
+    private const SHORT_HASHTAGS = 4;
 
     /**
      * Unicode Mathematical Sans-Serif Bold for A-Z, a-z, 0-9 (social networks have no markup).
@@ -61,6 +69,7 @@ final class CaptionBuilder
         return match ($platform) {
             Platform::InstagramBusiness => $this->instagram($item, $brand),
             Platform::TikTok => $this->tiktok($item, $brand),
+            Platform::YouTube => $this->youtube($item, $brand),
             Platform::FacebookPage => $this->facebookPage($item, $brand),
             default => $this->facebook($item, $brand),
         };
@@ -136,20 +145,7 @@ final class CaptionBuilder
      */
     public function tiktok(ContentItem $item, Brand $brand): string
     {
-        $hook = Highlights::figure($item) !== null ? $this->figureText($item) : (Highlights::points($item, 1)[0] ?? null);
-        $sections = [$this->emoji($item).' '.$item->title.($hook !== null ? ' · '.$hook : '')];
-
-        $details = array_filter([
-            filled($item->subtitle) ? (string) $item->subtitle : null,
-            ...Highlights::points($item, 2),
-        ]);
-        if ($details !== []) {
-            $sections[] = implode(' · ', $details);
-        }
-
-        if (($item->badges ?? []) !== []) {
-            $sections[] = implode(' · ', array_map(fn (string $badge): string => '✅ '.$badge, $item->badges));
-        }
+        $sections = $this->shortOpening($item);
 
         if (($pitch = $this->pitch($brand)) !== null) {
             $sections[] = $pitch;
@@ -167,6 +163,39 @@ final class CaptionBuilder
     }
 
     /**
+     * A YouTube Short. The first line is the title and the rest is the description, as YouTube takes them
+     * (YouTubePreflight::split). Unlike TikTok, a description keeps its link, so the item's page goes in,
+     * and #Shorts marks the upload.
+     *
+     * `$text` and `$hashtags` are the agent's TikTok text and tags when it wrote them: the text's first line
+     * is the title, and the text has no links, which is what this adds.
+     *
+     * @param  list<string>|null  $hashtags
+     */
+    public function youtube(ContentItem $item, Brand $brand, ?string $text = null, ?array $hashtags = null): string
+    {
+        $body = $text !== null ? self::tidy($text) : $this->youtubeText($item, $brand);
+        [$title, $rest] = array_pad(explode("\n", $body, 2), 2, '');
+
+        $sections = [$this->titleLine(mb_trim($title))];
+
+        if (mb_trim($rest) !== '') {
+            $sections[] = mb_trim($rest);
+        }
+
+        $link = filled($item->url) ? $item->url : $brand->site_url;
+
+        if (filled($link)) {
+            $sections[] = '🔗 '.$link;
+        }
+
+        $tags = $hashtags !== null && $hashtags !== [] ? $hashtags : $this->hashtags($item, $brand);
+        $sections[] = implode(' ', ['#Shorts', ...array_slice($tags, 0, self::SHORT_HASHTAGS)]);
+
+        return self::tidy(implode("\n\n", $sections));
+    }
+
+    /**
      * Caption for a carousel that collects several items: a headline, then a numbered line per
      * slide so the reader can follow along while swiping.
      *
@@ -175,7 +204,9 @@ final class CaptionBuilder
     public function digest(Platform $platform, \Illuminate\Support\Collection $items, Brand $brand, string $headline): string
     {
         $instagram = $platform === Platform::InstagramBusiness || $platform === Platform::TikTok;
-        $sections = [$instagram ? $headline : self::bold($headline)];
+        // Instagram, TikTok and YouTube show the text as typed: a Unicode-bold headline is not searchable there.
+        $plain = $instagram || $platform === Platform::YouTube;
+        $sections = [$plain ? $headline : self::bold($headline)];
 
         $lines = [];
 
@@ -191,7 +222,14 @@ final class CaptionBuilder
 
         $sections[] = implode("\n", $lines);
 
-        if ($instagram) {
+        if ($platform === Platform::YouTube) {
+            // A description keeps its link, so the brand's page goes in; #Shorts marks the upload.
+            if (filled($brand->site_url)) {
+                $sections[] = 'Sve ponude: '.$brand->site_url;
+            }
+
+            $sections[] = implode(' ', ['#Shorts', ...array_slice($this->hashtags($items->first(), $brand), 0, self::SHORT_HASHTAGS)]);
+        } elseif ($instagram) {
             if (($pitch = $this->pitch($brand)) !== null) {
                 $sections[] = $pitch;
             }
@@ -354,9 +392,63 @@ final class CaptionBuilder
             return self::tidy(CatalogCopy::caption($platform, $item, $brand, $demo)."\n\n👉 ".$link);
         }
 
-        $where = config("catalog_video.link_in.{$platform->value}") === CatalogCopy::WHERE_BIO ? CatalogCopy::WHERE_BIO : CatalogCopy::WHERE_COMMENT;
+        $where = CatalogCopy::where($platform);
+
+        // A YouTube description is where the link is, and it is clickable there: the tracked address goes into the text.
+        if ($where === CatalogCopy::WHERE_DESCRIPTION) {
+            $link = TrackedLink::for($demo, $platform)['url'] ?? $demo->appUrl ?? $item->url;
+
+            return self::tidy(CatalogCopy::caption($platform, $item, $brand, $demo, $where)."\n\n🔗 ".$link);
+        }
 
         return self::tidy(CatalogCopy::caption($platform, $item, $brand, $demo, $where));
+    }
+
+    private function youtubeText(ContentItem $item, Brand $brand): string
+    {
+        $sections = $this->shortOpening($item);
+
+        if (($pitch = $this->pitch($brand)) !== null) {
+            $sections[] = $pitch;
+        }
+
+        return implode("\n\n", $sections);
+    }
+
+    /**
+     * YouTube shows a title of up to 100 characters. A longer headline is cut with an ellipsis, so a draft
+     * from the feed does not fail to publish over its own headline; a title typed by hand is refused instead.
+     */
+    private function titleLine(string $line): string
+    {
+        $limit = (int) config('youtube.title_chars', 100);
+
+        return Utf16::length($line) <= $limit ? $line : mb_rtrim(Utf16::cut($line, $limit - 1)).'…';
+    }
+
+    /**
+     * The title line and the details under it: the opening TikTok and YouTube share.
+     *
+     * @return list<string>
+     */
+    private function shortOpening(ContentItem $item): array
+    {
+        $hook = Highlights::figure($item) !== null ? $this->figureText($item) : (Highlights::points($item, 1)[0] ?? null);
+        $sections = [$this->emoji($item).' '.$item->title.($hook !== null ? ' · '.$hook : '')];
+
+        $details = array_filter([
+            filled($item->subtitle) ? (string) $item->subtitle : null,
+            ...Highlights::points($item, 2),
+        ]);
+        if ($details !== []) {
+            $sections[] = implode(' · ', $details);
+        }
+
+        if (($item->badges ?? []) !== []) {
+            $sections[] = implode(' · ', array_map(fn (string $badge): string => '✅ '.$badge, $item->badges));
+        }
+
+        return $sections;
     }
 
     private function socialCta(Brand $brand, string $host): string
@@ -379,17 +471,22 @@ final class CaptionBuilder
         $label = mb_trim((string) ($item->cta['label'] ?? ''));
         $pointed = $label !== '' && filled($item->url);
 
+        // On a YouTube Short the first line is the title, so the words are cut to the title limit like any other.
+        $first = $platform === Platform::YouTube ? $this->titleLine($words) : $words;
+
         [$under, $hashtags] = match ($platform) {
             // A Page's link is its first comment (FacebookPagePublisher); this line points down at it.
             Platform::FacebookPage => [$pointed ? '👇 '.self::bold($label) : null, $this->hashtags($item, $brand, fixedOnly: true)],
             // A group post is pasted by a person: the link stays in the text, and no tags.
             Platform::FacebookGroup => [$pointed ? self::bold($label).":\n".$item->url : null, []],
+            // A Short: the tags come after #Shorts, and the text carries no link YouTube would have to be told about.
+            Platform::YouTube => [$this->pitch($brand), ['#Shorts', ...$this->hashtags($item, $brand)]],
             // Where a link cannot be followed, the brand's own sentence stands in for it.
             default => [$this->pitch($brand), $this->hashtags($item, $brand)],
         };
 
         return self::tidy(implode("\n\n", array_filter([
-            filled($item->subtitle) ? $words."\n— ".mb_trim((string) $item->subtitle) : $words,
+            filled($item->subtitle) ? $first."\n— ".mb_trim((string) $item->subtitle) : $first,
             TemplateData::excerpt($item->body_text, 200),
             $under,
             implode(' ', array_slice($hashtags, 0, $platform === Platform::FacebookPage ? 3 : self::FEW_HASHTAGS)),

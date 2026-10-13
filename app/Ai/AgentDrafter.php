@@ -94,6 +94,7 @@ final class AgentDrafter
                 'facebook' => $captions[Platform::FacebookPage->value] ?? null,
                 'instagram' => $captions[Platform::InstagramBusiness->value] ?? null,
                 'tiktok' => $captions[Platform::TikTok->value] ?? null,
+                'youtube' => $captions[Platform::YouTube->value] ?? null,
             ];
 
             if ($dryRun) {
@@ -165,6 +166,8 @@ final class AgentDrafter
                         Platform::FacebookGroup->value => mb_trim($result->captions->facebook),
                         // TikTok ranks on the text itself; a handful of tags is enough.
                         Platform::TikTok->value => mb_trim($result->captions->tiktok."\n\n".implode(' ', array_slice($hashtags, 0, 5))),
+                        // The TikTok text is the same title and description; the Short adds its link, and the agent's tags.
+                        Platform::YouTube->value => $this->fallback->youtube($item, $brand, mb_trim($result->captions->tiktok), $hashtags),
                     ],
                     false,
                     $notes,
@@ -190,6 +193,7 @@ final class AgentDrafter
             Platform::InstagramBusiness->value => $this->fallback->instagram($item, $brand),
             Platform::FacebookGroup->value => $this->fallback->facebook($item, $brand),
             Platform::TikTok->value => $this->fallback->tiktok($item, $brand),
+            Platform::YouTube->value => $this->fallback->youtube($item, $brand),
         ];
     }
 

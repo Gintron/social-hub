@@ -70,6 +70,7 @@ final class SourceForm
                                         Platform::TikTok => config('tiktok.driver') === 'business'
                                             ? 'Izravna objava je javna; inbox samo ako čovjek dodaje trending zvuk u aplikaciji.'
                                             : 'Dok TikTok ne auditira aplikaciju, izravna objava je privatna — koristi inbox.',
+                                        Platform::YouTube => 'Short: uspravni video do 3 minute. Dok projekt ne prođe YouTube audit, Google objave ostavi privatnima.',
                                         default => null,
                                     }),
                                 Select::make('format')->label('Format')
@@ -91,6 +92,14 @@ final class SourceForm
                                     ])
                                     ->default('direct')
                                     ->visible(fn (Get $get): bool => self::platform($get) === Platform::TikTok),
+                                Select::make('settings.privacy')->label('Vidljivost')
+                                    ->options([
+                                        'public' => 'Javno',
+                                        'unlisted' => 'Nepopisano (samo tko ima poveznicu)',
+                                        'private' => 'Privatno (samo ti)',
+                                    ])
+                                    ->placeholder('Prema postavci (javno)')
+                                    ->visible(fn (Get $get): bool => self::platform($get) === Platform::YouTube),
                                 Toggle::make('settings.share_to_feed')->label('Reel i u feed profila')->default(true)
                                     ->visible(fn (Get $get): bool => self::platform($get) === Platform::InstagramBusiness),
                                 Select::make('settings.voiceover')->label('Voice-over')
