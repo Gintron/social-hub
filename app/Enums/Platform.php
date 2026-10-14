@@ -27,6 +27,20 @@ enum Platform: string implements HasColor, HasLabel
     }
 
     /**
+     * The name where space is short: a list cell, a calendar entry, a badge next to others.
+     */
+    public function shortLabel(): string
+    {
+        return match ($this) {
+            self::FacebookPage => 'Facebook',
+            self::InstagramBusiness => 'Instagram',
+            self::FacebookGroup => 'FB grupa',
+            self::TikTok => 'TikTok',
+            self::YouTube => 'YouTube',
+        };
+    }
+
+    /**
      * Platforms the hub cannot publish to via an official API; a human posts and marks it done.
      */
     public function isManual(): bool

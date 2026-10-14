@@ -50,7 +50,7 @@ final class ContentItemActions
                     ->label('Predložak slike')
                     ->options(fn (ContentItem $record): array => app(TemplateRegistry::class)->optionsFor($record->kind))
                     ->placeholder('Automatski po kanalu')
-                    ->helperText('Prazno: 4:5 za Facebook i Instagram, uspravno za TikTok. Format svakog kanala mijenjaš na nacrtu.'),
+                    ->helperText('Prazno: 4:5 za Facebook i Instagram, uspravno za TikTok. Format svakog kanala mijenjaš na objavi.'),
                 DateTimePicker::make('scheduled_at')
                     ->label('Zakaži za (opcionalno)')
                     ->timezone('Europe/Zagreb')
@@ -75,12 +75,12 @@ final class ContentItemActions
                         status: ($data['approve'] ?? false) ? DraftStatus::Approved : DraftStatus::PendingApproval,
                     );
                 } catch (Throwable $e) {
-                    Notification::make()->title('Nacrt nije napravljen')->body($e->getMessage())->danger()->persistent()->send();
+                    Notification::make()->title('Objava nije napravljena')->body($e->getMessage())->danger()->persistent()->send();
 
                     return;
                 }
 
-                Notification::make()->title('Nacrt napravljen')->body('Slika se renderira u pozadini; otvori nacrt za pregled.')->success()->send();
+                Notification::make()->title('Objava je napravljena')->body('Slika se priprema u pozadini. Pregledaj tekst i odobri je.')->success()->send();
 
                 $livewire->redirect(PostDraftResource::getUrl('edit', ['record' => $draft]));
             });

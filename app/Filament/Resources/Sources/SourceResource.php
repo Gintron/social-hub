@@ -23,7 +23,7 @@ final class SourceResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRss;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Postavke';
+    protected static string|UnitEnum|null $navigationGroup = 'Sadržaj';
 
     protected static ?string $navigationLabel = 'Izvori sadržaja';
 
@@ -31,7 +31,7 @@ final class SourceResource extends Resource
 
     protected static ?string $pluralModelLabel = 'izvori';
 
-    protected static ?int $navigationSort = 20;
+    protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {

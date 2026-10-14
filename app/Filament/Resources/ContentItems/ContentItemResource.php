@@ -17,7 +17,7 @@ use Filament\Tables\Table;
 use UnitEnum;
 
 /**
- * Candidates: everything the sources delivered. Read-only; posts are created from here.
+ * Everything the sources delivered, and where a post starts. Read-only; posts are created from here.
  */
 final class ContentItemResource extends Resource
 {
@@ -27,7 +27,7 @@ final class ContentItemResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Sadržaj';
 
-    protected static ?string $navigationLabel = 'Kandidati';
+    protected static ?string $navigationLabel = 'Sadržaj iz izvora';
 
     protected static ?string $modelLabel = 'stavka';
 

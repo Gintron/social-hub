@@ -11,10 +11,18 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 
 final class ListContentItems extends ListRecords
 {
     protected static string $resource = ContentItemResource::class;
+
+    protected static ?string $title = 'Sadržaj iz izvora';
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return 'Sve što su izvori poslali hubu. Odaberi stavku i klikni „Napravi objavu“.';
+    }
 
     protected function getHeaderActions(): array
     {

@@ -1,117 +1,142 @@
 <x-filament-panels::page>
     @php
-        $box = 'fi-section rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10';
-        $select = 'fi-select-input rounded-lg border-none bg-white py-2 pe-8 ps-3 text-sm shadow-sm ring-1 ring-gray-950/10 dark:bg-gray-900 dark:text-white dark:ring-white/20';
         $num = fn (?int $value): string => $value === null ? '—' : number_format($value, 0, ',', '.');
     @endphp
 
-    <div class="{{ $box }}" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
-        <span style="font-size:13px;opacity:.75">
+    <div class="hub-toolbar">
+        <span class="hub-toolbar__note">
             Zadnje očitanje po objavi. Brojke skuplja <code>hub:collect-metrics</code> svaki sat.
         </span>
-        <div style="display:flex;gap:8px">
-            <select wire:model.live="brandId" class="{{ $select }}">
-                @foreach ($this->getBrandOptions() as $value => $label)
-                    <option value="{{ $value }}">{{ $label }}</option>
-                @endforeach
-            </select>
-            <select wire:model.live="days" class="{{ $select }}">
-                <option value="7">7 dana</option>
-                <option value="30">30 dana</option>
-                <option value="90">90 dana</option>
-            </select>
+
+        <div class="hub-toolbar__filters">
+            <x-filament::input.wrapper class="hub-toolbar__filter">
+                <x-filament::input.select wire:model.live="brandId" aria-label="Brend">
+                    @foreach ($this->getBrandOptions() as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </x-filament::input.select>
+            </x-filament::input.wrapper>
+
+            <x-filament::input.wrapper>
+                <x-filament::input.select wire:model.live="days" aria-label="Razdoblje">
+                    <option value="7">7 dana</option>
+                    <option value="30">30 dana</option>
+                    <option value="90">90 dana</option>
+                </x-filament::input.select>
+            </x-filament::input.wrapper>
         </div>
     </div>
 
     @if ($this->unavailableMetricsCount() > 0)
-        <div class="{{ $box }}" style="font-size:14px;line-height:1.55">
-            TikTok API for Business: očitanja nisu dostupna za {{ $this->unavailableMetricsCount() }} objava.
-            Hub trenutačno ne dohvaća njihove metrike. To nije nula pregleda i ponovno povezivanje računa
-            ne dodaje ovu mogućnost. Rezultate pogledaj u TikTok analitici.
-        </div>
+        <x-filament::callout
+            color="gray"
+            icon="heroicon-o-information-circle"
+            heading="TikTok: očitanja nisu dostupna za {{ $this->unavailableMetricsCount() }} objava"
+            description="Hub trenutačno ne dohvaća metrike TikTok API-ja za Business. To nije nula pregleda, a ponovno povezivanje računa ne dodaje ovu mogućnost. Rezultate pogledaj u TikTok analitici."
+        />
     @endif
 
     @if ($this->unmeasuredCount() > 0)
-        <div class="{{ $box }}" style="font-size:14px;line-height:1.55;border-left:4px solid rgb(245,158,11)">
-            <div style="font-weight:600;margin-bottom:4px">Nedostaju očitanja za objavljene kanale</div>
-            <div>
+        <x-filament::callout
+            color="warning"
+            icon="heroicon-o-exclamation-triangle"
+            heading="Nedostaju očitanja za objavljene kanale"
+        >
+            <x-slot name="description">
                 @foreach ($this->getMeasurementGaps() as $gap)
-                    <span style="display:inline-block;margin-right:12px">{{ $gap['label'] }}: {{ $gap['posts'] }}</span>
+                    <span>{{ $gap['label'] }}: {{ $gap['posts'] }}@unless ($loop->last) · @endunless</span>
                 @endforeach
-            </div>
-            <div style="margin-top:4px;opacity:.75">
+                <br>
                 Objave su starije od {{ \App\Actions\CollectPostMetrics::FRESH_EVERY_HOURS }} sati, ali platforma nije vratila nijednu metriku.
                 Provjeri dozvole za uvide i ponovno poveži pogođeni račun.
-            </div>
-        </div>
+            </x-slot>
+        </x-filament::callout>
     @endif
 
     @if ($this->measuredCount() === 0)
-        <div class="{{ $box }}" style="font-size:14px;line-height:1.5">
-            Još nema dostupnih očitanja za ovo razdoblje. Nedostajuća metrika nije nula pregleda.
-            Za kanale koji podržavaju mjerenja provjeri dozvole za uvide ako očitanja izostanu dulje od dana
-            (<code>instagram_manage_insights</code>, <code>read_insights</code>, TikTok Developer <code>video.list</code>,
-            YouTube <code>youtube.readonly</code>).
-        </div>
+        <x-filament::section>
+            <x-filament::empty-state
+                icon="heroicon-o-chart-bar"
+                heading="Još nema očitanja za ovo razdoblje"
+                :contained="false"
+            >
+                <x-slot name="description">
+                    Nedostajuća metrika nije nula pregleda. Ako očitanja izostanu dulje od dana, provjeri dozvole za uvide:
+                    <code>instagram_manage_insights</code>, <code>read_insights</code>, TikTok Developer <code>video.list</code>,
+                    YouTube <code>youtube.readonly</code>.
+                </x-slot>
+            </x-filament::empty-state>
+        </x-filament::section>
     @else
-        @foreach ($this->getBreakdowns() as $title => $rows)
-            @php($max = max(1, ...array_map(fn (array $row): int => (int) $row['views'], $rows)))
-            <div class="{{ $box }}" style="overflow-x:auto">
-                <div style="font-weight:600;margin-bottom:10px">{{ $title }}</div>
-                <table style="width:100%;border-collapse:collapse;font-size:13px">
-                    <thead>
-                        <tr style="text-align:left;opacity:.6;font-size:11px;text-transform:uppercase;letter-spacing:.04em">
-                            <th style="padding:6px 8px">&nbsp;</th>
-                            <th style="padding:6px 8px;text-align:right">Objava</th>
-                            <th style="padding:6px 8px;width:40%">Ø pregleda</th>
-                            <th style="padding:6px 8px;text-align:right">Ø doseg</th>
-                            <th style="padding:6px 8px;text-align:right">Ø interakcija</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($rows as $row)
-                            <tr style="border-top:1px solid rgba(128,128,128,.15)">
-                                <td style="padding:6px 8px;white-space:nowrap">{{ $row['label'] }}</td>
-                                <td style="padding:6px 8px;text-align:right">{{ $row['posts'] }}</td>
-                                <td style="padding:6px 8px">
-                                    <div style="display:flex;align-items:center;gap:8px">
-                                        <div style="height:8px;border-radius:4px;background:rgb(20,184,166);width:{{ (int) round(100 * (int) $row['views'] / $max) }}%;min-width:2px"></div>
-                                        <span style="white-space:nowrap">{{ $num($row['views']) }}</span>
-                                    </div>
-                                </td>
-                                <td style="padding:6px 8px;text-align:right">{{ $num($row['reach']) }}</td>
-                                <td style="padding:6px 8px;text-align:right">{{ $num($row['interactions']) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endforeach
+        <div class="hub-stack">
+            @foreach ($this->getBreakdowns() as $title => $rows)
+                @php($max = max(1, ...array_map(fn (array $row): int => (int) $row['views'], $rows)))
+                <x-filament::section :heading="$title" compact>
+                    <div class="hub-table-wrap">
+                        <table class="hub-table hub-table--fixed">
+                            <colgroup>
+                                <col style="width:28%">
+                                <col style="width:9%">
+                                <col>
+                                <col style="width:12%">
+                                <col style="width:14%">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>&nbsp;</th>
+                                    <th class="is-num">Objava</th>
+                                    <th>Ø pregleda</th>
+                                    <th class="is-num">Ø doseg</th>
+                                    <th class="is-num">Ø interakcija</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($rows as $row)
+                                    <tr>
+                                        <td>{{ $row['label'] }}</td>
+                                        <td class="is-num">{{ $row['posts'] }}</td>
+                                        <td>
+                                            <div class="hub-bar">
+                                                <div class="hub-bar__fill" style="--hub-bar: {{ (int) round(100 * (int) $row['views'] / $max) }}%"></div>
+                                                <span>{{ $num($row['views']) }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="is-num">{{ $num($row['reach']) }}</td>
+                                        <td class="is-num">{{ $num($row['interactions']) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </x-filament::section>
+            @endforeach
 
-        <div class="{{ $box }}" style="overflow-x:auto">
-            <div style="font-weight:600;margin-bottom:10px">Najgledanije objave</div>
-            <table style="width:100%;border-collapse:collapse;font-size:13px">
-                <tbody>
-                    @foreach ($this->getTopPosts() as $variant)
-                        <tr style="border-top:1px solid rgba(128,128,128,.15)">
-                            <td style="padding:6px 8px">
-                                <a href="{{ \App\Filament\Resources\PostDrafts\PostDraftResource::getUrl('edit', ['record' => $variant->post_draft_id]) }}" style="text-decoration:none;color:inherit;font-weight:600">
-                                    {{ \Illuminate\Support\Str::limit((string) $variant->draft?->title, 60) }}
-                                </a>
-                                <div style="font-size:11px;opacity:.6">{{ $variant->draft?->brand?->name }}</div>
-                            </td>
-                            <td style="padding:6px 8px;white-space:nowrap">{{ $variant->platform->label() }} · {{ $variant->format()->label() }}</td>
-                            <td style="padding:6px 8px;text-align:right;white-space:nowrap">{{ $num($variant->latestMetric->views) }} pregleda</td>
-                            <td style="padding:6px 8px;text-align:right;white-space:nowrap">{{ $num($variant->latestMetric->interactions()) }} interakcija</td>
-                            <td style="padding:6px 8px;text-align:right">
-                                @if ($variant->permalink)
-                                    <a href="{{ $variant->permalink }}" target="_blank" rel="noopener" style="font-size:12px">Otvori ↗</a>
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+            <x-filament::section heading="Najgledanije objave" compact>
+                <div class="hub-table-wrap">
+                    <table class="hub-table">
+                        <tbody>
+                            @foreach ($this->getTopPosts() as $variant)
+                                <tr>
+                                    <td>
+                                        <x-filament::link :href="\App\Filament\Resources\PostDrafts\PostDraftResource::getUrl('edit', ['record' => $variant->post_draft_id])">
+                                            {{ \Illuminate\Support\Str::limit((string) $variant->draft?->title, 60) }}
+                                        </x-filament::link>
+                                        <div class="hub-table__sub">{{ $variant->draft?->brand?->name }}</div>
+                                    </td>
+                                    <td class="is-num">{{ $variant->platform->shortLabel() }} · {{ $variant->format()->label() }}</td>
+                                    <td class="is-num">{{ $num($variant->latestMetric->views) }} pregleda</td>
+                                    <td class="is-num">{{ $num($variant->latestMetric->interactions()) }} interakcija</td>
+                                    <td class="is-num">
+                                        @if ($variant->permalink)
+                                            <x-filament::link :href="$variant->permalink" target="_blank" rel="noopener" size="sm" icon="heroicon-m-arrow-top-right-on-square" icon-position="after">Otvori</x-filament::link>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </x-filament::section>
         </div>
     @endif
 </x-filament-panels::page>

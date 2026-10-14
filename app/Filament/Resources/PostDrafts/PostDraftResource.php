@@ -24,7 +24,7 @@ final class PostDraftResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Sadržaj';
+    protected static string|UnitEnum|null $navigationGroup = 'Objavljivanje';
 
     protected static ?string $navigationLabel = 'Objave';
 
@@ -32,7 +32,7 @@ final class PostDraftResource extends Resource
 
     protected static ?string $pluralModelLabel = 'objave';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $recordTitleAttribute = 'title';
 

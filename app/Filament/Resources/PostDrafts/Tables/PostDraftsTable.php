@@ -6,6 +6,7 @@ namespace App\Filament\Resources\PostDrafts\Tables;
 
 use App\Actions\ApproveDraft;
 use App\Enums\DraftStatus;
+use App\Filament\Support\PlatformBadges;
 use App\Models\PostDraft;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -30,11 +31,10 @@ final class PostDraftsTable
                 ImageColumn::make('preview')->label('')
                     ->state(fn (PostDraft $record): ?string => $record->mediaAssets->first()?->publicUrl())
                     ->square()->size(56),
-                TextColumn::make('brand.name')->label('Brend')->sortable(),
                 TextColumn::make('title')->label('Objava')->searchable()->limit(60)
-                    ->description(fn (PostDraft $record): ?string => $record->staleItems()->isNotEmpty() ? '⚠ izvor je izmijenjen' : null),
+                    ->description(fn (PostDraft $record): string => $record->brand?->name.($record->staleItems()->isNotEmpty() ? ' · ⚠ izvor je izmijenjen' : '')),
                 TextColumn::make('status')->label('Status')->badge()->sortable(),
-                TextColumn::make('variants.platform')->label('Kanali')->badge(),
+                PlatformBadges::column(),
                 TextColumn::make('views')->label('Pregledi')
                     ->state(fn (PostDraft $record): ?int => ($views = $record->variants->sum(fn ($variant): int => (int) $variant->latestMetric?->views)) > 0 ? $views : null)
                     ->tooltip(fn (PostDraft $record): ?string => $record->variants
@@ -44,8 +44,8 @@ final class PostDraftsTable
                     ->numeric(decimalPlaces: 0, locale: 'hr')
                     ->placeholder('—'),
                 TextColumn::make('scheduled_at')->label('Zakazano')->dateTime('d.m.Y H:i', 'Europe/Zagreb')->sortable()->placeholder('—'),
-                TextColumn::make('created_by_type')->label('Autor')->badge()->color('gray'),
-                TextColumn::make('updated_at')->label('Ažurirano')->since()->sortable(),
+                TextColumn::make('created_by_type')->label('Autor')->badge()->color('gray')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updated_at')->label('Ažurirano')->since()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('brand_id')->label('Brend')->relationship('brand', 'name'),

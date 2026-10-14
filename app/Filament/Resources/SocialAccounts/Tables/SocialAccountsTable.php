@@ -26,10 +26,10 @@ final class SocialAccountsTable
         return $table
             ->columns([
                 TextColumn::make('brand.name')->label('Brend')->sortable(),
-                TextColumn::make('platform')->label('Platforma')->badge(),
+                TextColumn::make('platform')->label('Platforma')->badge()->formatStateUsing(fn (Platform $state): string => $state->shortLabel()),
                 TextColumn::make('name')->label('Račun')->searchable()->description(fn (SocialAccount $record): string => $record->external_id),
                 TextColumn::make('status')->label('Status')->badge(),
-                TextColumn::make('last_verified_at')->label('Provjereno')->since()->placeholder('nikad'),
+                TextColumn::make('last_verified_at')->label('Provjereno')->since()->placeholder('nikad')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('token_expires_at')->label('Token istječe')->dateTime('d.m.Y', 'Europe/Zagreb')->placeholder('ne istječe'),
             ])
             ->recordActions([

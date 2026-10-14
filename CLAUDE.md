@@ -265,6 +265,25 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Oznaka AI-generiranog sadržaja**: `PostVariant::aiGenerated()` (video sa sintetičkim glasom) → TikTok
   `is_ai_generated`/`is_aigc`, Instagram `is_ai_generated`; Facebook Reels API nema parametar.
 
+## Panel (izgled)
+
+- **Forma je jedna kolona.** Resource stranice daju formi 2 kolone ako se ne kaže drukčije, pa se sekcije različite
+  visine slože jedna uz drugu s velikim prazninama na desktopu. Svaka `Schema` u `app/Filament/Resources/*/Schemas` zove
+  `->columns(1)`; što je dugo ide u `Tabs` po temi (brend: Osnovno / Tekstovi objava / Video i zvuk / Voice-over /
+  Raspored objava), ne u još jednu sekciju. Create/Edit stranice koriste `ReadableFormWidth` (5xl), a panel je pune
+  širine zbog tablica i kalendara.
+- **Vlastiti prikazi nemaju inline stilova ni Tailwind klasa.** Filamentov CSS sadrži samo klase koje Filament sam
+  koristi (nema `p-4`), a deploy radi `filament:assets`, ne Vite build. Zato vlastiti prikazi koriste Filamentove
+  komponente (`x-filament::section`, `callout`, `empty-state`) i klase `hub-*` iz `resources/css/hub-admin.css`
+  (`FilamentAsset` u `AdminPanelProvider::boot`, objavljuje se u `public/css/app`). Boje su Filamentove varijable
+  (`--primary-600`, `--gray-200`), pa isti stil radi u tamnoj temi i na mobitelu. Novi razmak ili boja idu ondje.
+- **Korisnik vidi „objavu“, ne „nacrt“.** `PostDraft` je u panelu *objava*, „Nacrt“ ostaje samo status; `ContentItem`
+  je *stavka* (izbornik „Sadržaj iz izvora“), `PostVariant` je *kanal*. Izbornik ide po toku rada (Objavljivanje →
+  Sadržaj → Postavke), ne po tablicama. Izvor je u Sadržaju jer je dio toka, a ne podešavanje.
+- **Nadzorna ploča mjeri `App\Filament\Support\HubStatus`.** Brojke i vodič „Kako početi“ dolaze odande; nova stvar
+  koja traži pažnju ide u `HubStatus` i `AttentionOverview`, ne kao zaseban upit u widgetu. Tablice na ploči su pregled
+  na prvi pogled, bez stupca kanala; kratke nazive daje `Platform::shortLabel()` (`PlatformBadges`).
+
 ## Rad
 
 - Sve kroz Sail: `./vendor/bin/sail artisan …`, `./vendor/bin/sail bin pint`, `./vendor/bin/sail artisan test`.

@@ -31,7 +31,7 @@ final class BrandResource extends Resource
 
     protected static ?string $pluralModelLabel = 'brendovi';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

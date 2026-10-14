@@ -25,6 +25,26 @@ docker compose exec -d -u sail laravel.test php artisan queue:work --queue=publi
 
 Panel: http://localhost:8100/admin
 
+## Kako se koristi panel
+
+Hub ima jedan tok: **izvor → stavka → objava → kanal**. Stranica (izvor) šalje *stavke* (ponudu, oglas,
+članak), iz stavke nastaje *objava*, a objava ide na jedan ili više *kanala* (Facebook, Instagram, TikTok,
+YouTube Shorts, Facebook grupa). Izbornik prati taj tok:
+
+| Izbornik | Čemu služi |
+|---|---|
+| **Nadzorna ploča** | Što čeka tebe (odobrenja), što izlazi sljedeće i što ne radi (neuspjele objave, računi i izvori koji traže pažnju). U praznom hubu pokazuje vodič u četiri koraka. |
+| Objavljivanje → **Objave** | Objave koje su pripremili hub ili AI agent. Otvori objavu: po kanalu vidiš format, sliku ili video i tekst, pa je odobriš, zakažeš ili objaviš. |
+| Objavljivanje → **Kalendar** | Što je zakazano i što je izašlo, po danima. |
+| Objavljivanje → **Učinak** | Pregledi po kanalu, formatu, satu objave i prioritetu. Pogledaj prije nego mijenjaš formate ili termine. |
+| Sadržaj → **Sadržaj iz izvora** | Sve što su izvori poslali. Iz stavke klikneš „Napravi objavu“. |
+| Sadržaj → **Izvori sadržaja** | Stranice koje hub čita (Social Feed v1), njihov token i pravila **automatske objave** po kanalu. |
+| Postavke → **Brendovi** | Boje, tekstovi, video i glas, termini objave. Podijeljeno u kartice po temi. |
+| Postavke → **Društveni računi** | Povezivanje Facebooka, Instagrama, TikToka i YouTubea. |
+
+Nova instalacija: **Brendovi** → **Izvori sadržaja** → **Društveni računi** → prva objava iz **Sadržaja iz izvora**.
+Isti redoslijed prikazuje vodič „Kako početi“ na nadzornoj ploči.
+
 ## Naredbe
 
 | Naredba | Što radi |
@@ -56,7 +76,7 @@ app/Actions      CreateDraft, ApproveDraft, ScheduleDraft, DispatchDraftPublishi
 app/Publishing   Graph i TikTok klijenti, mapiranje grešaka, Facebook/Instagram/TikTok publisheri, OAuth
 app/Http/Controllers/Meta  OAuth spajanje računa, deauthorize i data-deletion callbackovi
 app/Jobs         SyncSourceJob, RenderMediaJob, PublishVariantJob
-app/Filament     panel: kandidati, objave (pregled), kalendar, brendovi, izvori, računi
+app/Filament     panel: nadzorna ploča, objave (pregled), kalendar, učinak, sadržaj iz izvora, izvori, brendovi, računi
 app/Ai           agent koji piše tekstove (OpenAI) i validator koji brani izmišljene iznose
 app/Mcp          MCP server: hub kroz AI agenta (docs/mcp.md)
 docs/            social-feed-v1.md + schema, deploy-ploi.md, examples/laravel-social-feed
@@ -111,8 +131,8 @@ dnevnu kvotu, pa greške dolaze kao razumljiva poruka, a ne kao Metin „Invalid
 ## AI agent
 
 `hub:agent-draft` svakog jutra uzme nove kandidate, zamoli OpenAI da napiše tekstove i ostavi ih
-kao nacrte **na odobrenje** — agent nikad ne objavljuje. Uključuje se po brendu (Brend → Glas brenda
-→ „AI piše nacrte") i traži `OPENAI_API_KEY` (model i razmišljanje: `OPENAI_MODEL`, `OPENAI_EFFORT`,
+kao nacrte **na odobrenje** — agent nikad ne objavljuje. Uključuje se po brendu (Brendovi → Tekstovi objava
+→ „AI piše tekstove objava") i traži `OPENAI_API_KEY` (model i razmišljanje: `OPENAI_MODEL`, `OPENAI_EFFORT`,
 [config/openai.php](config/openai.php)).
 
 Prije nego tekst uđe u nacrt, `App\Ai\CaptionValidator` provjeri ono što se modelu ne vjeruje na

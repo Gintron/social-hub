@@ -1,68 +1,88 @@
 <x-filament-panels::page>
-    <div class="fi-section rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:8px">
-                <x-filament::icon-button icon="heroicon-o-chevron-left" wire:click="previousMonth" label="Prethodni mjesec" />
-                <span style="font-size:16px;font-weight:600;min-width:11rem;text-align:center">{{ $this->getMonthLabel() }}</span>
-                <x-filament::icon-button icon="heroicon-o-chevron-right" wire:click="nextMonth" label="Sljedeći mjesec" />
-                <x-filament::button size="xs" color="gray" wire:click="today">Danas</x-filament::button>
-            </div>
-            <select wire:model.live="brandId"
-                    class="fi-select-input rounded-lg border-none bg-white py-2 pe-8 ps-3 text-sm shadow-sm ring-1 ring-gray-950/10 dark:bg-gray-900 dark:text-white dark:ring-white/20">
+    @php
+        $weekdays = ['pon', 'uto', 'sri', 'čet', 'pet', 'sub', 'ned'];
+        $weeks = $this->getWeeks();
+        $inMonthCount = collect($weeks)->flatten(1)->where('inMonth', true)->sum(fn (array $day): int => $day['drafts']->count());
+        $visiblePerDay = 4;
+    @endphp
+
+    <div class="hub-toolbar">
+        <div class="hub-toolbar__nav">
+            <x-filament::icon-button icon="heroicon-m-chevron-left" wire:click="previousMonth" label="Prethodni mjesec" />
+            <h2 class="hub-toolbar__title">{{ $this->getMonthLabel() }}</h2>
+            <x-filament::icon-button icon="heroicon-m-chevron-right" wire:click="nextMonth" label="Sljedeći mjesec" />
+            <x-filament::button size="sm" color="gray" wire:click="today">Danas</x-filament::button>
+        </div>
+
+        <x-filament::input.wrapper class="hub-toolbar__filter">
+            <x-filament::input.select wire:model.live="brandId" aria-label="Brend">
                 @foreach ($this->getBrandOptions() as $value => $label)
                     <option value="{{ $value }}">{{ $label }}</option>
                 @endforeach
-            </select>
-        </div>
+            </x-filament::input.select>
+        </x-filament::input.wrapper>
+    </div>
 
-        <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:16px">
-            @foreach (['pon', 'uto', 'sri', 'čet', 'pet', 'sub', 'ned'] as $weekday)
-                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;opacity:.6;padding:2px 4px">{{ $weekday }}</div>
-            @endforeach
+    <x-filament::section>
+        @if ($inMonthCount === 0)
+            <x-filament::empty-state
+                icon="heroicon-o-calendar"
+                heading="Nema objava u ovom mjesecu"
+                description="Ovdje se vide objave koje su zakazane i one koje su već izašle."
+                :contained="false"
+            />
+        @else
+            <div class="hub-cal">
+                <div class="hub-cal__weekdays" aria-hidden="true">
+                    @foreach ($weekdays as $weekday)
+                        <div>{{ $weekday }}</div>
+                    @endforeach
+                </div>
 
-            @foreach ($this->getWeeks() as $week)
-                @foreach ($week as $day)
-                    <div @class(['fi-calendar-day'])
-                         style="min-height:104px;border-radius:10px;padding:6px;border:1px solid rgba(128,128,128,.2);
-                                {{ $day['inMonth'] ? '' : 'opacity:.45;' }}
-                                {{ $day['isToday'] ? 'outline:2px solid rgb(20,184,166);outline-offset:-2px;' : '' }}">
-                        <div style="font-size:12px;font-weight:600;opacity:.7;margin-bottom:4px">{{ $day['date']->format('j') }}</div>
-
-                        @foreach ($day['drafts'] as $draft)
+                <div class="hub-cal__grid">
+                    @foreach ($weeks as $week)
+                        @foreach ($week as $day)
                             @php
-                                $color = match ($draft->status->getColor()) {
-                                    'success' => '#059669',
-                                    'warning' => '#d97706',
-                                    'danger' => '#dc2626',
-                                    'info' => '#0284c7',
-                                    default => '#6b7280',
-                                };
+                                $shown = $day['drafts']->take($visiblePerDay);
+                                $rest = $day['drafts']->slice($visiblePerDay);
                             @endphp
-                            <a href="{{ \App\Filament\Resources\PostDrafts\PostDraftResource::getUrl('edit', ['record' => $draft]) }}"
-                               title="{{ $draft->brand?->name }} · {{ $draft->status->label() }} · {{ $draft->variants->pluck('platform')->map(fn ($p) => $p->label())->implode(', ') }}"
-                               style="display:block;font-size:11px;line-height:1.3;text-decoration:none;color:inherit;
-                                      border-left:3px solid {{ $color }};padding:2px 4px;margin-bottom:3px;border-radius:3px;
-                                      background:rgba(128,128,128,.08);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                                <strong>{{ $this->draftTime($draft) }}</strong> {{ $draft->title }}
-                            </a>
-                        @endforeach
-                    </div>
-                @endforeach
-            @endforeach
-        </div>
+                            <div @class([
+                                'hub-cal__day',
+                                'hub-cal__day--outside' => ! $day['inMonth'],
+                                'hub-cal__day--today' => $day['isToday'],
+                                'hub-cal__day--empty' => $day['drafts']->isEmpty(),
+                            ])>
+                                <div class="hub-cal__date">
+                                    {{ $day['date']->format('j') }}<span class="hub-cal__weekday-inline">{{ $weekdays[$day['date']->dayOfWeekIso - 1] }}</span>
+                                </div>
 
-        <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:11px;opacity:.75">
+                                @foreach ($shown as $draft)
+                                    <a href="{{ \App\Filament\Resources\PostDrafts\PostDraftResource::getUrl('edit', ['record' => $draft]) }}"
+                                       class="hub-cal__item"
+                                       data-tone="{{ $draft->status->getColor() }}"
+                                       title="{{ $draft->brand?->name }} · {{ $draft->status->label() }} · {{ $draft->variants->pluck('platform')->map(fn ($platform) => $platform->shortLabel())->implode(', ') }}">
+                                        <span class="hub-cal__text"><span class="hub-cal__time">{{ $this->draftTime($draft) }}</span> {{ $draft->title }}</span>
+                                        @unless ($brandId)
+                                            <span class="hub-cal__brand">{{ $draft->brand?->name }}</span>
+                                        @endunless
+                                    </a>
+                                @endforeach
+
+                                @if ($rest->isNotEmpty())
+                                    <span class="hub-cal__more" title="{{ $rest->pluck('title')->implode(' · ') }}">+{{ $rest->count() }} još</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        <div class="hub-legend">
             @foreach (\App\Enums\DraftStatus::cases() as $status)
                 @continue($status === \App\Enums\DraftStatus::Discarded)
-                @php
-                    $color = match ($status->getColor()) {
-                        'success' => '#059669', 'warning' => '#d97706', 'danger' => '#dc2626', 'info' => '#0284c7', default => '#6b7280',
-                    };
-                @endphp
-                <span style="display:inline-flex;align-items:center;gap:5px">
-                    <span style="width:9px;height:9px;border-radius:2px;background:{{ $color }}"></span>{{ $status->label() }}
-                </span>
+                <span class="hub-legend__item" data-tone="{{ $status->getColor() }}">{{ $status->label() }}</span>
             @endforeach
         </div>
-    </div>
+    </x-filament::section>
 </x-filament-panels::page>

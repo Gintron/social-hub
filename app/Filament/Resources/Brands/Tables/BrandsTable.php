@@ -21,7 +21,7 @@ final class BrandsTable
                 TextColumn::make('sources_count')->label('Izvori')->counts('sources'),
                 TextColumn::make('social_accounts_count')->label('Računi')->counts('socialAccounts'),
                 TextColumn::make('content_items_count')->label('Stavke')->counts('contentItems'),
-                TextColumn::make('post_drafts_count')->label('Nacrti')->counts('postDrafts'),
+                TextColumn::make('post_drafts_count')->label('Objave')->counts('postDrafts'),
             ])
             ->recordActions([
                 EditAction::make(),

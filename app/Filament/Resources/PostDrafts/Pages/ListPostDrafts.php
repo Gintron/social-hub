@@ -9,11 +9,17 @@ use App\Filament\Resources\PostDrafts\PostDraftResource;
 use App\Models\PostDraft;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 
 final class ListPostDrafts extends ListRecords
 {
     protected static string $resource = PostDraftResource::class;
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return 'Objave koje je hub pripremio. Pregledaj tekst i sliku, pa odobri, zakaži ili objavi.';
+    }
 
     public function getTabs(): array
     {

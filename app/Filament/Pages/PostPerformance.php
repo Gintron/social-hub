@@ -15,6 +15,7 @@ use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 use UnitEnum;
 
@@ -31,17 +32,22 @@ final class PostPerformance extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Sadržaj';
+    protected static string|UnitEnum|null $navigationGroup = 'Objavljivanje';
 
     protected static ?string $navigationLabel = 'Učinak';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 3;
 
     protected string $view = 'filament.pages.post-performance';
 
     public function getTitle(): string
     {
         return 'Učinak objava';
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return 'Koje objave se vide: pregledi po kanalu i formatu, po satu objave i po prioritetu stavke. Pogledaj ovdje prije nego mijenjaš formate ili termine.';
     }
 
     /**

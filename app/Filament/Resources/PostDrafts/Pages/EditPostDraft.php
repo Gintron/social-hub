@@ -43,6 +43,16 @@ final class EditPostDraft extends EditRecord
 {
     protected static string $resource = PostDraftResource::class;
 
+    public function getTitle(): string|Htmlable
+    {
+        return $this->draft()->title ?: 'Pregled objave';
+    }
+
+    public function getBreadcrumb(): string
+    {
+        return 'Pregled';
+    }
+
     public function getSubheading(): string|Htmlable|null
     {
         $draft = $this->draft();
@@ -131,7 +141,7 @@ final class EditPostDraft extends EditRecord
                     }),
 
                 Action::make('discard')
-                    ->label('Odbaci nacrt')
+                    ->label('Odbaci objavu')
                     ->icon(Heroicon::OutlinedTrash)
                     ->color('danger')
                     ->requiresConfirmation()
@@ -145,7 +155,7 @@ final class EditPostDraft extends EditRecord
                             return;
                         }
 
-                        Notification::make()->title('Nacrt odbačen')->success()->send();
+                        Notification::make()->title('Objava odbačena')->success()->send();
                         $this->redirect(PostDraftResource::getUrl('index'));
                     }),
             ])

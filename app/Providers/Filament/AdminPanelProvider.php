@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Assets\Css;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
+use Filament\Support\Enums\Width;
+use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -22,6 +24,14 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 final class AdminPanelProvider extends PanelProvider
 {
+    public function boot(): void
+    {
+        // Published to public/css/app by `filament:assets`, which the deploy already runs; no build step.
+        FilamentAsset::register([
+            Css::make('hub-admin', resource_path('css/hub-admin.css')),
+        ]);
+    }
+
     public function panel(Panel $panel): Panel
     {
         return $panel
@@ -33,17 +43,17 @@ final class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Teal,
             ])
-            ->navigationGroups(['Sadržaj', 'Postavke'])
+            ->navigationGroups(['Objavljivanje', 'Sadržaj', 'Postavke'])
             ->sidebarCollapsibleOnDesktop()
+            ->sidebarWidth('16rem')
+            // Tables and the calendar want the room; create/edit pages narrow themselves (ReadableFormWidth).
+            ->maxContentWidth(Width::Full)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
                 Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
-            ->widgets([
-                AccountWidget::class,
-            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

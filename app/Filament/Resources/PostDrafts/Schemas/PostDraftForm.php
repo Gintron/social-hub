@@ -61,9 +61,9 @@ final class PostDraftForm
                 Callout::make('Sadržaj je promijenjen na izvoru')
                     ->warning()
                     ->visible(fn (?PostDraft $record): bool => $record !== null && $record->staleItems()->isNotEmpty())
-                    ->description(fn (?PostDraft $record): string => 'Izmijenjeno otkad je nacrt napravljen: '
+                    ->description(fn (?PostDraft $record): string => 'Izmijenjeno otkad je objava napravljena: '
                         .($record?->staleItems()->pluck('title')->implode(', ') ?? '')
-                        .($record?->status->isTerminal() ? '. Za aktualni sadržaj izradi novi nacrt.' : '. Neobjavljeni kanali bit će preskočeni da ne izađe zastarjela cijena ili tekst: izradi novi nacrt iz stavke.'))
+                        .($record?->status->isTerminal() ? '. Za aktualni sadržaj napravi novu objavu iz stavke.' : '. Neobjavljeni kanali bit će preskočeni da ne izađe zastarjela cijena ili tekst: napravi novu objavu iz stavke.'))
                     ->columnSpanFull(),
 
                 Tabs::make('Kanali')
@@ -296,7 +296,7 @@ final class PostDraftForm
     {
         return self::canSpeak($variant)
             ? 'Glas izgovara slajdove; iznosi su iz stavke. Promjena renderira video ponovno (ranije izrađen video se ne troši).'
-            : 'Voice-over nije moguć: '.($variant->draft?->brand?->voiceoverSettings()->whyNot() ?? 'nacrt nema brend').' (Brendovi → Voice-over).';
+            : 'Voice-over nije moguć: '.($variant->draft?->brand?->voiceoverSettings()->whyNot() ?? 'objava nema brend').' (Brendovi → Voice-over).';
     }
 
     private static function changeVoiceover(int $id, string $path, bool $state, Set $set): void

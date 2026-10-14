@@ -11,6 +11,7 @@ use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 use UnitEnum;
 
@@ -29,11 +30,11 @@ final class PublishingCalendar extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendar;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Sadržaj';
+    protected static string|UnitEnum|null $navigationGroup = 'Objavljivanje';
 
     protected static ?string $navigationLabel = 'Kalendar';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
 
     protected string $view = 'filament.pages.publishing-calendar';
 
@@ -45,6 +46,11 @@ final class PublishingCalendar extends Page
     public function getTitle(): string
     {
         return 'Kalendar objava';
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return 'Što je zakazano i što je već izašlo, po danima. Klikni objavu da je otvoriš.';
     }
 
     public function previousMonth(): void

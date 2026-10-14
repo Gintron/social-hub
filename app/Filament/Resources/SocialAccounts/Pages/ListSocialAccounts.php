@@ -10,17 +10,26 @@ use App\Models\Brand;
 use App\Publishing\Exceptions\PublishException;
 use App\Publishing\Meta\MetaAssetDiscovery;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Livewire\Component;
 
 final class ListSocialAccounts extends ListRecords
 {
     protected static string $resource = SocialAccountResource::class;
+
+    protected static ?string $title = 'Društveni računi';
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return 'Facebook, Instagram, TikTok i YouTube računi na koje hub objavljuje.';
+    }
 
     protected function getHeaderActions(): array
     {
@@ -73,38 +82,44 @@ final class ListSocialAccounts extends ListRecords
                     $livewire->redirect(route('youtube.connect', ['brand' => (int) $data['brand_id']]), navigate: false);
                 }),
 
-            Action::make('discover')
-                ->label('Zalijepi token ručno')
-                ->icon(Heroicon::OutlinedCloudArrowDown)
-                ->color('gray')
-                ->modalDescription('Zalijepi korisnički ili System User token s dozvolama pages_show_list, pages_manage_posts, pages_read_engagement, instagram_basic, instagram_content_publish. Hub sprema Page tokene (ne istječu) za svaki Page i povezani Instagram Business račun.')
-                ->schema([
-                    Select::make('brand_id')->label('Brend')->options(Brand::query()->orderBy('name')->pluck('name', 'id'))->required(),
-                    Textarea::make('token')->label('Token')->rows(3)->required(),
-                ])
-                ->action(function (array $data): void {
-                    $brand = Brand::query()->findOrFail((int) $data['brand_id']);
+            ActionGroup::make([
+                Action::make('discover')
+                    ->label('Zalijepi token ručno')
+                    ->icon(Heroicon::OutlinedCloudArrowDown)
+                    ->color('gray')
+                    ->modalDescription('Zalijepi korisnički ili System User token s dozvolama pages_show_list, pages_manage_posts, pages_read_engagement, instagram_basic, instagram_content_publish. Hub sprema Page tokene (ne istječu) za svaki Page i povezani Instagram Business račun.')
+                    ->schema([
+                        Select::make('brand_id')->label('Brend')->options(Brand::query()->orderBy('name')->pluck('name', 'id'))->required(),
+                        Textarea::make('token')->label('Token')->rows(3)->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $brand = Brand::query()->findOrFail((int) $data['brand_id']);
 
-                    try {
-                        $result = app(MetaAssetDiscovery::class)->discover($brand, mb_trim((string) $data['token']));
-                    } catch (PublishException $e) {
-                        Notification::make()->title('Graph API je odbio token')->body($e->getMessage())->danger()->persistent()->send();
+                        try {
+                            $result = app(MetaAssetDiscovery::class)->discover($brand, mb_trim((string) $data['token']));
+                        } catch (PublishException $e) {
+                            Notification::make()->title('Graph API je odbio token')->body($e->getMessage())->danger()->persistent()->send();
 
-                        return;
-                    }
+                            return;
+                        }
 
-                    $accounts = $result->accounts;
-                    $names = MetaConnectNotices::lines($accounts);
+                        $accounts = $result->accounts;
+                        $names = MetaConnectNotices::lines($accounts);
 
-                    MetaConnectNotices::lostAccess($result->lostAccess);
+                        MetaConnectNotices::lostAccess($result->lostAccess);
 
-                    Notification::make()
-                        ->title(count($accounts) > 0 ? count($accounts).' račun(a) spremljeno' : 'Token ne upravlja nijednim Pageom')
-                        ->body($names !== '' ? $names : 'Provjeri da korisnik ima ulogu na Pageu i da su dozvole odobrene.')
-                        ->status(count($accounts) > 0 ? 'success' : 'warning')
-                        ->send();
-                }),
-            CreateAction::make()->label('Dodaj ručno'),
+                        Notification::make()
+                            ->title(count($accounts) > 0 ? count($accounts).' račun(a) spremljeno' : 'Token ne upravlja nijednim Pageom')
+                            ->body($names !== '' ? $names : 'Provjeri da korisnik ima ulogu na Pageu i da su dozvole odobrene.')
+                            ->status(count($accounts) > 0 ? 'success' : 'warning')
+                            ->send();
+                    }),
+                CreateAction::make()->label('Dodaj ručno (npr. Facebook grupa)'),
+            ])
+                ->label('Ručno')
+                ->icon(Heroicon::OutlinedWrenchScrewdriver)
+                ->button()
+                ->color('gray'),
         ];
     }
 
