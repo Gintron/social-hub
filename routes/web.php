@@ -19,6 +19,9 @@ Route::redirect('/', '/admin');
 Route::view('/uvjeti', 'legal.terms')->name('legal.terms');
 Route::view('/privatnost', 'legal.privacy')->name('legal.privacy');
 
+// The application's home page for the Google consent screen: it says what the tool is, without a login.
+Route::view('/aplikacija', 'legal.app')->name('legal.app');
+
 /*
  * Facebook login round-trip. Behind the panel's auth: only a signed-in hub admin may connect
  * accounts, and the callback needs the same session to verify its state.
