@@ -63,7 +63,7 @@ final class PostDraftForm
                     ->visible(fn (?PostDraft $record): bool => $record !== null && $record->staleItems()->isNotEmpty())
                     ->description(fn (?PostDraft $record): string => 'Izmijenjeno otkad je nacrt napravljen: '
                         .($record?->staleItems()->pluck('title')->implode(', ') ?? '')
-                        .'. Provjeri tekst i renderiraj medije ponovno prije objave.')
+                        .($record?->status->isTerminal() ? '. Za aktualni sadržaj izradi novi nacrt.' : '. Neobjavljeni kanali bit će preskočeni da ne izađe zastarjela cijena ili tekst: izradi novi nacrt iz stavke.'))
                     ->columnSpanFull(),
 
                 Tabs::make('Kanali')

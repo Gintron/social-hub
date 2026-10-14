@@ -88,7 +88,7 @@ final class CreateDraft
                 'agent_run_id' => $agentRunId,
             ]);
 
-            $draft->contentItems()->attach($item->id, ['position' => 0, 'checksum' => $item->checksum]);
+            $draft->contentItems()->attach($item->id, ['position' => 0, 'checksum' => $item->checksum, 'publication_checksum' => $item->publicationChecksum()]);
 
             foreach ($accounts as $account) {
                 // A new-catalog video points to the app, and to it from this channel: one link per video and channel.

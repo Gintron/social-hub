@@ -59,11 +59,21 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   stavku tiho prestane vraćati (arhiviranje, brisanje) nikad ne dobije priliku ispraviti taj datum —
   hub samo prestane čuti za nju. Zato `PublishVariantJob` neposredno prije objave provjerava i
   `App\Publishing\LinkPreflight` (stvaran HTTP poziv na `content_item.url`), ne samo `isExpired()`;
-  promašaj ide u `Skipped` s `error_code=dead_link`, isto kao istekla stavka. Isto se pita i **pri
+  404/410 ide u `Skipped` s `error_code=dead_link`, isto kao istekla stavka. Stranica koja se samo ne
+  može dohvatiti (timeout, 5xx, 408/425/429) baca `TransientPublishException` i prolazi isti ograničeni
+  retry kao API, a drugi 4xx je `Failed` (`link_check_failed`) — jedan loš odgovor trgovine ne smije trajno
+  ubiti objavu. Isto se pita i **pri
   odabiru** (`LinkPreflight::isAlive()` u `DigestBuilder::pick` i `ApplyAutoPublishRules`): mrtva
   stavka ustupa mjesto sljedećoj umjesto da jedna sruši cijeli pregled na svim kanalima, a 404/410 se
   pamti u `content_items.link_dead_at` (izvan `live()`) dok je sinkronizacija ponovno ne vidi. Nacrt
   kojem su svi kanali preskočeni prelazi u `DraftStatus::Skipped`, ne ostaje „objavljuje se".
+- **Nacrt ne izlazi s podacima koje je izvor u međuvremenu promijenio.** `post_draft_content_items.publication_checksum`
+  je hash samo onoga što ulazi u objavu (`ContentItem::publicationChecksum()`: tekst, cijena, činjenice, URL, slike,
+  `expires_at`, `raw.emoji`/`raw.rows`); prioritet i ostalo knjigovodstvo feeda ne računaju se, pa „dodir" bez
+  izmjene ne diže uzbunu. `PostDraft::staleItems()` je usporedba; `PublishVariantJob` varijantu koja ne odgovara
+  preskače s `error_code=stale_content` (`PublishVariantJob::contentBlock`, uz alkohol), jer automatika nikad ne vidi upozorenje iz panela.
+  Nema toka „osvježi nacrt": put naprijed je novi nacrt iz stavke. Razmatrano i odbačeno 14. 10. 2026.
+  (sinkroni render u web zahtjevu, prepisivanje ručnih izmjena, poništavanje odobrenja pri svakom syncu).
 - **Instagram token je Page token.** Discovery sprema isti token na `fb_page` i `ig_business` račun, plus
   `connected_user_id` koji deauthorize callback koristi da nađe pogođene račune.
 - **Facebook odobrenje je jedno po korisniku × aplikaciji, ne po brendu.** Svaka prijava (dijalog ili ručni
@@ -125,7 +135,9 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   slajdova: carousel ili Reel od njih, nikad jedna slika. Najviše 2 stavke dijele istu oznaku osim
   oznake serije (`DigestBuilder::MAX_PER_TAG` — marka, u miješanom pregledu i lanac); ostatak se tek
   onda puni po prioritetu. Uzima i stavke koje su već imale svoju objavu, ali ne dvaput u 7 dana
-  (`DigestBuilder::REPEAT_AFTER_DAYS`).
+  (`DigestBuilder::REPEAT_AFTER_DAYS`). Jedan pregled dijeli stavke među kanalima, pa uzima samo izvore
+  čije (uključeno) pravilo dopušta objavu na **svakom** ciljnom kanalu serije; dozvola jednog izvora na jednom
+  kanalu nikad ne objavljuje stavke drugog izvora (`ScheduleDigest` → `DigestBuilder::pick($sourceIds)`).
 - **Pregledi se mjere, ne pretpostavljaju**: `hub:collect-metrics` (satno) čita objave koje su na redu
   (`CollectPostMetrics::due()`: svakih 6 h prvih 7 dana, zatim dnevno do 30) u `post_metrics`, redak
   po očitanju. Imena Metinih metrika su u `config/meta.php` (`insights`) jer ih Meta mijenja; neuspjeh

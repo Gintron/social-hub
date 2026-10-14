@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Publishing;
 
 use App\Models\ContentItem;
+use App\Publishing\Exceptions\PermanentPublishException;
+use App\Publishing\Exceptions\TransientPublishException;
 use App\Publishing\LinkPreflight;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -37,13 +39,42 @@ final class LinkPreflightTest extends TestCase
         Http::assertSentCount(2);
     }
 
-    public function test_a_connection_failure_counts_as_dead(): void
+    public function test_a_connection_failure_is_retryable(): void
     {
         Http::fake(function (): void {
             throw new \Illuminate\Http\Client\ConnectionException('could not resolve host');
         });
 
-        $this->assertTrue((new LinkPreflight)->isDead($this->item('https://uselisto.test/unreachable')));
+        $this->expectException(TransientPublishException::class);
+
+        (new LinkPreflight)->isDead($this->item('https://uselisto.test/unreachable'));
+    }
+
+    public function test_temporary_http_failures_are_retryable(): void
+    {
+        $responses = Http::sequence();
+        foreach ([408, 425, 429, 500, 503] as $status) {
+            $responses->push('', $status);
+        }
+        Http::fake(['*' => $responses]);
+
+        foreach ([408, 425, 429, 500, 503] as $status) {
+            try {
+                (new LinkPreflight)->isDead($this->item('https://uselisto.test/unavailable'));
+                $this->fail("HTTP {$status} should retry.");
+            } catch (TransientPublishException $e) {
+                $this->assertSame('link_unavailable', $e->errorCode);
+                $this->assertStringContainsString((string) $status, $e->getMessage());
+            }
+        }
+    }
+
+    public function test_a_forbidden_page_fails_explicitly(): void
+    {
+        Http::fake(['*' => Http::response('', 403)]);
+        $this->expectException(PermanentPublishException::class);
+
+        (new LinkPreflight)->isDead($this->item('https://uselisto.test/forbidden'));
     }
 
     public function test_a_pick_asks_a_host_that_did_not_answer_only_once(): void

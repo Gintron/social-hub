@@ -84,6 +84,15 @@ Automatska objava). Kad je uključena, nove stavke iz sinkronizacije same postaj
 zakazuju se u sljedeći termin brenda, s odgodom i dnevnim ograničenjem koje zadaš. Objave se
 razmiču 45 minuta da deset novih oglasa ne postane deset objava u istoj minuti.
 
+Automatska zbirna objava koristi samo uključene izvore koji dopuštaju automatsku objavu na
+svakom njezinu ciljnom kanalu. Ako nema dovoljno takvih stavki, zbirna objava se ne izrađuje.
+
+Ako se nakon izrade nacrta promijeni ono što ulazi u objavu (cijena, naslov, datum, slike), objava
+se prije izlaska preskače (`stale_content`): zastarjela cijena je gora od propuštene objave.
+Prioritet i ostala knjigovodstvena polja feeda to ne okidaju. Za aktualni sadržaj izradi novi nacrt
+iz stavke. Privremeno nedostupna poveznica prije objave pokreće ponovne pokušaje; uklonjena
+stranica (404/410) preskače objavu, a iscrpljeni pokušaji ostavljaju neuspjelu objavu za pregled.
+
 ## Objavljivanje
 
 | Kanal | Kako |

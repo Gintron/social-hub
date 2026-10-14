@@ -69,6 +69,7 @@ final class DigestBuilder
      * @param  array<string, ContentFormat>  $formats  platform value => carousel or video; carousel by default.
      * @param  array{seconds?: float|int|string, audio?: string, motion?: bool}  $video
      * @param  string|null  $series  The digest series building this draft (DigestSeries::$key).
+     * @param  list<int>|null  $sourceIds  Allowed sources for an automated digest; null leaves human selection unrestricted.
      */
     public function build(
         Brand $brand,
@@ -88,6 +89,7 @@ final class DigestBuilder
         array $formats = [],
         array $video = [],
         ?string $series = null,
+        ?array $sourceIds = null,
     ): PostDraft {
         $accounts = collect($accounts);
 
@@ -96,7 +98,7 @@ final class DigestBuilder
         }
 
         $count = max(2, min($count, self::MAX_ITEMS));
-        $items = $this->pick($brand, $kind, $count, $includePosted, $tag, $scheduledAt, $accounts->map(fn (SocialAccount $account): string => $account->platform->value)->all());
+        $items = $this->pick($brand, $kind, $count, $includePosted, $tag, $scheduledAt, $accounts->map(fn (SocialAccount $account): string => $account->platform->value)->all(), $sourceIds);
 
         if ($items->count() < 2) {
             $scope = $tag !== null ? " s oznakom {$tag}" : '';
@@ -120,7 +122,11 @@ final class DigestBuilder
             ]);
 
             foreach ($items->values() as $position => $item) {
-                $draft->contentItems()->attach($item->id, ['position' => $position, 'checksum' => $item->checksum]);
+                $draft->contentItems()->attach($item->id, [
+                    'position' => $position,
+                    'checksum' => $item->checksum,
+                    'publication_checksum' => $item->publicationChecksum(),
+                ]);
             }
 
             foreach ($accounts as $account) {
@@ -167,15 +173,17 @@ final class DigestBuilder
      *
      * @param  list<string>  $platforms  The channels the roundup posts to (Platform values); empty = every channel
      *                                   that RestrictedGoodsCheck covers.
+     * @param  list<int>|null  $sourceIds  Allowed sources for an automated digest; null leaves human selection unrestricted.
      * @return Collection<int, ContentItem>
      */
-    public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false, ?string $tag = null, ?CarbonImmutable $postedAt = null, array $platforms = []): Collection
+    public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false, ?string $tag = null, ?CarbonImmutable $postedAt = null, array $platforms = [], ?array $sourceIds = null): Collection
     {
         $since = CarbonImmutable::now()->subDays(self::REPEAT_AFTER_DAYS);
 
         $query = ContentItem::query()
             ->where('brand_id', $brand->id)
             ->where('kind', $kind->value)
+            ->when($sourceIds !== null, fn ($query) => $query->whereIn('source_id', $sourceIds))
             ->postableAt($postedAt ?? CarbonImmutable::now())
             ->when($tag !== null, fn ($query) => $query->whereJsonContains('tags', $tag))
             ->when(! $includePosted, fn ($query) => $query->notDrafted())

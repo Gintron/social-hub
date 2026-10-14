@@ -53,7 +53,7 @@ final class PostDraft extends Model
     public function contentItems(): BelongsToMany
     {
         return $this->belongsToMany(ContentItem::class, 'post_draft_content_items')
-            ->withPivot(['position', 'checksum'])
+            ->withPivot(['position', 'checksum', 'publication_checksum'])
             ->orderByPivot('position');
     }
 
@@ -75,7 +75,9 @@ final class PostDraft extends Model
     public function staleItems(): \Illuminate\Support\Collection
     {
         return $this->contentItems
-            ->filter(fn (ContentItem $item): bool => filled($item->pivot->checksum) && $item->pivot->checksum !== $item->checksum)
+            ->filter(fn (ContentItem $item): bool => filled($item->pivot->publication_checksum)
+                ? $item->pivot->publication_checksum !== $item->publicationChecksum()
+                : filled($item->pivot->checksum) && $item->pivot->checksum !== $item->checksum)
             ->values();
     }
 

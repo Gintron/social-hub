@@ -120,29 +120,28 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // `expires_at` is only as fresh as the last sync that actually saw this item; a source
-        // that silently drops it (archived, pulled) never gets to correct it. This catches that
-        // regardless of cause — the one thing that can't be stale is the URL itself, right now.
-        $deadLink = $draft?->contentItems->first(fn ($item): bool => $preflight->isDead($item));
-        if ($deadLink !== null) {
-            $variant->forceFill([
-                'status' => VariantStatus::Skipped,
-                'error_code' => 'dead_link',
-                'error_message' => "Poveznica stavke '{$deadLink->title}' više ne odgovara ({$deadLink->url}); objava preskočena.",
-            ])->save();
-            $draft?->refreshStatusFromVariants();
-
-            return;
-        }
-
-        if ($variant->account !== null && ! $variant->account->isUsable()) {
-            $this->fail($variant, new TokenInvalidException("Račun {$variant->account->name} nije upotrebljiv (status {$variant->account->status->value})."), $notifier);
-            $draft?->refreshStatusFromVariants();
-
-            return;
-        }
-
         try {
+            // `expires_at` is only as fresh as the last sync that actually saw this item; a source
+            // that silently drops it (archived, pulled) never gets to correct it. This catches that
+            // regardless of cause — the one thing that can't be stale is the URL itself, right now.
+            // A page that merely cannot be reached throws and takes the same bounded retry as the API.
+            $deadLink = $draft?->contentItems->first(fn ($item): bool => $preflight->isDead($item));
+            if ($deadLink !== null) {
+                $variant->forceFill([
+                    'status' => VariantStatus::Skipped,
+                    'error_code' => 'dead_link',
+                    'error_message' => "Poveznica stavke '{$deadLink->title}' više ne odgovara ({$deadLink->url}); objava preskočena.",
+                ])->save();
+
+                return;
+            }
+
+            if ($variant->account !== null && ! $variant->account->isUsable()) {
+                $this->fail($variant, new TokenInvalidException("Račun {$variant->account->name} nije upotrebljiv (status {$variant->account->status->value})."), $notifier);
+
+                return;
+            }
+
             // Still rendering: retried shortly. Wrong media for the format: fails with a reason.
             $formats->assertReady($variant);
 

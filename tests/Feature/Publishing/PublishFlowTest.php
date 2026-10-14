@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use InvalidArgumentException;
+use Mockery;
 use Tests\TestCase;
 
 final class PublishFlowTest extends TestCase
@@ -365,6 +366,132 @@ final class PublishFlowTest extends TestCase
         Queue::assertPushed(PublishVariantJob::class, 1);
         $this->assertSame(DraftStatus::Publishing, $due->refresh()->status);
         $this->assertSame(DraftStatus::Scheduled, $later->refresh()->status);
+    }
+
+    public function test_a_temporary_landing_page_failure_recovers_without_losing_the_post(): void
+    {
+        Notification::fake();
+        Http::fake([
+            'example.test/*' => Http::sequence()->push('', 503)->push('', 200),
+            'graph.facebook.com/*' => Http::response(['id' => '1', 'post_id' => '9_1']),
+        ]);
+        [$draft, $variant, $item] = $this->queuedLinkDraft();
+
+        $this->runPublishAttempt($variant->id, 1, release: true);
+        $this->assertSame(VariantStatus::Queued, $variant->refresh()->status);
+        $this->assertSame('link_unavailable', $variant->error_code);
+        $this->assertNull($item->refresh()->link_dead_at);
+
+        $this->runPublishAttempt($variant->id, 2);
+        $this->assertSame(VariantStatus::Published, $variant->refresh()->status);
+        $this->assertSame(DraftStatus::Published, $draft->refresh()->status);
+        Notification::assertNothingSent();
+    }
+
+    public function test_exhausted_link_retries_fail_and_can_be_retried_normally(): void
+    {
+        Notification::fake();
+        Http::fake([
+            'example.test/*' => Http::sequence()->push('', 503)->push('', 503)->push('', 503)->push('', 200),
+            'graph.facebook.com/*' => Http::response(['id' => '1', 'post_id' => '9_1']),
+        ]);
+        [$draft, $variant, $item] = $this->queuedLinkDraft();
+
+        foreach ([1, 2, 3] as $attempt) {
+            $this->runPublishAttempt($variant->id, $attempt, release: $attempt < 3);
+        }
+
+        $this->assertSame(VariantStatus::Failed, $variant->refresh()->status);
+        $this->assertSame('link_unavailable', $variant->error_code);
+        $this->assertSame(DraftStatus::Failed, $draft->refresh()->status);
+        $this->assertNull($item->refresh()->link_dead_at);
+        Notification::assertSentOnDemand(PublishFailed::class);
+
+        $this->assertSame(1, app(DispatchDraftPublishing::class)->execute($draft));
+        $this->runPublishAttempt($variant->id, 1);
+        $this->assertSame(VariantStatus::Published, $variant->refresh()->status);
+    }
+
+    public function test_a_landing_page_timeout_is_released_for_retry(): void
+    {
+        Notification::fake();
+        Http::fake(function (): void {
+            throw new \Illuminate\Http\Client\ConnectionException('timed out');
+        });
+        [$draft, $variant, $item] = $this->queuedLinkDraft();
+
+        $this->runPublishAttempt($variant->id, 1, release: true);
+
+        $this->assertSame(VariantStatus::Queued, $variant->refresh()->status);
+        $this->assertSame(DraftStatus::Publishing, $draft->refresh()->status);
+        $this->assertNull($item->refresh()->link_dead_at);
+        Notification::assertNothingSent();
+    }
+
+    public function test_a_definitively_missing_landing_page_is_skipped_without_retry(): void
+    {
+        Notification::fake();
+        Http::fake(['example.test/*' => Http::response('', 404)]);
+        [, $variant, $item] = $this->queuedLinkDraft();
+
+        $this->runPublishAttempt($variant->id, 1);
+
+        $this->assertSame(VariantStatus::Skipped, $variant->refresh()->status);
+        $this->assertSame('dead_link', $variant->error_code);
+        $this->assertNotNull($item->refresh()->link_dead_at);
+        Notification::assertNothingSent();
+    }
+
+    public function test_feed_bookkeeping_changes_do_not_stop_a_post(): void
+    {
+        Notification::fake();
+        Http::fake([
+            'example.test/*' => Http::response('', 200),
+            'graph.facebook.com/*' => Http::response(['id' => '1', 'post_id' => '9_1']),
+        ]);
+        [$draft, $variant, $item] = $this->queuedLinkDraft();
+        $item->forceFill(['priority' => 99, 'checksum' => hash('sha256', 'a touch, not an edit')])->save();
+
+        $this->runPublishAttempt($variant->id, 1);
+
+        $this->assertSame(VariantStatus::Published, $variant->refresh()->status);
+        $this->assertSame(DraftStatus::Published, $draft->refresh()->status);
+    }
+
+    /**
+     * @return array{\App\Models\PostDraft, \App\Models\PostVariant, ContentItem}
+     */
+    private function queuedLinkDraft(): array
+    {
+        Queue::fake();
+        [$brand, $item] = $this->brandWithItem();
+        $account = SocialAccount::factory()->for($brand)->create();
+        $draft = app(CreateDraft::class)->execute($item, [$account], render: false);
+        $this->postAsLink($draft);
+        app(ApproveDraft::class)->execute($draft, null);
+        app(DispatchDraftPublishing::class)->execute($draft->refresh());
+
+        return [$draft, $draft->variants->first()->refresh(), $item];
+    }
+
+    private function runPublishAttempt(int $variantId, int $attempt, bool $release = false): void
+    {
+        $queueJob = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+        $queueJob->shouldReceive('attempts')->andReturn($attempt);
+        if ($release) {
+            $queueJob->shouldReceive('release')->once()->with(120);
+        } else {
+            $queueJob->shouldNotReceive('release');
+        }
+        $job = new PublishVariantJob($variantId);
+        $job->setJob($queueJob);
+        $job->handle(
+            app(\App\Publishing\PublisherRegistry::class),
+            app(\App\Support\AdminNotifier::class),
+            app(\App\Publishing\LinkPreflight::class),
+            app(\App\Publishing\FormatCheck::class),
+            app(\App\Publishing\RestrictedGoodsCheck::class),
+        );
     }
 
     /**

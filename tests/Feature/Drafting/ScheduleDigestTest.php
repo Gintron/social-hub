@@ -108,6 +108,59 @@ final class ScheduleDigestTest extends TestCase
         $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand->refresh()), 'isključeno');
     }
 
+    public function test_a_shared_digest_only_takes_sources_allowed_on_every_target_platform(): void
+    {
+        $unapproved = Source::factory()->for($this->brand)->create();
+        $instagramOnly = Source::factory()->for($this->brand)->create();
+        AutoPublishRule::query()->create([
+            'source_id' => $instagramOnly->id,
+            'platform' => Platform::InstagramBusiness,
+            'enabled' => true,
+        ]);
+
+        foreach ([$unapproved, $instagramOnly] as $source) {
+            ContentItem::factory()->for($source)->for($this->brand)->create([
+                'kind' => ContentKind::Job,
+                'title' => 'Nije dopušteno na svim kanalima',
+                'priority' => 100,
+                'expires_at' => CarbonImmutable::now()->addDays(20),
+                'images' => [],
+            ]);
+        }
+
+        $drafts = app(ScheduleDigest::class)->execute($this->brand);
+
+        $this->assertCount(1, $drafts);
+        $this->assertSame(['A', 'B', 'C'], $drafts[0]->contentItems->pluck('title')->all());
+        $this->assertSame([$this->source->id], $drafts[0]->contentItems->pluck('source_id')->unique()->values()->all());
+        $this->assertCount(2, $drafts[0]->variants);
+        $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand), 'serija ostaje jednom dnevno');
+    }
+
+    public function test_it_does_not_build_when_no_source_permits_all_target_platforms(): void
+    {
+        $this->source->autoPublishRules()->where('platform', Platform::TikTok->value)->update(['enabled' => false]);
+        $other = Source::factory()->for($this->brand)->create();
+        AutoPublishRule::query()->create([
+            'source_id' => $other->id,
+            'platform' => Platform::TikTok,
+            'enabled' => true,
+        ]);
+
+        $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand));
+        $this->assertSame(0, PostDraft::query()->count());
+        Queue::assertNothingPushed();
+    }
+
+    public function test_a_disabled_source_cannot_enable_channels_or_supply_digest_items(): void
+    {
+        $this->source->forceFill(['enabled' => false])->save();
+
+        $this->assertSame([], app(ScheduleDigest::class)->execute($this->brand));
+        $this->assertSame(0, PostDraft::query()->count());
+        Queue::assertNothingPushed();
+    }
+
     public function test_items_from_this_weeks_digest_wait_a_week(): void
     {
         $monday = app(ScheduleDigest::class)->execute($this->brand)[0];

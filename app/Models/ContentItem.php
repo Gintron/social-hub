@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Arr;
 
 /**
  * One normalized Social Feed v1 item pulled from a source (a job, a deal, an article…).
@@ -90,6 +91,29 @@ final class ContentItem extends Model
     public function postDrafts(): BelongsToMany
     {
         return $this->belongsToMany(PostDraft::class, 'post_draft_content_items')->withPivot('position');
+    }
+
+    /** Hash only data that captions, slides and narration can publish; feed bookkeeping is excluded. */
+    public function publicationChecksum(): string
+    {
+        $data = $this->only(['title', 'subtitle', 'body_text', 'facts', 'badges', 'price', 'cta', 'url', 'images', 'tags']);
+        $data['kind'] = $this->kind->value;
+        $data['expires_at'] = $this->expires_at?->utc()->toIso8601String();
+        $data['raw'] = Arr::only($this->raw ?? [], ['emoji', 'rows']);
+
+        $canonical = function (mixed $value) use (&$canonical): mixed {
+            if (! is_array($value)) {
+                return $value;
+            }
+
+            if (! array_is_list($value)) {
+                ksort($value);
+            }
+
+            return array_map($canonical, $value);
+        };
+
+        return hash('sha256', json_encode($canonical($data), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     /**

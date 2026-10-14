@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Publishing;
 
 use App\Models\ContentItem;
+use App\Publishing\Exceptions\PermanentPublishException;
+use App\Publishing\Exceptions\TransientPublishException;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -32,6 +34,9 @@ final class LinkPreflight
 
     /**
      * @return bool true when the item should be skipped, not published
+     *
+     * @throws TransientPublishException When the page cannot currently be checked.
+     * @throws PermanentPublishException When its server rejects the check with another 4xx.
      */
     public function isDead(ContentItem $item): bool
     {
@@ -39,11 +44,21 @@ final class LinkPreflight
             return false;
         }
 
-        // Can't confirm it's alive — treat like any other unreachable page. A retry costs one
-        // re-approve; a broken link in a public post costs more.
         $status = $this->status($item);
 
-        return $status === null || $status >= 400;
+        if ($status === null || in_array($status, [408, 425, 429], true) || $status >= 500) {
+            throw new TransientPublishException("Poveznicu stavke '{$item->title}' trenutno nije moguće provjeriti (".($status ?? 'mrežna pogreška').').', 'link_unavailable');
+        }
+
+        if (in_array($status, [404, 410], true)) {
+            return true;
+        }
+
+        if ($status >= 400) {
+            throw new PermanentPublishException("Poveznica stavke '{$item->title}' odbija provjeru (HTTP {$status}).", 'link_check_failed');
+        }
+
+        return false;
     }
 
     /**

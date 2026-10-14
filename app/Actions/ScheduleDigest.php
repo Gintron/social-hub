@@ -60,7 +60,7 @@ final class ScheduleDigest
 
         $rules = AutoPublishRule::query()
             ->where('enabled', true)
-            ->whereHas('source', fn ($query) => $query->where('brand_id', $brand->id))
+            ->whereHas('source', fn ($query) => $query->where('brand_id', $brand->id)->enabled())
             ->get()
             ->reject(fn (AutoPublishRule $rule): bool => $rule->platform->isManual());
 
@@ -74,10 +74,25 @@ final class ScheduleDigest
             return [];
         }
 
+        // One digest shares its items across channels. A source must therefore permit every
+        // target platform; permission on one source must never publish another source's items.
+        $platforms = $accounts->map(fn (SocialAccount $account): string => $account->platform->value)->unique();
+        $sourceIds = $rules->groupBy('source_id')
+            ->filter(fn (Collection $sourceRules): bool => $platforms->diff(
+                $sourceRules->map(fn (AutoPublishRule $rule): string => $rule->platform->value)->unique(),
+            )->isEmpty())
+            ->keys()->map(fn ($id): int => (int) $id)->all();
+
+        if ($sourceIds === []) {
+            return [];
+        }
+
+        $rules = $rules->filter(fn (AutoPublishRule $rule): bool => in_array($rule->source_id, $sourceIds, true));
+
         $drafts = [];
 
         foreach ($due as $series) {
-            $draft = $this->build($brand, $series, $rules, $accounts, $now, $local);
+            $draft = $this->build($brand, $series, $rules, $accounts, $now, $local, $sourceIds);
 
             if ($draft !== null) {
                 $drafts[] = $draft;
@@ -90,8 +105,9 @@ final class ScheduleDigest
     /**
      * @param  Collection<int, AutoPublishRule>  $rules
      * @param  Collection<int, SocialAccount>  $accounts
+     * @param  list<int>  $sourceIds
      */
-    private function build(Brand $brand, DigestSeries $series, Collection $rules, Collection $accounts, CarbonImmutable $now, CarbonImmutable $local): ?PostDraft
+    private function build(Brand $brand, DigestSeries $series, Collection $rules, Collection $accounts, CarbonImmutable $now, CarbonImmutable $local, array $sourceIds): ?PostDraft
     {
         $at = $series->at($local);
         $earliest = $at->greaterThan($now) ? $at->utc() : $now->utc();
@@ -122,6 +138,7 @@ final class ScheduleDigest
                 formats: $accounts->mapWithKeys(fn (SocialAccount $account): array => [$account->platform->value => $series->formatFor($account->platform)])->all(),
                 video: ['seconds' => $series->secondsPerSlide],
                 series: $series->key,
+                sourceIds: $sourceIds,
             );
         } catch (InvalidArgumentException $e) {
             Log::info('hub.digest.skipped', ['brand' => $brand->slug, 'series' => $series->name, 'reason' => $e->getMessage()]);
