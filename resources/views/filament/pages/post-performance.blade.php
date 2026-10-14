@@ -31,7 +31,7 @@
         <x-filament::callout
             color="gray"
             icon="heroicon-o-information-circle"
-            heading="TikTok: očitanja nisu dostupna za {{ $this->unavailableMetricsCount() }} objava"
+            heading="TikTok API for Business: očitanja nisu dostupna za {{ $this->unavailableMetricsCount() }} objava."
             description="Hub trenutačno ne dohvaća metrike TikTok API-ja za Business. To nije nula pregleda, a ponovno povezivanje računa ne dodaje ovu mogućnost. Rezultate pogledaj u TikTok analitici."
         />
     @endif
@@ -57,7 +57,7 @@
         <x-filament::section>
             <x-filament::empty-state
                 icon="heroicon-o-chart-bar"
-                heading="Još nema očitanja za ovo razdoblje"
+                heading="Još nema dostupnih očitanja za ovo razdoblje"
                 :contained="false"
             >
                 <x-slot name="description">

@@ -45,8 +45,10 @@ final class DashboardTest extends TestCase
 
     public function test_an_empty_hub_is_shown_the_four_steps_to_a_first_post(): void
     {
-        $this->get('/admin')
-            ->assertOk()
+        // Widgets load lazily on the page, so the guide is asked for directly.
+        $this->get('/admin')->assertOk();
+
+        Livewire::test(SetupGuide::class)
             ->assertSee('Kako početi')
             ->assertSee('0 od 4 koraka gotovo')
             ->assertSee('Dodaj brend')
@@ -84,7 +86,7 @@ final class DashboardTest extends TestCase
 
         $this->assertTrue(app(HubStatus::class)->setupComplete());
         $this->assertFalse(SetupGuide::canView());
-        $this->get('/admin')->assertOk()->assertDontSee('Kako početi');
+        $this->get('/admin')->assertOk();
         $this->assertNotNull($source);
     }
 
@@ -187,9 +189,7 @@ final class DashboardTest extends TestCase
         $this->assertSame('Sadržaj', SourceResource::getNavigationGroup());
         $this->assertSame('Postavke', BrandResource::getNavigationGroup());
         $this->assertSame('Postavke', SocialAccountResource::getNavigationGroup());
-        $this->assertSame(['Objavljivanje', 'Sadržaj', 'Postavke'], filament()->getDefaultPanel()->getNavigationGroups() === []
-            ? []
-            : array_map(fn ($group) => $group->getLabel(), array_values(filament()->getDefaultPanel()->getNavigationGroups())));
+        $this->assertSame(['Objavljivanje', 'Sadržaj', 'Postavke'], array_values(filament()->getDefaultPanel()->getNavigationGroups()));
     }
 
     public function test_a_channel_has_a_short_name_for_places_where_space_is_short(): void
