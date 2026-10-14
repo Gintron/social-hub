@@ -239,7 +239,7 @@ final class YouTubePublisherTest extends TestCase
         $variant = $this->youtubeVariant(['token_valid' => false]);
         $job = fn (): PublishVariantJob => new PublishVariantJob($variant->id);
 
-        $job()->handle(app(PublisherRegistry::class), app(AdminNotifier::class), app(LinkPreflight::class), app(FormatCheck::class));
+        $job()->handle(app(PublisherRegistry::class), app(AdminNotifier::class), app(LinkPreflight::class), app(FormatCheck::class), app(\App\Publishing\RestrictedGoodsCheck::class));
 
         $variant->refresh();
         $this->assertSame(VariantStatus::Published, $variant->status);
@@ -247,7 +247,7 @@ final class YouTubePublisherTest extends TestCase
         $this->assertSame('https://www.youtube.com/shorts/vid-123', $variant->permalink);
 
         // A retry finds the id already there and must not open a second upload.
-        $job()->handle(app(PublisherRegistry::class), app(AdminNotifier::class), app(LinkPreflight::class), app(FormatCheck::class));
+        $job()->handle(app(PublisherRegistry::class), app(AdminNotifier::class), app(LinkPreflight::class), app(FormatCheck::class), app(\App\Publishing\RestrictedGoodsCheck::class));
 
         $uploads = Http::recorded(fn (Request $request): bool => str_contains($request->url(), 'googleapis.com/upload/youtube/v3/videos'));
         $this->assertCount(1, $uploads);

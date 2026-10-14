@@ -16,6 +16,7 @@ use App\Publishing\Exceptions\TokenInvalidException;
 use App\Publishing\FormatCheck;
 use App\Publishing\LinkPreflight;
 use App\Publishing\PublisherRegistry;
+use App\Publishing\RestrictedGoodsCheck;
 use App\Support\AdminNotifier;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -55,7 +56,7 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
         return [60, 300, 900];
     }
 
-    public function handle(PublisherRegistry $publishers, AdminNotifier $notifier, LinkPreflight $preflight, FormatCheck $formats): void
+    public function handle(PublisherRegistry $publishers, AdminNotifier $notifier, LinkPreflight $preflight, FormatCheck $formats, RestrictedGoodsCheck $goods): void
     {
         $variant = PostVariant::query()->with(['account', 'draft.contentItems', 'media'])->find($this->variantId);
 
@@ -67,7 +68,12 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
 
         if ($variant->platform->isManual()) {
             if ($variant->status === VariantStatus::Queued) {
-                $variant->forceFill(['status' => VariantStatus::ManualPending])->save();
+                // A person posts this one by hand: the same words and staleness checks stand before it reaches them.
+                $block = $this->contentBlock($variant, $goods);
+
+                $variant->forceFill($block === null
+                    ? ['status' => VariantStatus::ManualPending]
+                    : ['status' => VariantStatus::Skipped, 'error_code' => $block[0], 'error_message' => $block[1]])->save();
                 $draft?->refreshStatusFromVariants();
             }
 
@@ -94,6 +100,20 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
                 'status' => VariantStatus::Skipped,
                 'error_code' => 'content_expired',
                 'error_message' => "Stavka '{$expired->title}' je istekla ".$expired->expires_at?->diffForHumans().'; objava preskočena.',
+            ])->save();
+            $draft?->refreshStatusFromVariants();
+
+            return;
+        }
+
+        // Words that name alcohol on a channel that does not take it, or content that changed after the draft was
+        // made (its caption and media came from the old item). Checked here as well as at selection: a draft can be
+        // made by hand. Before the link check: it needs no request, and a blocked item should not cost one.
+        if (($block = $this->contentBlock($variant, $goods)) !== null) {
+            $variant->forceFill([
+                'status' => VariantStatus::Skipped,
+                'error_code' => $block[0],
+                'error_message' => $block[1],
             ])->save();
             $draft?->refreshStatusFromVariants();
 
@@ -197,6 +217,28 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
         } catch (Throwable $e) {
             Log::warning('hub.tiktok.first_comment_not_queued', ['variant' => $variant->id, 'error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Why this variant may not go out with the content it holds, as [error_code, message]; null when it may.
+     * Its caption and media were made from the items as they were when the draft was prepared: an item that changed
+     * since (its pivot checksum no longer matches) makes the draft stale, so a moved price or page is not posted.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    private function contentBlock(PostVariant $variant, RestrictedGoodsCheck $goods): ?array
+    {
+        if (($restricted = $goods->variantProblem($variant)) !== null) {
+            return ['restricted_goods', $restricted];
+        }
+
+        $stale = $variant->draft?->staleItems() ?? collect();
+
+        if ($stale->isNotEmpty()) {
+            return ['stale_content', "Stavka '{$stale->first()->title}' promijenila se otkad je nacrt pripremljen; objava preskočena. Napravi nacrt ponovno."];
+        }
+
+        return null;
     }
 
     private function fail(PostVariant $variant, PublishException $e, AdminNotifier $notifier): void

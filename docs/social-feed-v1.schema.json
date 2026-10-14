@@ -31,6 +31,7 @@
         "images": { "type": "array", "items": { "$ref": "#/$defs/image" }, "maxItems": 10, "default": [] },
         "priority": { "type": ["integer", "null"], "minimum": 0, "description": "Veće = važnije (tier, postotak popusta…)." },
         "tags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 60 }, "maxItems": 50, "default": [] },
+        "restricted": { "type": "array", "items": { "enum": ["alcohol"] }, "uniqueItems": true, "maxItems": 5, "default": [], "description": "Regulirana roba koju stavka prikazuje ili nudi. Hub je ne objavljuje na kanalima iz config/restricted_goods.php." },
         "published_at": { "type": ["string", "null"], "format": "date-time" },
         "expires_at": { "type": ["string", "null"], "format": "date-time" },
         "updated_at": { "type": "string", "format": "date-time", "description": "Filtar `since` uspoređuje s ovim poljem." },

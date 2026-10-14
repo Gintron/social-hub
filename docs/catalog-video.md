@@ -67,6 +67,22 @@ Podatkovno, bez modela. Prva stranica koja ima tri dostojna proizvoda, među nji
   gusta stranica i premala kartica (< 44 pt na 360 pt širine) otpadaju;
 - bez duplikata naziva; prednost različitim grupama i markama, zatim `priority` (svakodnevna kupnja pa popust).
 
+**Alkohol na stranicama.** Objava ne smije sadržavati alkohol, a stranica letka je slika cijela. Zato se stranica na
+kojoj je ijedan proizvod alkohol (po nazivu, marki ili varijanti; riječi kao u `config/restricted_goods.php`) ne
+pokazuje ni na koji način:
+
+- **naslovnica:** uvijek je stranica s proizvodima: prva stranica koja ima proizvode i na kojoj alkohola nema
+  (`coverPage`). Stranica bez proizvoda (naslovnica bez kartica, oglas) ne može biti naslovnica, jer Listo o njoj nema
+  podatke. Bez takve stranice letak ide u feed označen `restricted` i bez stranica (`alcoholBlocksCover`), pa ga hub
+  ne objavljuje;
+- **feed:** katalozi se ne filtriraju po `since`. Naslovnica i njezina dostupnost ovise o podacima o proizvodima, a ne
+  o `published_at`, pa bi promjena došla samo pri punom čitanju. Katalogâ ima malo, pa se šalju svi živi pri svakoj
+  sinkronizaciji;
+- **dodir:** tri proizvoda biraju se samo sa stranica bez alkohola, a stranice prije naslovnice se ne uzimaju;
+- **listanje:** ako je neka međustranica s alkoholom, video ide izravno s naslovnice na stranicu s dodirima
+  (`listing`). Međustranica bez proizvoda (oglas) Listo ne može provjeriti; ostaje kao i prije. Naslovnicu to ne
+  dopušta: ona uvijek ima proizvode.
+
 Zbroj na listi je zbroj stvarnih `price_cents`; hub odbija blok u kojem `total_cents` to nije.
 Letak bez tri dostojna proizvoda ne ide u feed. Na 20 javnih letaka (3. 10. 2026.) izbor je našao tri za svaki
 glavni letak (Konzum, Spar, Kaufland, Lidl, Plodine, Müller); tematske brošure (< 150 proizvoda) izvor ionako

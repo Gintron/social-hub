@@ -12,6 +12,7 @@ use App\Models\PostDraft;
 use App\Models\SocialAccount;
 use App\Models\Source;
 use App\Publishing\LinkPreflight;
+use App\Publishing\RestrictedGoodsCheck;
 use App\Support\DailyPostLimit;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
@@ -50,6 +51,7 @@ final class ApplyAutoPublishRules
         private readonly LinkPreflight $links,
         private readonly DailyPostLimit $dailyLimit,
         private readonly AutoLineup $lineup,
+        private readonly RestrictedGoodsCheck $goods,
     ) {}
 
     /**
@@ -101,6 +103,11 @@ final class ApplyAutoPublishRules
                 break;
             }
 
+            // An item none of the connected channels takes does not hold a slot: the next item gets it (RestrictedGoodsCheck).
+            if (array_diff($connected, $this->goods->blockedOn($item)) === []) {
+                continue;
+            }
+
             if ($item->isPostableAt($slots[$items->count()]) && $this->links->isAlive($item)) {
                 $items->push($item);
             }
@@ -121,6 +128,18 @@ final class ApplyAutoPublishRules
                 break;
             }
 
+            // Goods a channel does not take (RestrictedGoodsCheck) go only to the channels that do. An item none
+            // of the open channels takes is passed over, and its slot goes to the next item.
+            $blocked = $this->goods->blockedOn($item);
+            $targets = $accounts->filter(fn (SocialAccount $account): bool => in_array($account->platform->value, $open, true)
+                && ! in_array($account->platform->value, $blocked, true))->values();
+
+            if ($targets->isEmpty()) {
+                continue;
+            }
+
+            $targeted = $targets->map(fn (SocialAccount $account): string => $account->platform->value)->unique()->values()->all();
+
             // The brand's own limit for the day this post would go out, on top of each rule's cap.
             if (! $this->dailyLimit->hasRoom($source->brand, $slots[$created])) {
                 Log::info('hub.autopublish.daily_post_limit', ['source' => $source->name, 'slot' => $slots[$created]->toIso8601String()]);
@@ -131,16 +150,16 @@ final class ApplyAutoPublishRules
             try {
                 $this->createDraft->execute(
                     item: $item,
-                    accounts: $accounts->filter(fn (SocialAccount $account): bool => in_array($account->platform->value, $open, true))->values(),
+                    accounts: $targets,
                     actor: ActorType::System,
                     scheduledAt: $slots[$created],
                     // One rule asking for a person's look is enough to hold the whole draft: it is one post, and
                     // approving it approves every channel it goes to.
-                    status: $this->needsApproval($rules, $open) ? DraftStatus::PendingApproval : DraftStatus::Approved,
+                    status: $this->needsApproval($rules, $targeted) ? DraftStatus::PendingApproval : DraftStatus::Approved,
                     channelOptions: $options,
                 );
 
-                foreach ($open as $platform) {
+                foreach ($targeted as $platform) {
                     $remaining[$platform]--;
                 }
 

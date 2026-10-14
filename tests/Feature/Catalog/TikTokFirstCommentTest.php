@@ -188,6 +188,7 @@ final class TikTokFirstCommentTest extends TestCase
         return [
             app(\App\Publishing\PublisherRegistry::class), app(\App\Support\AdminNotifier::class),
             app(\App\Publishing\LinkPreflight::class), app(\App\Publishing\FormatCheck::class),
+            app(\App\Publishing\RestrictedGoodsCheck::class),
         ];
     }
 

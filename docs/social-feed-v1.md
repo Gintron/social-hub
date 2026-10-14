@@ -88,6 +88,7 @@ kriva ovlast → `403`.
 | `images` | `[{url, role, alt}]` | ne | `role`: `primary` (glavna), `logo`, `gallery`. Apsolutni URL-ovi, u produkciji **https**, javno dohvatljivi (hub ih skida pri renderu). Do 10. |
 | `priority` | int | ne | Veće = važnije. Hub sortira kandidate po ovome (tier, postotak popusta…). |
 | `tags` | `[string]` | ne | Slobodne oznake; AI ih koristi za hashtagove. Do 50. |
+| `restricted` | `[string]` | ne | Regulirana roba koju stavka prikazuje ili nudi. Jedina vrijednost za sada je `alcohol`. Hub takvu stavku ne objavljuje na kanalima iz `config/restricted_goods.php`, a sama provjera riječi ne vidi slike. Vidi „Regulirana roba“ ispod. |
 | `published_at` | date-time | ne | Kad je stavka postala javna. |
 | `expires_at` | date-time | ne | Nakon ovoga hub **neće** objaviti stavku (preskače zakazano). |
 | `updated_at` | date-time | da | Osnova za `since`. |
@@ -106,6 +107,21 @@ Sve vremenske oznake su UTC ISO 8601 (`2026-09-05T07:10:00Z`).
 Zato pošalji znak **u punoj rezoluciji i bez praznog ruba oko njega** — obrezani rub hub čita kao
 dio oblika i znak ispadne manji. Prozirni PNG je najbolji; SVG se mjeri po `viewBox`-u. Bez te slike
 hub ispiše `subtitle` kao ime.
+
+## Regulirana roba (`restricted`)
+
+Izvor označi što stavka prikazuje ili nudi, jer hub ne vidi slike. **Katalog (letak)** se ne označava: izvor sam bira
+stranice koje smije pokazati. Stranica na kojoj je ijedan proizvod alkohol ne ulazi u objavu, ni kao naslovnica, ni kao
+stranica s dodirom, ni kao međustranica pri listanju. Naslovnica je uvijek stranica s proizvodima
+na kojoj alkohola nema: ako prva stranica nema proizvode ili ih ima s alkoholom, uzima se sljedeća takva; ako takve nema, letak ide u feed označen i bez stranica.
+
+**Deal** s alkoholom označi se `restricted: ["alcohol"]`; hub ga ne objavljuje ni na jednom kanalu iz `config/restricted_goods.php`
+(Facebook stranica, Facebook grupa, Instagram, TikTok, YouTube). Katalog kojem nijedna stranica s proizvodima nije bez alkohola ide u feed istom
+oznakom i bez stranica, pa ga hub ne objavljuje. Stavka se šalje cijela, a ne izostavlja: izostanak bi značio da hub
+zadrži staru verziju nacrta.
+
+Hub i dalje provjerava riječi (`vino`, `pivo`, `% vol`…, popis u `config/restricted_goods.php`), pa stavka bez oznake
+koja spominje piće ne prolazi. Bezalkoholna pića (`bezalkoholno`, `0,0 % vol`) nisu alkohol.
 
 ## Usporedba (`kind: comparison`)
 

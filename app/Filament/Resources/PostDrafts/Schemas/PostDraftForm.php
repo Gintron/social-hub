@@ -12,7 +12,7 @@ use App\Enums\Platform;
 use App\Enums\VariantStatus;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
-use App\Publishing\FormatCheck;
+use App\Publishing\PublishProblem;
 use App\Publishing\YouTube\YouTubePreflight;
 use App\Rendering\Scene;
 use App\Rendering\ScenePlanner;
@@ -205,7 +205,7 @@ final class PostDraftForm
             in_array($variant->status, [VariantStatus::Queued, VariantStatus::Publishing], true) => ['objavljuje se', 'info'],
             $variant->status === VariantStatus::Failed => ['greška', 'danger'],
             $variant->isRendering() => ["{$format} · renderira se", 'warning'],
-            app(FormatCheck::class)->problem($variant) !== null => ["{$format} · nije spremno", 'danger'],
+            app(PublishProblem::class)->of($variant) !== null => ["{$format} · nije spremno", 'danger'],
             default => ["{$format} · spremno", 'success'],
         };
     }

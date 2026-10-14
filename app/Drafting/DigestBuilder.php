@@ -18,6 +18,7 @@ use App\Models\PostDraft;
 use App\Models\PostVariant;
 use App\Models\SocialAccount;
 use App\Publishing\LinkPreflight;
+use App\Publishing\RestrictedGoodsCheck;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
@@ -55,6 +56,7 @@ final class DigestBuilder
     public function __construct(
         private readonly CaptionBuilder $captions,
         private readonly LinkPreflight $links,
+        private readonly RestrictedGoodsCheck $goods,
     ) {}
 
     /**
@@ -94,7 +96,7 @@ final class DigestBuilder
         }
 
         $count = max(2, min($count, self::MAX_ITEMS));
-        $items = $this->pick($brand, $kind, $count, $includePosted, $tag, $scheduledAt);
+        $items = $this->pick($brand, $kind, $count, $includePosted, $tag, $scheduledAt, $accounts->map(fn (SocialAccount $account): string => $account->platform->value)->all());
 
         if ($items->count() < 2) {
             $scope = $tag !== null ? " s oznakom {$tag}" : '';
@@ -163,13 +165,15 @@ final class DigestBuilder
      * An offer must still be valid a few days after the roundup goes out (`hub.min_days_valid`),
      * so the shopper can act on every item in it. `$postedAt` is when that is; null = now.
      *
+     * @param  list<string>  $platforms  The channels the roundup posts to (Platform values); empty = every channel
+     *                                   that RestrictedGoodsCheck covers.
      * @return Collection<int, ContentItem>
      */
-    public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false, ?string $tag = null, ?CarbonImmutable $postedAt = null): Collection
+    public function pick(Brand $brand, ContentKind $kind, int $count, bool $includePosted = false, ?string $tag = null, ?CarbonImmutable $postedAt = null, array $platforms = []): Collection
     {
         $since = CarbonImmutable::now()->subDays(self::REPEAT_AFTER_DAYS);
 
-        $candidates = ContentItem::query()
+        $query = ContentItem::query()
             ->where('brand_id', $brand->id)
             ->where('kind', $kind->value)
             ->postableAt($postedAt ?? CarbonImmutable::now())
@@ -179,9 +183,25 @@ final class DigestBuilder
                 ->where('kind', PostDraft::KIND_DIGEST)
                 ->where('post_drafts.created_at', '>=', $since)))
             ->orderByDesc('priority')
-            ->orderByDesc('published_at')
-            ->limit(self::CANDIDATE_POOL)
-            ->get();
+            ->orderByDesc('published_at');
+
+        // A roundup is one post on all of its channels: an item one of them does not take is left out of all of them.
+        // The pool is the best CANDIDATE_POOL items the roundup may take: the read goes on past blocked rows, instead of
+        // a fixed LIMIT that let them shrink the pool.
+        $platforms = $platforms !== [] ? $platforms : $this->goods->configuredPlatforms();
+        $candidates = new Collection;
+
+        foreach ($query->cursor() as $item) {
+            if (array_intersect($platforms, $this->goods->blockedOn($item)) !== []) {
+                continue;
+            }
+
+            $candidates->push($item);
+
+            if ($candidates->count() >= self::CANDIDATE_POOL) {
+                break;
+            }
+        }
 
         $picked = [];
         $perTag = [];

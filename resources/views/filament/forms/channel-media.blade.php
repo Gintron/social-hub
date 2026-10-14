@@ -2,8 +2,8 @@
     use App\Enums\ContentFormat;
     use App\Enums\Platform;
     use App\Models\PostVariant;
-    use App\Publishing\FormatCheck;
     use App\Publishing\Meta\InstagramPreflight;
+    use App\Publishing\PublishProblem;
 
     /** @var int $variantId */
     // Read fresh on every render: a render job attaches media while this screen is open.
@@ -13,7 +13,7 @@
     $caption = (string) ($variant?->caption ?? '');
     $format = $variant?->format();
     $rendering = $variant?->isRendering() ?? false;
-    $problem = $variant !== null ? app(FormatCheck::class)->problem($variant) : null;
+    $problem = $variant !== null ? app(PublishProblem::class)->of($variant) : null;
     $isInstagram = $variant?->platform === Platform::InstagramBusiness;
     $vertical = $format === ContentFormat::Video || $variant?->platform === Platform::TikTok;
 

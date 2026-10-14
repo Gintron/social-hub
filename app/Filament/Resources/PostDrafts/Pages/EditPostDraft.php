@@ -17,7 +17,7 @@ use App\Filament\Resources\PostDrafts\PostDraftResource;
 use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
-use App\Publishing\FormatCheck;
+use App\Publishing\PublishProblem;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -229,10 +229,9 @@ final class EditPostDraft extends EditRecord
 
         $parts = [e('Promjene se prvo spremaju. Kanali preko API-ja idu u red za objavu; Facebook grupe i TikTok inbox čekaju da ih dovršiš i označiš.')];
 
-        $checks = app(FormatCheck::class);
+        $publish = app(PublishProblem::class);
         $problems = $variants
-            ->reject(fn (PostVariant $variant): bool => $variant->platform->isManual())
-            ->map(fn (PostVariant $variant): ?string => ($problem = $checks->problem($variant)) === null ? null : e($variant->platform->label().': '.$problem))
+            ->map(fn (PostVariant $variant): ?string => ($problem = $publish->of($variant)) === null ? null : e($variant->platform->label().': '.$problem))
             ->filter();
 
         if ($problems->isNotEmpty()) {

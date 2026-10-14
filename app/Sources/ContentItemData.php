@@ -21,6 +21,7 @@ final readonly class ContentItemData
      * @param  list<array{url: string, role: string, alt: string|null}>  $images
      * @param  list<string>  $tags
      * @param  array<string, mixed>|null  $raw
+     * @param  list<string>  $restricted
      */
     public function __construct(
         public string $externalId,
@@ -40,6 +41,7 @@ final readonly class ContentItemData
         public ?CarbonImmutable $expiresAt,
         public CarbonImmutable $updatedAt,
         public ?array $raw,
+        public array $restricted = [],
     ) {}
 
     /**
@@ -82,6 +84,7 @@ final readonly class ContentItemData
             expiresAt: self::nullableDate($item['expires_at'] ?? null),
             updatedAt: CarbonImmutable::parse((string) $item['updated_at'])->utc(),
             raw: isset($item['raw']) && is_array($item['raw']) ? $item['raw'] : null,
+            restricted: array_values(array_map('strval', $item['restricted'] ?? [])),
         );
     }
 
@@ -91,11 +94,19 @@ final readonly class ContentItemData
      */
     public function checksum(): string
     {
-        return hash('sha256', json_encode([
+        $parts = [
             $this->kind->value, $this->title, $this->subtitle, $this->bodyText, $this->facts, $this->badges,
             $this->price, $this->cta, $this->url, $this->images, $this->priority, $this->tags,
             $this->publishedAt?->toIso8601ZuluString(), $this->expiresAt?->toIso8601ZuluString(), $this->raw,
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+        ];
+
+        // Appended only when set: an item synced before the field existed keeps its checksum, and with it
+        // every draft that uses it (PostDraft::staleItems() compares them).
+        if ($this->restricted !== []) {
+            $parts[] = $this->restricted;
+        }
+
+        return hash('sha256', json_encode($parts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -119,6 +130,7 @@ final readonly class ContentItemData
             'images' => $this->images,
             'priority' => $this->priority,
             'tags' => $this->tags,
+            'restricted' => $this->restricted,
             'raw' => $this->raw,
             'published_at' => $this->publishedAt,
             'expires_at' => $this->expiresAt,

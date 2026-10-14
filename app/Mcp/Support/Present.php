@@ -9,6 +9,7 @@ use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
 use App\Publishing\FormatCheck;
+use App\Publishing\RestrictedGoodsCheck;
 
 /**
  * The shapes MCP tools return. One place, so "a draft" looks the same in every tool's output.
@@ -83,6 +84,7 @@ final class Present
             'status' => $variant->status->value,
             'format' => $variant->format()->value,
             'media_problem' => app(FormatCheck::class)->problem($variant),
+            'restricted_problem' => app(RestrictedGoodsCheck::class)->variantProblem($variant),
             'caption' => $variant->caption,
             'caption_chars' => mb_strlen($variant->caption),
             'media' => $variant->media->map(fn ($asset): array => [

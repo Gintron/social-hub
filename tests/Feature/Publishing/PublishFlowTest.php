@@ -155,6 +155,7 @@ final class PublishFlowTest extends TestCase
             app(\App\Support\AdminNotifier::class),
             app(\App\Publishing\LinkPreflight::class),
             app(\App\Publishing\FormatCheck::class),
+            app(\App\Publishing\RestrictedGoodsCheck::class),
         );
 
         // Idempotency claim is about the post, not the total request count — the link preflight

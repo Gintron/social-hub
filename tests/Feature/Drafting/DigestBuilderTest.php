@@ -266,6 +266,45 @@ final class DigestBuilderTest extends TestCase
         );
     }
 
+    public function test_blocked_rows_do_not_shrink_the_pool_of_a_roundup(): void
+    {
+        $brand = $this->brand();
+        $source = Source::factory()->for($brand)->create();
+
+        // More blocked rows than the pool holds, all ranked above the two that may be posted.
+        for ($i = 1; $i <= 105; $i++) {
+            ContentItem::factory()->for($source)->for($brand)->create([
+                'kind' => ContentKind::Deal,
+                'title' => "Vino {$i}",
+                'restricted' => ['alcohol'],
+                'priority' => 90,
+            ]);
+        }
+        $this->deals($brand, [['Jaja', 60], ['Kava', 45]]);
+
+        $picked = app(DigestBuilder::class)->pick($brand, ContentKind::Deal, 2, platforms: ['tiktok']);
+
+        $this->assertSame(['Jaja', 'Kava'], $picked->pluck('title')->all());
+    }
+
+    public function test_a_roundup_leaves_out_an_item_one_of_its_channels_does_not_take(): void
+    {
+        $brand = $this->brand();
+        $source = Source::factory()->for($brand)->create();
+        ContentItem::factory()->for($source)->for($brand)->create([
+            'kind' => ContentKind::Deal,
+            'title' => 'Katalog Konzum 13.10 – 19.10',
+            'restricted' => ['alcohol'],
+            'priority' => 80,
+        ]);
+        $this->deals($brand, [['Jaja', 60], ['Kava', 45]]);
+
+        $titles = fn (array $platforms): array => app(DigestBuilder::class)->pick($brand, ContentKind::Deal, 3, platforms: $platforms)->pluck('title')->all();
+
+        $this->assertSame(['Jaja', 'Kava'], $titles(['tiktok']));
+        $this->assertSame(['Jaja', 'Kava'], $titles(['fb_group']), 'ručna grupa je u popisu blokiranih kanala');
+    }
+
     private function brand(): Brand
     {
         return Brand::factory()->create(['slug' => 'uselisto', 'name' => 'Listo', 'site_url' => 'https://uselisto.com']);

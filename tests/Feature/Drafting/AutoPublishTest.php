@@ -286,6 +286,42 @@ final class AutoPublishTest extends TestCase
         $this->assertNull($gone->refresh()->link_dead_at);
     }
 
+    public function test_a_channel_that_does_not_take_alcohol_only_gets_the_items_it_may_post(): void
+    {
+        $this->payload = FeedPayload::page([
+            FeedPayload::item('deal:1', ['kind' => 'deal', 'title' => 'Vino Graševina 0,75 l', 'url' => 'https://example.test/akcija/vino', 'priority' => 90]),
+            FeedPayload::item('deal:2', ['kind' => 'deal', 'title' => 'Kava 500 g', 'url' => 'https://example.test/akcija/kava', 'priority' => 10]),
+        ]);
+        $source = $this->source();
+        SocialAccount::factory()->for($source->brand)->create();
+        $this->rule($source, Platform::FacebookPage);
+
+        $this->sync($source);
+
+        // The wine ranks first and is passed over: its slot goes to the coffee, and no draft holds the wine.
+        $drafts = PostDraft::query()->with('contentItems')->get();
+        $this->assertCount(1, $drafts);
+        $this->assertSame(['Kava 500 g'], $drafts->first()->contentItems->pluck('title')->all());
+    }
+
+    public function test_an_item_no_connected_channel_takes_does_not_hold_a_slot(): void
+    {
+        $this->payload = FeedPayload::page([
+            FeedPayload::item('deal:1', ['kind' => 'deal', 'title' => 'Vino Graševina 0,75 l', 'url' => 'https://example.test/akcija/vino', 'priority' => 90]),
+            FeedPayload::item('deal:2', ['kind' => 'deal', 'title' => 'Kava 500 g', 'url' => 'https://example.test/akcija/kava', 'priority' => 10]),
+        ]);
+        $source = $this->source();
+        SocialAccount::factory()->for($source->brand)->create(['platform' => Platform::TikTok]);
+        $this->rule($source, Platform::TikTok, dailyCap: 1);
+
+        $this->sync($source);
+
+        // The wine ranks first and TikTok takes no wine: its one slot goes to the coffee, instead of staying empty.
+        $drafts = PostDraft::query()->with('contentItems')->get();
+        $this->assertCount(1, $drafts);
+        $this->assertSame(['Kava 500 g'], $drafts->first()->contentItems->pluck('title')->all());
+    }
+
     private function sync(Source $source): void
     {
         $this->fakeRenders();

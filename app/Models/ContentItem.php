@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property list<array{url: string, role?: string, alt?: string|null}> $images
  * @property int|null $priority
  * @property list<string> $tags
+ * @property list<string>|null $restricted Regulated goods the source declared (`alcohol`); see RestrictedGoodsCheck.
  * @property array<string, mixed>|null $raw
  * @property CarbonImmutable|null $published_at
  * @property CarbonImmutable|null $expires_at
@@ -46,7 +47,7 @@ final class ContentItem extends Model
 
     protected $fillable = [
         'source_id', 'brand_id', 'external_id', 'kind', 'title', 'subtitle', 'body_text', 'facts', 'badges',
-        'price', 'cta', 'url', 'images', 'priority', 'tags', 'raw', 'published_at', 'expires_at',
+        'price', 'cta', 'url', 'images', 'priority', 'tags', 'restricted', 'raw', 'published_at', 'expires_at',
         'source_updated_at', 'checksum', 'first_seen_at', 'last_seen_at',
     ];
 
@@ -228,6 +229,7 @@ final class ContentItem extends Model
             'cta' => 'array',
             'images' => 'array',
             'tags' => 'array',
+            'restricted' => 'array',
             'raw' => 'array',
             'priority' => 'integer',
             'published_at' => 'immutable_datetime',
