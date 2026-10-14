@@ -1,41 +1,49 @@
 # YouTube: verifikacija Google aplikacije
 
-Ovo je pripremni dokument za verifikaciju OAuth aplikacije „Social Media Hub“ u projektu
-`social-media-hub-511516`, za osjetljive opsege `youtube.upload` i `youtube.readonly`. Sadrži adrese
-koje Google traži, tekstove obrazloženja za svaki opseg i skriptu za demo video, koji se snima samo ako
-ga Google zatraži.
+Dokument prati verifikaciju OAuth aplikacije „Social Media Hub“ u projektu `social-media-hub-511516`, za
+osjetljive opsege `youtube.upload` i `youtube.readonly`: što je u konzoli, tekst obrazloženja koji je upisan
+u obrazac, i skriptu za demo video koji Google traži.
+
+## Stanje (14. 10. 2026.)
+
+- Početna stranica `https://hub.uselisto.com/aplikacija`: javna, bez prijave; objavljena s ovim dokumentom.
+- Pravila privatnosti `https://hub.uselisto.com/privatnost` i uvjeti `https://hub.uselisto.com/uvjeti`: javni.
+- Ovlaštena domena `uselisto.com`. Branding je verificiran i prikazuje se korisnicima.
+- Aplikacija je objavljena (**In production**). Test korisnik: marijan10vk@gmail.com.
+- Opsezi `youtube.upload` i `youtube.readonly` dodani su u Data Access (osjetljivi).
+- Obrazloženje je napisano (tekst ispod), ali se ne može spremiti dok nema poveznice na video.
+- **Nedostaje demo video.** Google ga traži za osjetljive opsege. Poveznica na neizlistan YouTube video
+  upisuje se u polje „YouTube link“ u odjeljku Demo video, zatim se šalje (Confirm).
+- Odvojeno od verifikacije: **YouTube API Services audit** (obrazac *Audit and Quota Extension*). Dok audit
+  nije odobren, uploadi iz projekta ostaju privatni, bez obzira na verifikaciju OAuth aplikacije.
 
 ## Adrese koje Google čita
 
 | Polje u konzoli | Adresa |
 |---|---|
-| Početna stranica aplikacije | `https://hub.uselisto.com/aplikacija` (javna, bez prijave) |
+| Početna stranica aplikacije | `https://hub.uselisto.com/aplikacija` |
 | Pravila privatnosti | `https://hub.uselisto.com/privatnost` (sadrži izjavu o Google podacima) |
 | Uvjeti korištenja | `https://hub.uselisto.com/uvjeti` |
-| Ovlaštena domena | `uselisto.com` (DNS ima Googleov `google-site-verification` zapis) |
+| Ovlaštena domena | `uselisto.com` |
 | OAuth klijent, redirect URI | `https://hub.uselisto.com/youtube/callback` |
 
-## Obrazloženje opsega (engleski, za obrazac)
+## Obrazloženje opsega (upisano u obrazac, jedan tekst za oba opsega, do 1000 znakova)
 
-**`https://www.googleapis.com/auth/youtube.upload`**
-
-> Social Media Hub is an internal publishing tool used only by the owner's brands. After a team member
-> approves a short vertical video (YouTube Shorts) in the tool, the app uploads that video to the brand's own
-> YouTube channel (videos.insert), with the title, description and privacy setting the team member chose. The
-> app uploads only the videos approved for that channel. It does not upload to any other channel and does not
-> read other content.
-
-**`https://www.googleapis.com/auth/youtube.readonly`**
-
-> The app reads the identity of the connected channel (channels.list with mine=true), so the team can confirm
-> which channel is connected. It reads the view, like and comment counts of the videos it uploaded
-> (videos.list with part=statistics) to show post performance in the tool. It does not read comments, messages,
-> subscriber lists or other videos.
+> Social Media Hub is an internal publishing tool used only by the owner's brands. youtube.upload: after a team
+> member approves a short vertical video (YouTube Shorts) in the tool, the app uploads it to that brand's own
+> YouTube channel (videos.insert), with the title, description and privacy setting the team chose. It uploads
+> only videos approved for that channel. youtube.readonly: the app reads the identity of the connected channel
+> (channels.list with mine=true) so the team can confirm which channel is connected, and reads the view, like and
+> comment counts of its own uploaded videos (videos.list with part=statistics) to show post performance. It does
+> not read comments, messages, subscriber lists or other videos.
 
 ## Skripta za demo video (2–3 min, engleska naracija)
 
 Priprema: screen recording cijelog ekrana, 1080p. Demo objavu postavi na `unlisted` ili `private`, nikad
 `public`. Koristi kanal koji je test ili kanal brenda. Ne prikazuj `.env`, tajne klijenta ni tokene.
+
+Google traži da se u videu vidi ekran „unverified app“ (aplikacija još nije verificirana) i da video obuhvati
+sve OAuth klijente koji su dodijeljeni projektu. U projektu je jedan klijent, „Youtube client“.
 
 1. **0:00–0:15, početna stranica.** Otvori `https://hub.uselisto.com/aplikacija`.
    *Narration:* "This is Social Media Hub, an internal publishing tool for the owner's brands. A team member
@@ -43,10 +51,10 @@ Priprema: screen recording cijelog ekrana, 1080p. Demo objavu postavi na `unlist
 2. **0:15–0:40, prijava i povezivanje kanala.** Prijavi se u administraciju. Otvori Društveni računi, klikni
    **Poveži YouTube** i odaberi brend.
    *Narration:* "The team connects a YouTube channel through Google OAuth."
-3. **0:40–1:05, Google zaslon za pristanak.** Pokaži naziv aplikacije, oba opsega („Manage your YouTube videos“,
-   „View your YouTube account“) i klikni Allow. Ako Google prikaže upozorenje „unverified app“, pokaži ga.
-   *Narration:* "The consent screen asks for exactly two scopes: to upload videos, and to read the channel and
-   the statistics of its own videos."
+3. **0:40–1:05, Google zaslon za pristanak.** Pokaži upozorenje „Google hasn't verified this app“ i nastavi dalje.
+   Pokaži naziv aplikacije i oba opsega („Manage your YouTube videos“, „View your YouTube account“) i klikni Allow.
+   *Narration:* "The consent screen asks for exactly two scopes: to upload videos, and to read the channel and the
+   statistics of its own videos."
 4. **1:05–1:20, provjera kanala.** Vrati se u hub. Pokaži povezani kanal i klikni **Provjeri**.
    *Narration:* "The app reads the connected channel to confirm the connection."
 5. **1:20–1:50, nacrt.** Otvori nacrt i karticu YouTube. Pokaži format **Short**, tekst objave (prvi red je
@@ -60,9 +68,4 @@ Priprema: screen recording cijelog ekrana, 1080p. Demo objavu postavi na `unlist
 8. **2:45–3:00, pravila.** Otvori `https://hub.uselisto.com/privatnost`.
    *Narration:* "The privacy policy is at hub.uselisto.com slash privatnost."
 
-## Što se još mora napraviti
-
-- Google za osjetljive opsege traži demo video. Snimanje je potrebno samo ako ga Verification Center zatraži
-  pri slanju.
-- Odvojeno od verifikacije OAuth aplikacije je **YouTube API Services audit** (obrazac *Audit and Quota
-  Extension*). Bez njega uploadi iz projekta ostaju privatni, bez obzira na verifikaciju.
+Poveznicu na video (neizlistan YouTube) upiši u polje „YouTube link“ u Verification Centeru pa pošalji zahtjev.
