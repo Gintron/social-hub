@@ -25,7 +25,19 @@ final class SourceForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(1)
             ->components([
+                Section::make('Stanje veze')
+                    ->description('Kad je hub zadnji put uspješno povukao sadržaj s ovog izvora.')
+                    ->schema([
+                        Placeholder::make('last_synced')->label('Zadnja sinkronizacija')
+                            ->content(fn (?Source $record): string => $record?->last_synced_at?->timezone('Europe/Zagreb')->format('d.m.Y H:i') ?? '—'),
+                        Placeholder::make('items')->label('Stavki u hubu')
+                            ->content(fn (?Source $record): string => (string) ($record?->contentItems()->count() ?? 0)),
+                        Placeholder::make('error')->label('Zadnja greška')
+                            ->content(fn (?Source $record): string => $record?->last_error ?? '—')->columnSpanFull(),
+                    ])->columns(2)->visibleOn('edit'),
+
                 Section::make('Izvor')
                     ->description('Odakle hub povlači stavke. Za novu stranicu: implementiraj Social Feed v1 (docs/social-feed-v1.md), zalijepi URL i token, klikni "Testiraj vezu".')
                     ->schema([
@@ -44,17 +56,11 @@ final class SourceForm
                             ->helperText('Prazno = povuci sve što feed vrati.'),
                     ])->columns(2),
 
-                Section::make('Napredno')
-                    ->schema([
-                        KeyValue::make('config')->label('Postavke')->keyLabel('Ključ')->valueLabel('Vrijednost')
-                            ->helperText('npr. page_limit = 50'),
-                    ])->collapsed(),
-
                 Section::make('Automatska objava')
-                    ->description('Zadano je isključeno: nove stavke čekaju pregled. Uključi po platformi tek kad si zadovoljan kvalitetom nacrta — tada hub sam radi objavu i zakazuje je u sljedeći termin brenda.')
+                    ->description('Zadano je isključeno: nove stavke čekaju pregled. Uključi po platformi tek kad si zadovoljan kvalitetom objava — tada hub sam radi objavu i zakazuje je u sljedeći termin brenda.')
                     ->schema([
                         Repeater::make('autoPublishRules')
-                            ->label('')
+                            ->hiddenLabel()
                             ->relationship()
                             ->addActionLabel('Dodaj pravilo')
                             ->schema([
@@ -80,7 +86,7 @@ final class SourceForm
                                     ->placeholder('Zadano za platformu'),
                                 Toggle::make('enabled')->label('Uključeno')->default(false),
                                 Toggle::make('requires_approval')->label('Traži odobrenje')->default(true)
-                                    ->helperText('Hub sam napravi nacrt i video, ali ga ne objavi dok ga čovjek ne odobri. Isključi kad si zadovoljan nacrtima: tada ide sam, u sljedeći termin.'),
+                                    ->helperText('Hub sam napravi objavu i video, ali ga ne objavi dok ga čovjek ne odobri. Isključi kad si zadovoljan objavama: tada ide sam, u sljedeći termin.'),
                                 TextInput::make('delay_minutes')->label('Odgoda (min)')->numeric()->default(0)->minValue(0)->maxValue(10080)
                                     ->helperText('Koliko čekati nakon što stavka stigne.'),
                                 TextInput::make('daily_cap')->label('Najviše dnevno')->numeric()->minValue(1)->maxValue(50)
@@ -113,18 +119,13 @@ final class SourceForm
                         Toggle::make('auto_publish_backlog')->label('Objavi i ono što je dnevni limit zadržao')
                             ->helperText('Svako jutro (06:30) rasporedi aktivne stavke koje još nisu objavljene, do dnevnog limita. Bez toga stavka koja stigne preko limita nikad ne ide van.'),
                     ])
-                    ->collapsed()
                     ->visibleOn('edit'),
 
-                Section::make('Stanje')
+                Section::make('Napredne postavke')
                     ->schema([
-                        Placeholder::make('last_synced')->label('Zadnja sinkronizacija')
-                            ->content(fn (?Source $record): string => $record?->last_synced_at?->timezone('Europe/Zagreb')->format('d.m.Y H:i') ?? '—'),
-                        Placeholder::make('items')->label('Stavki u hubu')
-                            ->content(fn (?Source $record): string => (string) ($record?->contentItems()->count() ?? 0)),
-                        Placeholder::make('error')->label('Zadnja greška')
-                            ->content(fn (?Source $record): string => $record?->last_error ?? '—')->columnSpanFull(),
-                    ])->columns(2)->visibleOn('edit'),
+                        KeyValue::make('config')->label('Postavke')->keyLabel('Ključ')->valueLabel('Vrijednost')
+                            ->helperText('page_limit = 50 mijenja veličinu stranice. Ključevi oblika query.naziv (npr. query.min_discount) šalju se kao filter uz svaki zahtjev feeda.'),
+                    ])->collapsed(),
             ]);
     }
 

@@ -19,6 +19,8 @@ final class PublishLogsRelationManager extends RelationManager
     {
         return $table
             ->defaultSort('publish_logs.created_at', 'desc')
+            ->emptyStateHeading('Još nema zapisa')
+            ->emptyStateDescription('Svaki poziv prema Facebooku, Instagramu, TikToku ili YouTubeu zapisat će se ovdje — korisno kad objava ne uspije.')
             ->columns([
                 TextColumn::make('created_at')->label('Vrijeme')->dateTime('d.m.Y H:i:s', 'Europe/Zagreb'),
                 TextColumn::make('variant.platform')->label('Kanal')->badge(),

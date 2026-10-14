@@ -19,6 +19,7 @@ final class SocialAccountForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(1)
             ->components([
                 Section::make('Račun')
                     ->description('Facebook Page i Instagram najlakše se dodaju akcijom "Otkrij Meta račune" na popisu. Facebook grupa je ručni kanal: upiši naziv i URL grupe.')
