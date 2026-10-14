@@ -55,11 +55,7 @@ npx puppeteer browsers install chrome      # no-op kad je već instaliran
 php artisan migrate --force
 php artisan storage:link
 php artisan filament:assets
-# Namjerno bez `optimize`: config:cache + opcache znači da promjena varijable
-# okoline ne stigne do PHP-FPM-a dok ga se ručno ne reloada. Rute i pogledi
-# se predmemoriraju, konfiguracija se čita iz .env na svaki zahtjev.
-php artisan route:cache
-php artisan view:cache
+php artisan optimize                       # config + događaji + rute + pogledi u cache
 php artisan queue:restart
 
 # Opcache na ovom serveru ne provjerava datoteke: bez reloada PHP-FPM vrti stari kod dok CLI
@@ -68,9 +64,11 @@ php artisan queue:restart
 echo "" | sudo -S service php8.4-fpm reload
 ```
 
-Ako ipak želiš `php artisan optimize`, onda **svaka** promjena u Environmentu traži i reload
-PHP-FPM-a nakon deploya — inače site vrti staru konfiguraciju, a CLI novu, pa `hub:doctor` bude
-zelen dok panel tvrdi da varijabla nije postavljena.
+`optimize` sprema konfiguraciju u `bootstrap/cache/config.php`, a FPM na serveru ima
+`opcache.validate_timestamps=0`. Zato **svaka** promjena u Environmentu traži reload PHP-FPM-a —
+inače site vrti staru konfiguraciju, a CLI novu, pa `hub:doctor` bude zelen dok panel tvrdi da
+varijabla nije postavljena. Deploy reloada FPM sam; kad mijenjaš samo Environment, pokreni deploy
+ili `echo "" | sudo -S service php8.4-fpm reload`.
 
 `storage/app/public/media` drži renderirane slike; **ne smije** biti u nečemu što deploy briše.
 

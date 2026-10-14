@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Publishing;
 
 use App\Enums\Platform;
+use App\Models\SocialAccount;
 use App\Publishing\Contracts\Publisher;
 use App\Publishing\Exceptions\PermanentPublishException;
 use App\Publishing\Meta\FacebookPagePublisher;
@@ -18,13 +19,14 @@ final class PublisherRegistry
 {
     public function __construct(private readonly Container $container) {}
 
-    public function for(Platform $platform): Publisher
+    public function for(Platform $platform, ?SocialAccount $account = null): Publisher
     {
         return match ($platform) {
             Platform::FacebookPage => $this->container->make(FacebookPagePublisher::class),
             Platform::InstagramBusiness => $this->container->make(InstagramPublisher::class),
             Platform::TikTok => $this->container->make(
-                config('tiktok.driver') === 'business' ? TikTokBusinessPublisher::class : TikTokPublisher::class,
+                ($account !== null ? data_get($account->meta, 'api') === 'business' : config('tiktok.driver') === 'business')
+                    ? TikTokBusinessPublisher::class : TikTokPublisher::class,
             ),
             Platform::YouTube => $this->container->make(YouTubePublisher::class),
             Platform::FacebookGroup => throw new PermanentPublishException('Facebook groups are posted manually; there is no API.', 'manual_only'),

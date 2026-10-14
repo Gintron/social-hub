@@ -118,6 +118,9 @@ final class CollectPostMetricsTest extends TestCase
 
     public function test_tiktok_looks_the_video_up_once_and_then_reads_its_counts(): void
     {
+        // Switching the publishing driver must not reroute an existing developer account's metrics.
+        config()->set('tiktok.driver', 'business');
+
         Http::fake([
             'open.tiktokapis.com/v2/post/publish/status/fetch/*' => Http::response(['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => [7291234567890]], 'error' => ['code' => 'ok']]),
             'open.tiktokapis.com/v2/video/query/*' => Http::response(['data' => ['videos' => [['id' => 7291234567890, 'view_count' => 1500, 'like_count' => 90, 'comment_count' => 4, 'share_count' => 11]]], 'error' => ['code' => 'ok']]),
@@ -132,6 +135,39 @@ final class CollectPostMetricsTest extends TestCase
         $this->assertSame(11, $first->shares);
         $this->assertSame('7291234567890', $variant->refresh()->setting(TikTokMetrics::VIDEO_ID_SETTING));
         $this->assertCount(1, Http::recorded(fn (Request $request): bool => str_contains($request->url(), 'status/fetch')));
+    }
+
+    public function test_business_tiktok_metrics_are_unsupported_without_any_http_request(): void
+    {
+        config()->set('tiktok.driver', 'developer');
+        Http::fake();
+
+        $variant = $this->published(Platform::TikTok, 'business_share_123', ContentFormat::Video);
+        $variant->account->update(['meta' => ['api' => 'business']]);
+
+        $this->assertNull(app(TikTokMetrics::class)->fetch($variant));
+        $this->assertNull(app(CollectPostMetrics::class)->execute($variant));
+        CollectPostMetricsJob::dispatchSync($variant->id);
+
+        Http::assertNothingSent();
+        $this->assertSame(0, PostMetric::query()->count());
+        $this->assertNull($variant->refresh()->setting(TikTokMetrics::VIDEO_ID_SETTING));
+    }
+
+    public function test_only_developer_tiktok_accounts_are_due_in_a_mixed_account_set(): void
+    {
+        config()->set('tiktok.driver', 'business');
+
+        $legacy = $this->published(Platform::TikTok, 'v_pub_legacy', ContentFormat::Video);
+        $developer = $this->published(Platform::TikTok, 'v_pub_developer', ContentFormat::Video);
+        $developer->account->update(['meta' => ['api' => 'developer']]);
+        $business = $this->published(Platform::TikTok, 'business_share_456', ContentFormat::Video);
+        $business->account->update(['meta' => ['api' => 'business']]);
+
+        $this->assertEqualsCanonicalizing(
+            [$legacy->id, $developer->id],
+            app(CollectPostMetrics::class)->due()->pluck('id')->all(),
+        );
     }
 
     public function test_an_inbox_upload_nobody_posted_yet_has_nothing_to_read(): void

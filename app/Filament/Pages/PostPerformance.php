@@ -6,7 +6,9 @@ namespace App\Filament\Pages;
 
 use App\Actions\CollectPostMetrics;
 use App\Enums\ContentFormat;
+use App\Enums\Platform;
 use App\Enums\VariantStatus;
+use App\Metrics\TikTokMetrics;
 use App\Models\Brand;
 use App\Models\PostVariant;
 use BackedEnum;
@@ -106,6 +108,7 @@ final class PostPerformance extends Page
     public function getMeasurementGaps(): array
     {
         return $this->unmeasured()
+            ->filter(fn (PostVariant $variant): bool => $this->metricsSupported($variant))
             ->groupBy(fn (PostVariant $variant): string => $variant->platform->label().' · '.$variant->format()->label())
             ->map(fn (Collection $variants, string $label): array => ['label' => $label, 'posts' => $variants->count()])
             ->values()
@@ -114,7 +117,17 @@ final class PostPerformance extends Page
 
     public function unmeasuredCount(): int
     {
-        return $this->unmeasured()->count();
+        return $this->unmeasured()->filter(fn (PostVariant $variant): bool => $this->metricsSupported($variant))->count();
+    }
+
+    public function unavailableMetricsCount(): int
+    {
+        return $this->unmeasured()->reject(fn (PostVariant $variant): bool => $this->metricsSupported($variant))->count();
+    }
+
+    private function metricsSupported(PostVariant $variant): bool
+    {
+        return $variant->platform !== Platform::TikTok || app(TikTokMetrics::class)->supports($variant);
     }
 
     /**
@@ -143,7 +156,7 @@ final class PostPerformance extends Page
         $dueBefore = CarbonImmutable::now()->subHours(CollectPostMetrics::FRESH_EVERY_HOURS);
 
         return once(fn () => PostVariant::query()
-            ->with(['draft.brand'])
+            ->with(['draft.brand', 'account'])
             ->whereIn('status', [VariantStatus::Published->value, VariantStatus::ManualDone->value])
             ->whereNotNull('external_post_id')
             ->whereDoesntHave('metrics')

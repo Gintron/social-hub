@@ -42,13 +42,19 @@ final class CollectPostMetrics
 
     public function execute(PostVariant $variant): ?PostMetric
     {
+        $variant->loadMissing('account');
+
+        if ($variant->platform === Platform::TikTok && ! $this->tiktok->supports($variant)) {
+            return null;
+        }
+
         $fetcher = $this->fetcherFor($variant->platform);
 
         if ($fetcher === null || blank($variant->external_post_id)) {
             return null;
         }
 
-        $snapshot = $fetcher->fetch($variant->loadMissing('account'));
+        $snapshot = $fetcher->fetch($variant);
 
         // An empty reading would drag every average towards zero; the next pass asks again.
         if ($snapshot === null || $snapshot->isEmpty()) {
@@ -82,6 +88,10 @@ final class CollectPostMetrics
                 ->orWhere('manual_posted_at', '>=', $now->subDays(self::STOP_AFTER_DAYS)))
             ->get()
             ->filter(function (PostVariant $variant) use ($now): bool {
+                if ($variant->platform === Platform::TikTok && ! $this->tiktok->supports($variant)) {
+                    return false;
+                }
+
                 $last = $variant->latestMetric?->captured_at;
 
                 if ($last === null) {

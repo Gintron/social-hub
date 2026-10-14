@@ -23,6 +23,14 @@
         </div>
     </div>
 
+    @if ($this->unavailableMetricsCount() > 0)
+        <div class="{{ $box }}" style="font-size:14px;line-height:1.55">
+            TikTok API for Business: očitanja nisu dostupna za {{ $this->unavailableMetricsCount() }} objava.
+            Hub trenutačno ne dohvaća njihove metrike. To nije nula pregleda i ponovno povezivanje računa
+            ne dodaje ovu mogućnost. Rezultate pogledaj u TikTok analitici.
+        </div>
+    @endif
+
     @if ($this->unmeasuredCount() > 0)
         <div class="{{ $box }}" style="font-size:14px;line-height:1.55;border-left:4px solid rgb(245,158,11)">
             <div style="font-weight:600;margin-bottom:4px">Nedostaju očitanja za objavljene kanale</div>
@@ -40,9 +48,10 @@
 
     @if ($this->measuredCount() === 0)
         <div class="{{ $box }}" style="font-size:14px;line-height:1.5">
-            Još nema očitanja za ovo razdoblje. Pregledi stižu nekoliko sati nakon objave; ako ih nema ni
-            nakon dana, računima nedostaju dozvole za uvide (<code>instagram_manage_insights</code>,
-            <code>read_insights</code>, TikTok <code>video.list</code>, YouTube <code>youtube.readonly</code>) — dodaj ih i ponovno poveži račune.
+            Još nema dostupnih očitanja za ovo razdoblje. Nedostajuća metrika nije nula pregleda.
+            Za kanale koji podržavaju mjerenja provjeri dozvole za uvide ako očitanja izostanu dulje od dana
+            (<code>instagram_manage_insights</code>, <code>read_insights</code>, TikTok Developer <code>video.list</code>,
+            YouTube <code>youtube.readonly</code>).
         </div>
     @else
         @foreach ($this->getBreakdowns() as $title => $rows)

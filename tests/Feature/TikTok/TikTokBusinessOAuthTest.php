@@ -153,7 +153,7 @@ final class TikTokBusinessOAuthTest extends TestCase
         $this->assertSame(0, SocialAccount::query()->count());
     }
 
-    public function test_the_refresh_command_follows_the_configured_driver(): void
+    public function test_the_refresh_command_follows_the_connected_accounts_api(): void
     {
         $this->assertInstanceOf(TikTokBusinessOAuth::class, app(TikTokTokens::class));
 
@@ -175,6 +175,7 @@ final class TikTokBusinessOAuthTest extends TestCase
             'platform' => Platform::TikTok,
             'access_token' => 'access-old',
             'refresh_token' => 'refresh-old',
+            'meta' => ['api' => 'business'],
             'token_expires_at' => now()->addHour(),
         ]);
 

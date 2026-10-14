@@ -194,8 +194,11 @@ Ovo se ne da dovršiti naslijepo jer traži odgovore pravog API-ja:
 - **Permalink.** `business/video/publish/` vraća samo `share_id`; prava poveznica dolazi kroz
   webhook ili `business/publish/status/`, a njihovi statusi nisu javno dokumentirani. Zato publisher
   zasad sprema `share_id` i ostavlja permalink prazan — objava je javna, hub samo još nema link.
-- **Mjerenje.** `App\Metrics\TikTokMetrics` i dalje gađa developer `video/query`; na ovom tracku to
-  je `business/video/list/` + `video.insights`.
+- **Mjerenje nije podržano za Business račune.** Collector preskače račune s pohranjenim
+  `meta.api = business`, uključujući već stavljene poslove u red. Ne šalje Business token i
+  `share_id` developer API-ju. Postojeći developer računi i dalje dobivaju mjerenja bez obzira na
+  globalni `TIKTOK_API` prekidač. Business mjerenje treba zasebno implementirati tek nakon provjere
+  stvarnog odgovora `business/video/list/` + `video.insights`; nedostupno očitanje nije nula.
 - **Ime računa.** Connect pokušava `business/get/` za korisničko ime i tiho pada na `open_id` ako
   endpoint nije takav — provjeriti čim se račun poveže.
 - **Foto objave (carousel).** `/business/photo/publish/` postoji (vidljiv uz opseg *Photo publish*),

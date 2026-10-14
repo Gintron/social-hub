@@ -76,7 +76,7 @@ final class PanelSmokeTest extends TestCase
             ->assertSee('Isporuka')
             ->assertSee('Reel i u feed profila')
             ->assertSee('Objavi i ono što je dnevni limit zadržao');
-        $this->get(\App\Filament\Pages\PostPerformance::getUrl())->assertOk()->assertSee('Još nema očitanja');
+        $this->get(\App\Filament\Pages\PostPerformance::getUrl())->assertOk()->assertSee('Još nema dostupnih očitanja')->assertSee('Nedostajuća metrika nije nula pregleda.');
         Livewire::test(ListSocialAccounts::class)->assertOk()->assertSee($page->name);
         Livewire::test(ListContentItems::class)->assertOk()->assertSee($item->title);
         Livewire::test(ViewContentItem::class, ['record' => $item->getRouteKey()])->assertOk()->assertSee($item->title);

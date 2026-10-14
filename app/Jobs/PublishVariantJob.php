@@ -145,7 +145,7 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
             // Still rendering: retried shortly. Wrong media for the format: fails with a reason.
             $formats->assertReady($variant);
 
-            $result = $publishers->for($variant->platform)->publish($variant);
+            $result = $publishers->for($variant->platform, $variant->account)->publish($variant);
 
             if ($result->handedToCreator) {
                 // Uploaded, not posted: the inbox holds it until a human adds a sound and posts it.
