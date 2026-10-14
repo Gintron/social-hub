@@ -6,6 +6,7 @@ namespace App\Filament\Resources\ContentItems;
 
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Resources\ContentItems\Pages\ViewContentItem;
+use App\Filament\Resources\ContentItems\RelationManagers\PostDraftsRelationManager;
 use App\Filament\Resources\ContentItems\Schemas\ContentItemInfolist;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Models\ContentItem;
@@ -45,6 +46,13 @@ final class ContentItemResource extends Resource
     public static function table(Table $table): Table
     {
         return ContentItemsTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            PostDraftsRelationManager::class,
+        ];
     }
 
     public static function canCreate(): bool

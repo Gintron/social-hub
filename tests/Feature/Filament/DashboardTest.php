@@ -7,6 +7,7 @@ namespace Tests\Feature\Filament;
 use App\Enums\AccountStatus;
 use App\Enums\DraftStatus;
 use App\Enums\Platform;
+use App\Enums\SourceType;
 use App\Filament\Resources\Brands\BrandResource;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\PostDrafts\PostDraftResource;
@@ -14,6 +15,7 @@ use App\Filament\Resources\SocialAccounts\SocialAccountResource;
 use App\Filament\Resources\Sources\SourceResource;
 use App\Filament\Support\HubStatus;
 use App\Filament\Widgets\AttentionOverview;
+use App\Filament\Widgets\BrandsOverview;
 use App\Filament\Widgets\PendingApprovalTable;
 use App\Filament\Widgets\SetupGuide;
 use App\Filament\Widgets\UpcomingPostsTable;
@@ -141,6 +143,8 @@ final class DashboardTest extends TestCase
         Source::factory()->for($brand)->create(['last_synced_at' => now()->subHours(HubStatus::SOURCE_STALE_AFTER_HOURS + 1)]);
         // Off on purpose, so its silence is not a problem.
         Source::factory()->for($brand)->create(['enabled' => false, 'last_error' => 'HTTP 500']);
+        // A webhook source is pushed to, not read: nothing arriving is not a failed sync.
+        Source::factory()->for($brand)->create(['type' => SourceType::Webhook, 'last_synced_at' => null]);
 
         $this->assertSame(2, app(HubStatus::class)->sourcesWithProblems());
     }
@@ -180,6 +184,39 @@ final class DashboardTest extends TestCase
         Livewire::test(UpcomingPostsTable::class)
             ->assertCanSeeTableRecords([$soon, $later], inOrder: true)
             ->assertCanNotSeeTableRecords([$past, $waiting]);
+    }
+
+    public function test_the_brand_overview_is_for_more_than_one_brand(): void
+    {
+        Brand::factory()->create();
+        $this->assertFalse(BrandsOverview::canView());
+
+        Brand::factory()->create();
+        $this->assertTrue(BrandsOverview::canView());
+    }
+
+    public function test_each_brand_row_says_what_is_connected_waiting_and_broken(): void
+    {
+        $quiet = Brand::factory()->create(['name' => 'Tihi brend']);
+        $busy = Brand::factory()->create(['name' => 'Zauzeti brend']);
+
+        // The quiet one is set up halfway: a source and no account.
+        Source::factory()->for($quiet)->create();
+
+        Source::factory()->for($busy)->create(['last_error' => null, 'last_synced_at' => now()->subHour()]);
+        Source::factory()->for($busy)->create(['last_error' => 'HTTP 500', 'last_synced_at' => now()->subHour()]);
+        SocialAccount::factory()->for($busy)->create();
+        SocialAccount::factory()->for($busy)->create(['status' => AccountStatus::NeedsReconnect]);
+        PostDraft::factory()->for($busy)->count(3)->create(['status' => DraftStatus::PendingApproval]);
+        PostDraft::factory()->for($busy)->create(['status' => DraftStatus::Scheduled, 'scheduled_at' => now()->addDay()]);
+
+        Livewire::test(BrandsOverview::class)
+            ->assertCanSeeTableRecords([$quiet, $busy])
+            ->assertSee('1 od 2 s greškom')
+            ->assertSee('1 od 2 traži pažnju')
+            // The quiet brand has a source but no account: said as "nema", not as a zero.
+            ->assertSee('nema')
+            ->assertSee('još nijedna');
     }
 
     public function test_the_navigation_follows_the_work_not_the_database(): void

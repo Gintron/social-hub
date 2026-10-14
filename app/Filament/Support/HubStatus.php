@@ -14,6 +14,7 @@ use App\Models\Brand;
 use App\Models\PostDraft;
 use App\Models\SocialAccount;
 use App\Models\Source;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * What the dashboard asks of a person: the work waiting for them and the parts of the hub that
@@ -31,6 +32,42 @@ final class HubStatus
      * A Page token this close to its end is worth a reconnect before it fails a post.
      */
     public const TOKEN_WARNING_DAYS = 7;
+
+    /**
+     * The one definition of "this account needs a person", for the count and for the per-brand table.
+     *
+     * @template TBuilder of Builder
+     *
+     * @param  TBuilder  $query
+     * @return TBuilder
+     */
+    public static function accountsNeedingAttention(Builder $query): Builder
+    {
+        return $query
+            ->where('status', '!=', AccountStatus::Disabled->value)
+            ->where(fn ($query) => $query
+                ->where('status', AccountStatus::NeedsReconnect->value)
+                ->orWhere('token_expires_at', '<=', now()->addDays(self::TOKEN_WARNING_DAYS)));
+    }
+
+    /**
+     * The one definition of "this source is not delivering", for the count and for the per-brand table.
+     *
+     * @template TBuilder of Builder
+     *
+     * @param  TBuilder  $query
+     * @return TBuilder
+     */
+    public static function sourcesNeedingAttention(Builder $query): Builder
+    {
+        // A webhook source is pushed to, not read: its silence is not a failure.
+        return $query
+            ->enabled()
+            ->pull()
+            ->where(fn ($query) => $query
+                ->whereNotNull('last_error')
+                ->orWhere('last_synced_at', '<', now()->subHours(self::SOURCE_STALE_AFTER_HOURS)));
+    }
 
     public function pendingApproval(): int
     {
@@ -63,12 +100,7 @@ final class HubStatus
      */
     public function accountsToReconnect(): int
     {
-        return SocialAccount::query()
-            ->where('status', '!=', AccountStatus::Disabled->value)
-            ->where(fn ($query) => $query
-                ->where('status', AccountStatus::NeedsReconnect->value)
-                ->orWhere('token_expires_at', '<=', now()->addDays(self::TOKEN_WARNING_DAYS)))
-            ->count();
+        return self::accountsNeedingAttention(SocialAccount::query())->count();
     }
 
     /**
@@ -76,13 +108,7 @@ final class HubStatus
      */
     public function sourcesWithProblems(): int
     {
-        return Source::query()
-            ->enabled()
-            ->pull()
-            ->where(fn ($query) => $query
-                ->whereNotNull('last_error')
-                ->orWhere('last_synced_at', '<', now()->subHours(self::SOURCE_STALE_AFTER_HOURS)))
-            ->count();
+        return self::sourcesNeedingAttention(Source::query())->count();
     }
 
     /**

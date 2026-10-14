@@ -13,4 +13,9 @@ class CreateBrand extends CreateRecord
     use ReadableFormWidth;
 
     protected static string $resource = BrandResource::class;
+
+    public function getTitle(): string
+    {
+        return 'Novi brend';
+    }
 }

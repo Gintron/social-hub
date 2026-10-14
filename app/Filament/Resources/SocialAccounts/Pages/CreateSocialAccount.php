@@ -13,4 +13,9 @@ class CreateSocialAccount extends CreateRecord
     use ReadableFormWidth;
 
     protected static string $resource = SocialAccountResource::class;
+
+    public function getTitle(): string
+    {
+        return 'Novi račun';
+    }
 }

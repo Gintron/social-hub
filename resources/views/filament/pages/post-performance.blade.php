@@ -72,7 +72,7 @@
             @foreach ($this->getBreakdowns() as $title => $rows)
                 @php($max = max(1, ...array_map(fn (array $row): int => (int) $row['views'], $rows)))
                 <x-filament::section :heading="$title" compact>
-                    <div class="hub-table-wrap">
+                    <div class="hub-table-wrap" tabindex="0" role="region" aria-label="{{ $title }}">
                         <table class="hub-table hub-table--fixed">
                             <colgroup>
                                 <col style="width:28%">
@@ -112,7 +112,7 @@
             @endforeach
 
             <x-filament::section heading="Najgledanije objave" compact>
-                <div class="hub-table-wrap">
+                <div class="hub-table-wrap" tabindex="0" role="region" aria-label="Najgledanije objave">
                     <table class="hub-table">
                         <tbody>
                             @foreach ($this->getTopPosts() as $variant)

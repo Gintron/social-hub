@@ -9,14 +9,29 @@
 
 :root {
     --hub-border: var(--gray-200);
-    --hub-muted: var(--gray-500);
+    --hub-muted: var(--gray-600);
     --hub-surface: var(--gray-50);
+    --hub-hover: var(--gray-100);
+    --hub-text: var(--gray-950);
+    /* Primary as text: the 600 shade is too pale on white. */
+    --hub-accent: var(--primary-700);
+    --hub-danger-text: var(--danger-700);
 }
 
 .dark {
     --hub-border: rgb(255 255 255 / 0.1);
     --hub-muted: var(--gray-400);
     --hub-surface: rgb(255 255 255 / 0.04);
+    --hub-hover: rgb(255 255 255 / 0.08);
+    --hub-text: var(--gray-100);
+    --hub-accent: var(--primary-400);
+    --hub-danger-text: var(--danger-400);
+}
+
+/* Filament's own empty value ("—", "ne istječe") is gray-400 on white, 2.6:1: too faint to read. */
+.fi-ta-placeholder,
+.fi-in-placeholder {
+    color: var(--hub-muted);
 }
 
 /* Tones shared by every view: a status colour is one of Filament's semantic colours. */
@@ -186,7 +201,8 @@
 }
 
 .hub-cal__day--outside {
-    opacity: 0.45;
+    background: var(--hub-surface);
+    border-style: dashed;
 }
 
 .hub-cal__day--today {
@@ -202,7 +218,7 @@
 }
 
 .hub-cal__day--today .hub-cal__date {
-    color: var(--primary-600);
+    color: var(--hub-accent);
 }
 
 /* The weekday only shows where the grid has become a list. */
@@ -228,7 +244,7 @@
 }
 
 .hub-cal__item:hover {
-    background: var(--hub-border);
+    background: var(--hub-hover);
 }
 
 .hub-cal__text,
@@ -366,4 +382,220 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+}
+
+/* A table that scrolls sideways has to be reachable from the keyboard. */
+.hub-table-wrap:focus-visible {
+    outline: 2px solid var(--primary-600);
+    outline-offset: 2px;
+}
+
+/* ---- Post preview (the media of one channel) ---- */
+
+.hub-media {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.hub-media__note,
+.hub-media__status {
+    font-size: 0.8125rem;
+    color: var(--hub-muted);
+}
+
+.hub-media__status strong {
+    color: var(--hub-text);
+}
+
+.hub-media__error {
+    color: var(--hub-danger-text);
+}
+
+.hub-media__list {
+    margin: 0.25rem 0 0 1rem;
+    padding: 0;
+    list-style: disc;
+}
+
+.hub-media__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/*
+ * The card stands for the platform's screen, so it keeps light colours of its own in the dark
+ * theme too: what is checked here is how the post will look to the people who see it.
+ */
+.hub-post {
+    --post-text: #111827;
+    --post-muted: #4b5563;
+    --post-line: rgb(107 114 128 / 0.4);
+    max-width: 32.5rem;
+    overflow: hidden;
+    border: 1px solid var(--post-line);
+    border-radius: 0.75rem;
+    background: #fff;
+    color: var(--post-text);
+}
+
+.hub-post--vertical {
+    max-width: 22.5rem;
+}
+
+.hub-post__head {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem;
+}
+
+.hub-post__avatar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    background: var(--hub-brand, #1d4ed8);
+    color: #fff;
+    font-weight: 700;
+}
+
+.hub-post__name {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.hub-post__meta,
+.hub-post__voice-said {
+    font-size: 0.75rem;
+    color: var(--post-muted);
+}
+
+.hub-post__placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    aspect-ratio: var(--hub-ratio, 1 / 1);
+    max-height: 32.5rem;
+    padding: 1rem;
+    background: #f3f4f6;
+    color: var(--post-muted);
+    font-size: 0.8125rem;
+    text-align: center;
+}
+
+.hub-post__spinner {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.hub-post__caption {
+    padding: 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+.hub-post__caption--lead {
+    padding-top: 0;
+    font-size: 0.875rem;
+}
+
+.hub-post__link-card {
+    margin: 0 0.75rem 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--post-line);
+    border-radius: 0.5rem;
+    background: #f9fafb;
+}
+
+.hub-post__host {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    color: var(--post-muted);
+}
+
+.hub-post__video {
+    display: block;
+    width: 100%;
+    max-height: 35rem;
+    background: #000;
+}
+
+.hub-post__voice {
+    margin: 0 0.75rem 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
+.hub-post__voice summary {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.hub-post__voice-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.hub-post__voice ol {
+    margin: 0.375rem 0 0 1.125rem;
+    padding: 0;
+}
+
+.hub-post__voice .is-silent {
+    font-style: italic;
+    color: var(--post-muted);
+}
+
+.hub-post__slides-wrap {
+    position: relative;
+}
+
+.hub-post__count {
+    position: absolute;
+    top: 0.625rem;
+    right: 0.625rem;
+    z-index: 1;
+    padding: 0.1875rem 0.5625rem;
+    border-radius: 9999px;
+    background: rgb(0 0 0 / 0.7);
+    color: #fff;
+    font-size: 0.75rem;
+}
+
+.hub-post__slides {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+}
+
+.hub-post__slides img {
+    display: block;
+    flex: 0 0 100%;
+    width: 100%;
+    scroll-snap-align: start;
+}
+
+.hub-post__ig {
+    padding: 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+.hub-post__ig-text {
+    white-space: pre-wrap;
+}
+
+.hub-post__ig-more {
+    color: var(--post-muted);
 }

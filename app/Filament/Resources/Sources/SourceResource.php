@@ -31,6 +31,8 @@ final class SourceResource extends Resource
 
     protected static ?string $pluralModelLabel = 'izvori';
 
+    protected static ?string $recordTitleAttribute = 'name';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema

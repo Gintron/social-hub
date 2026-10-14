@@ -6,6 +6,7 @@ namespace App\Filament\Resources\PostDrafts\Tables;
 
 use App\Actions\ApproveDraft;
 use App\Enums\DraftStatus;
+use App\Filament\Support\Placeholders;
 use App\Filament\Support\PlatformBadges;
 use App\Models\PostDraft;
 use Filament\Actions\BulkAction;
@@ -30,11 +31,13 @@ final class PostDraftsTable
             ->columns([
                 ImageColumn::make('preview')->label('')
                     ->state(fn (PostDraft $record): ?string => $record->mediaAssets->first()?->publicUrl())
-                    ->square()->size(56),
-                TextColumn::make('title')->label('Objava')->searchable()->limit(60)
+                    ->defaultImageUrl(Placeholders::thumbnail())
+                    ->extraImgAttributes(fn (PostDraft $record): array => ['alt' => $record->mediaAssets->isEmpty() ? 'Medij još nije izrađen' : 'Pregled objave: '.$record->title, 'loading' => 'lazy'])
+                    ->square()->size(56)->visibleFrom('md'),
+                TextColumn::make('title')->label('Objava')->searchable()->limit(60)->wrap()
                     ->description(fn (PostDraft $record): string => $record->brand?->name.($record->staleItems()->isNotEmpty() ? ' · ⚠ izvor je izmijenjen' : '')),
                 TextColumn::make('status')->label('Status')->badge()->sortable(),
-                PlatformBadges::column(),
+                PlatformBadges::column()->visibleFrom('xl'),
                 TextColumn::make('views')->label('Pregledi')
                     ->state(fn (PostDraft $record): ?int => ($views = $record->variants->sum(fn ($variant): int => (int) $variant->latestMetric?->views)) > 0 ? $views : null)
                     ->tooltip(fn (PostDraft $record): ?string => $record->variants
@@ -42,8 +45,9 @@ final class PostDraftsTable
                         ->map(fn ($variant): string => $variant->platform->label().': '.number_format((int) $variant->latestMetric->views, 0, ',', '.'))
                         ->implode(' · ') ?: null)
                     ->numeric(decimalPlaces: 0, locale: 'hr')
-                    ->placeholder('—'),
-                TextColumn::make('scheduled_at')->label('Zakazano')->dateTime('d.m.Y H:i', 'Europe/Zagreb')->sortable()->placeholder('—'),
+                    ->placeholder('—')
+                    ->visibleFrom('xl'),
+                TextColumn::make('scheduled_at')->label('Zakazano')->dateTime('d.m.Y H:i', 'Europe/Zagreb')->sortable()->placeholder('—')->visibleFrom('md'),
                 TextColumn::make('created_by_type')->label('Autor')->badge()->color('gray')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')->label('Ažurirano')->since()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -52,7 +56,7 @@ final class PostDraftsTable
                 SelectFilter::make('status')->label('Status')->options(DraftStatus::class),
             ])
             ->recordActions([
-                EditAction::make()->label('Pregledaj'),
+                EditAction::make()->label('Pregledaj')->iconButton()->tooltip('Pregledaj objavu'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

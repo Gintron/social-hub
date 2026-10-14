@@ -41,7 +41,8 @@ final class AdminPanelProvider extends PanelProvider
             ->login()
             ->brandName('Social Hub')
             ->colors([
-                'primary' => Color::Teal,
+                // Shade 600 is the dark theme's button colour and white on teal-600 is 3.7:1; 700 is 5.5:1.
+                'primary' => array_replace(Color::Teal, [600 => Color::Teal[700]]),
             ])
             ->navigationGroups(['Objavljivanje', 'Sadržaj', 'Postavke'])
             ->sidebarCollapsibleOnDesktop()

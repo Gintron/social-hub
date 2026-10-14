@@ -24,9 +24,12 @@ final class AttentionOverview extends StatsOverviewWidget
 
     protected ?string $pollingInterval = '60s';
 
-    protected function getColumns(): int
+    /**
+     * @return array<string, int>
+     */
+    protected function getColumns(): array
     {
-        return 4;
+        return ['default' => 2, 'lg' => 4];
     }
 
     /**

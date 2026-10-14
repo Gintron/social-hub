@@ -17,25 +17,45 @@ use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 final class SocialAccountsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('brand'))
             ->columns([
-                TextColumn::make('brand.name')->label('Brend')->sortable(),
                 TextColumn::make('platform')->label('Platforma')->badge()->formatStateUsing(fn (Platform $state): string => $state->shortLabel()),
-                TextColumn::make('name')->label('Račun')->searchable()->description(fn (SocialAccount $record): string => $record->external_id),
-                TextColumn::make('status')->label('Status')->badge(),
+                TextColumn::make('name')->label('Račun')->wrap()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(
+                        fn (Builder $query) => $query
+                            ->where('name', 'like', "%{$search}%")
+                            ->orWhere('external_id', 'like', "%{$search}%")
+                            ->orWhereHas('brand', fn (Builder $brand) => $brand->where('name', 'like', "%{$search}%")),
+                    ))
+                    // Active is the expected state, so only an exception is said under the name; the status column is for wider screens.
+                    ->description(fn (SocialAccount $record): string => collect([
+                        $record->brand?->name,
+                        $record->status === AccountStatus::Active ? null : $record->status->label(),
+                    ])->filter()->implode(' · ')),
+                TextColumn::make('external_id')->label('ID / adresa')->limit(28)->copyable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('status')->label('Status')->badge()->visibleFrom('md'),
                 TextColumn::make('last_verified_at')->label('Provjereno')->since()->placeholder('nikad')->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('token_expires_at')->label('Token istječe')->dateTime('d.m.Y', 'Europe/Zagreb')->placeholder('ne istječe'),
+                TextColumn::make('token_expires_at')->label('Token istječe')->dateTime('d.m.Y', 'Europe/Zagreb')->placeholder('ne istječe')->visibleFrom('lg'),
+            ])
+            ->filters([
+                SelectFilter::make('brand_id')->label('Brend')->relationship('brand', 'name'),
+                SelectFilter::make('platform')->label('Platforma')->options(collect(Platform::cases())->mapWithKeys(fn (Platform $platform): array => [$platform->value => $platform->shortLabel()])->all()),
             ])
             ->recordActions([
                 Action::make('verify')
                     ->label('Provjeri')
                     ->icon(Heroicon::OutlinedSignal)
+                    ->iconButton()
+                    ->tooltip('Provjeri token')
                     ->color('gray')
                     // A developer-track TikTok token has nothing to be asked here; that track is on its way out.
                     ->visible(fn (SocialAccount $record): bool => ! $record->platform->isManual()
@@ -56,7 +76,7 @@ final class SocialAccountsTable
                             Notification::make()->title('Provjera nije prošla')->body($e->getMessage())->danger()->persistent()->send();
                         }
                     }),
-                EditAction::make(),
+                EditAction::make()->iconButton()->tooltip('Uredi račun'),
             ]);
     }
 

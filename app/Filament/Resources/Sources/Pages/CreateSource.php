@@ -13,4 +13,9 @@ class CreateSource extends CreateRecord
     use ReadableFormWidth;
 
     protected static string $resource = SourceResource::class;
+
+    public function getTitle(): string
+    {
+        return 'Novi izvor';
+    }
 }

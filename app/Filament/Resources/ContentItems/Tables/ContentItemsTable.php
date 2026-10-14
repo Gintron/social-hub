@@ -6,6 +6,7 @@ namespace App\Filament\Resources\ContentItems\Tables;
 
 use App\Enums\ContentKind;
 use App\Filament\Resources\ContentItems\ContentItemActions;
+use App\Filament\Support\Placeholders;
 use App\Models\ContentItem;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\ImageColumn;
@@ -22,17 +23,19 @@ final class ContentItemsTable
         return $table
             ->defaultSort('last_seen_at', 'desc')
             ->columns([
-                ImageColumn::make('image')->label('')->state(fn (ContentItem $record): ?string => $record->imageUrl('primary'))->square()->size(48),
-                TextColumn::make('brand.name')->label('Brend')->sortable(),
-                TextColumn::make('kind')->label('Vrsta')->badge(),
-                TextColumn::make('title')->label('Naslov')->searchable()->limit(60)->description(fn (ContentItem $record): ?string => $record->subtitle),
-                TextColumn::make('priority')->label('Prioritet')->sortable()->alignCenter(),
-                TextColumn::make('badges')->label('Oznake')->badge()->color('gray')->limitList(3),
+                ImageColumn::make('image')->label('')->state(fn (ContentItem $record): ?string => $record->imageUrl('primary'))
+                    ->defaultImageUrl(Placeholders::thumbnail())
+                    ->extraImgAttributes(fn (ContentItem $record): array => ['alt' => $record->imageUrl('primary') === null ? 'Izvor nije poslao sliku' : 'Slika uz stavku: '.$record->title, 'loading' => 'lazy'])
+                    ->square()->size(48)->visibleFrom('md'),
+                TextColumn::make('kind')->label('Vrsta')->badge()->visibleFrom('md'),
+                TextColumn::make('title')->label('Naslov')->searchable()->limit(60)->wrap()->description(fn (ContentItem $record): string => collect([$record->brand?->name, $record->subtitle])->filter()->implode(' · ')),
+                TextColumn::make('priority')->label('Prioritet')->sortable()->alignCenter()->visibleFrom('xl'),
+                TextColumn::make('badges')->label('Oznake')->badge()->color('gray')->limitList(3)->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('post_drafts_count')->label('Objave')->counts('postDrafts')->alignCenter()
-                    ->badge()->color(fn (int $state): string => $state > 0 ? 'success' : 'gray'),
+                    ->badge()->color(fn (int $state): string => $state > 0 ? 'success' : 'gray')->visibleFrom('xl'),
                 TextColumn::make('expires_at')->label('Istječe')->date('d.m.Y', 'Europe/Zagreb')->sortable()->placeholder('—')
-                    ->color(fn (ContentItem $record): ?string => $record->isExpired() ? 'danger' : null),
-                TextColumn::make('last_seen_at')->label('Viđeno')->since()->sortable(),
+                    ->color(fn (ContentItem $record): ?string => $record->isExpired() ? 'danger' : null)->visibleFrom('md'),
+                TextColumn::make('last_seen_at')->label('Viđeno')->since()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('brand_id')->label('Brend')->relationship('brand', 'name'),
@@ -52,7 +55,7 @@ final class ContentItemsTable
             ])
             ->recordActions([
                 ContentItemActions::createDraft(),
-                ViewAction::make()->label('Detalji'),
+                ViewAction::make()->label('Detalji')->iconButton()->tooltip('Detalji stavke'),
             ]);
     }
 }

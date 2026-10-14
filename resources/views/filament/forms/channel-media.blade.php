@@ -35,76 +35,78 @@
     $voiced = ($voice['status'] ?? null) === 'ok';
     $voiceWanted = $variant?->wantsVoiceover() ?? false;
 @endphp
-<div @if($rendering) wire:poll.3s @endif style="display:flex;flex-direction:column;gap:12px">
+<div @if($rendering) wire:poll.3s @endif class="hub-media">
   @if($variant === null)
-    <div style="font-size:13px;opacity:.7">Kanal više ne postoji.</div>
+    <p class="hub-media__note">Kanal više ne postoji.</p>
   @else
     @if($problem !== null && ! $rendering)
-      <div style="border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5">
-        {{ $problem }}
-      </div>
+      <x-filament::callout color="warning" icon="heroicon-o-exclamation-triangle" :description="$problem" />
     @endif
 
     @if($video && ! $rendering && $voiceWanted && ! $voiced)
-      <div style="border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5">
-        @if(($voice['status'] ?? null) === 'failed')
-          <strong>Video je bez voice-overa:</strong> {{ $voice['error'] ?? 'glas nije mogao nastati' }}
-          <br>Objava ide i bez njega. Kad se uzrok ukloni, „Renderiraj ponovno“ ga dodaje.
-        @else
-          <strong>Ovaj video nema voice-over</strong> — izrađen je prije nego što je uključen. „Renderiraj ponovno“ ga dodaje.
-        @endif
-      </div>
+      @if(($voice['status'] ?? null) === 'failed')
+        <x-filament::callout color="warning" icon="heroicon-o-microphone" heading="Video je bez voice-overa">
+          <x-slot name="description">{{ $voice['error'] ?? 'glas nije mogao nastati' }}. Objava ide i bez njega. Kad se uzrok ukloni, „Renderiraj ponovno“ ga dodaje.</x-slot>
+        </x-filament::callout>
+      @else
+        <x-filament::callout color="warning" icon="heroicon-o-microphone" heading="Ovaj video nema voice-over"
+                             description="Izrađen je prije nego što je uključen. „Renderiraj ponovno“ ga dodaje." />
+      @endif
     @endif
 
     @if($warnings !== [])
-      <div style="border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5">
-        <strong>Instagram bi ovo odbio:</strong>
-        <ul style="margin:6px 0 0 16px;padding:0">
-          @foreach($warnings as $warning)<li>{{ $warning }}</li>@endforeach
-        </ul>
-      </div>
+      <x-filament::callout color="warning" icon="heroicon-o-exclamation-triangle" heading="Instagram bi ovo odbio">
+        <x-slot name="footer">
+          <ul class="hub-media__list">
+            @foreach($warnings as $warning)<li>{{ $warning }}</li>@endforeach
+          </ul>
+        </x-slot>
+      </x-filament::callout>
     @endif
 
-    <div style="border:1px solid rgba(128,128,128,.35);border-radius:12px;overflow:hidden;background:#fff;color:#111;max-width:{{ $vertical ? '360px' : '520px' }}">
-      <div style="display:flex;align-items:center;gap:10px;padding:12px">
-        <div style="width:36px;height:36px;border-radius:50%;background:{{ $brand?->colors['primary'] ?? '#1d4ed8' }};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">
+    {{-- A preview of the post as the platform shows it. It keeps its own light colours on purpose: it stands for the platform's screen, not for this panel's theme. --}}
+    <div @class(['hub-post', 'hub-post--vertical' => $vertical])>
+      <div class="hub-post__head">
+        <div class="hub-post__avatar" style="--hub-brand: {{ $brand?->colors['primary'] ?? '#1d4ed8' }}" aria-hidden="true">
           {{ mb_strtoupper(mb_substr($brand?->name ?? 'B', 0, 1)) }}
         </div>
         <div>
-          <div style="font-weight:600;font-size:14px">{{ $variant->account?->name ?? $brand?->name }}</div>
-          <div style="font-size:12px;opacity:.6">{{ $variant->platform->label() }} · {{ $format->label() }}</div>
+          <div class="hub-post__name">{{ $variant->account?->name ?? $brand?->name }}</div>
+          <div class="hub-post__meta">{{ $variant->platform->label() }} · {{ $format->label() }}</div>
         </div>
       </div>
 
       @if($rendering)
-        <div style="aspect-ratio:{{ $vertical ? '9/16' : '1/1' }};max-height:520px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#f3f4f6;color:#6b7280;font-size:13px;text-align:center;padding:16px">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.2-8.56"/></svg>
+        <div class="hub-post__placeholder" style="--hub-ratio: {{ $vertical ? '9/16' : '1/1' }}" role="status">
+          <x-filament::loading-indicator class="hub-post__spinner" />
           <span>Renderiram: {{ mb_strtolower($format->label()) }}…</span>
-          <span style="font-size:12px;opacity:.8">Pregled se osvježi sam.</span>
+          <span class="hub-post__meta">Pregled se osvježi sam.</span>
         </div>
-        <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
       @elseif($format === ContentFormat::Link)
-        <div style="padding:0 12px 12px;font-size:14px;white-space:pre-wrap;line-height:1.4">{{ $caption }}</div>
-        <div style="margin:0 12px 12px;border:1px solid rgba(128,128,128,.35);border-radius:8px;padding:10px 12px;background:#f9fafb">
-          <div style="font-size:11px;text-transform:uppercase;opacity:.6">{{ parse_url((string) $variant->link_url, PHP_URL_HOST) }}</div>
-          <div style="font-weight:600;font-size:14px">{{ $item?->title ?? $variant->link_url }}</div>
-          <div style="font-size:12px;opacity:.6">Facebook sam povuče sliku i opis sa stranice.</div>
+        <div class="hub-post__caption hub-post__caption--lead">{{ $caption }}</div>
+        <div class="hub-post__link-card">
+          <div class="hub-post__host">{{ parse_url((string) $variant->link_url, PHP_URL_HOST) }}</div>
+          <div class="hub-post__name">{{ $item?->title ?? $variant->link_url }}</div>
+          <div class="hub-post__meta">Facebook sam povuče sliku i opis sa stranice.</div>
         </div>
       @elseif($format === ContentFormat::Video && $video)
-        <video src="{{ $video->publicUrl() }}" controls playsinline preload="metadata"
+        <video src="{{ $video->publicUrl() }}" controls playsinline preload="metadata" class="hub-post__video"
                @if($video->poster) poster="{{ $video->poster->publicUrl() }}" @endif
-               style="display:block;width:100%;max-height:560px;background:#000"></video>
-        <div style="padding:12px;font-size:13px;white-space:pre-wrap;line-height:1.4">{{ $caption }}</div>
+               aria-label="Video objave"></video>
+        <div class="hub-post__caption">{{ $caption }}</div>
         @if($voiced)
-          <details style="margin:0 12px 12px;font-size:12px;line-height:1.5">
-            <summary style="cursor:pointer;font-weight:600">🎙 Voice-over · {{ $voice['characters'] ?? 0 }} znakova</summary>
-            <ol style="margin:6px 0 0 18px;padding:0">
+          <details class="hub-post__voice">
+            <summary>
+              <x-filament::icon icon="heroicon-o-microphone" class="hub-post__voice-icon" />
+              Voice-over · {{ $voice['characters'] ?? 0 }} znakova
+            </summary>
+            <ol>
               @foreach((array) ($voice['script'] ?? []) as $line)
                 {{-- What the voice was given, with numbers spelled out and the IPA of the words put in: the place to catch a wrong transcription. --}}
                 @php($said = data_get($voice, 'clips.'.$loop->index.'.spoken'))
-                <li style="{{ ($line['text'] ?? '') === '' ? 'opacity:.5' : '' }}">{{ ($line['text'] ?? '') !== '' ? $line['text'] : '(slajd samo uz glazbu)' }}
+                <li @class(['is-silent' => ($line['text'] ?? '') === ''])>{{ ($line['text'] ?? '') !== '' ? $line['text'] : '(slajd samo uz glazbu)' }}
                   @if(filled($said))
-                    <div style="opacity:.6;font-size:11px">Glas čita: {{ $said }}</div>
+                    <div class="hub-post__voice-said">Glas čita: {{ $said }}</div>
                   @endif
                 </li>
               @endforeach
@@ -113,57 +115,55 @@
         @endif
       @elseif($images->isNotEmpty())
         @unless($isInstagram)
-          <div style="padding:0 12px 12px;font-size:14px;white-space:pre-wrap;line-height:1.4">{{ $caption }}</div>
+          <div class="hub-post__caption hub-post__caption--lead">{{ $caption }}</div>
         @endunless
-        <div style="position:relative">
+        <div class="hub-post__slides-wrap">
           @if($images->count() > 1)
-            <div style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;padding:3px 9px;border-radius:999px;z-index:1">{{ $images->count() }} slajda · povuci</div>
+            <div class="hub-post__count">{{ $images->count() }} slajda · povuci</div>
           @endif
-          <div style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory">
+          <div class="hub-post__slides" tabindex="0" role="region" aria-label="Slajdovi objave">
             @foreach($images as $asset)
-              <img src="{{ $asset->publicUrl() }}" alt="" style="display:block;width:100%;flex:0 0 100%;scroll-snap-align:start">
+              <img src="{{ $asset->publicUrl() }}" alt="Slajd {{ $loop->iteration }} od {{ $loop->count }}">
             @endforeach
           </div>
         </div>
         @if($isInstagram)
-          <div style="padding:12px;font-size:13px;line-height:1.4">
-            <span style="font-weight:600">{{ $variant->account?->name }}</span>
-            <span style="white-space:pre-wrap">{{ $head }}</span>@if($tail !== '')<span style="opacity:.55">… više</span>@endif
+          <div class="hub-post__ig">
+            <strong>{{ $variant->account?->name }}</strong>
+            <span class="hub-post__ig-text">{{ $head }}</span>@if($tail !== '')<span class="hub-post__ig-more">… više</span>@endif
           </div>
         @endif
       @else
-        <div style="aspect-ratio:{{ $vertical ? '9/16' : '1/1' }};max-height:420px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;color:#6b7280;font-size:13px;text-align:center;padding:16px">
+        <div class="hub-post__placeholder" style="--hub-ratio: {{ $vertical ? '9/16' : '1/1' }}">
           Medij za ovaj format još ne postoji — klikni „Renderiraj ponovno”.
         </div>
       @endif
     </div>
 
-    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:13px" x-data="{ copied: false }">
-      <button type="button"
-              x-on:click="navigator.clipboard.writeText(@js($caption)).then(() => { copied = true; setTimeout(() => copied = false, 1500) })"
-              style="padding:6px 12px;border:1px solid rgba(128,128,128,.4);border-radius:8px;background:transparent;cursor:pointer">
-        <span x-show="!copied">📋 Kopiraj tekst</span><span x-show="copied" x-cloak>✅ Kopirano</span>
-      </button>
+    <div class="hub-media__actions" x-data="{ copied: false, copy() { navigator.clipboard.writeText(@js($caption)).then(() => { this.copied = true; setTimeout(() => this.copied = false, 1500) }) } }">
+      <x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-clipboard-document" x-on:click="copy()">
+        <span x-show="!copied">Kopiraj tekst</span><span x-show="copied" x-cloak>Kopirano</span>
+      </x-filament::button>
       @unless($rendering || $format === ContentFormat::Link)
         @foreach($media as $asset)
-          <a href="{{ $asset->publicUrl() }}" download target="_blank" rel="noopener" style="padding:6px 12px;border:1px solid rgba(128,128,128,.4);border-radius:8px;text-decoration:none">⬇️ Preuzmi {{ $asset->isVideo() ? 'video' : 'sliku' }} {{ $loop->count > 1 ? $loop->iteration : '' }}</a>
+          <x-filament::button tag="a" :href="$asset->publicUrl()" download target="_blank" rel="noopener" color="gray" size="sm" icon="heroicon-o-arrow-down-tray">Preuzmi {{ $asset->isVideo() ? 'video' : 'sliku' }} {{ $loop->count > 1 ? $loop->iteration : '' }}</x-filament::button>
         @endforeach
       @endunless
       @if($variant->platform->isManual() && $variant->account?->external_id && str_starts_with($variant->account->external_id, 'http'))
-        <a href="{{ $variant->account->external_id }}" target="_blank" rel="noopener" style="padding:6px 12px;border:1px solid rgba(128,128,128,.4);border-radius:8px;text-decoration:none">↗ Otvori grupu</a>
+        <x-filament::button tag="a" :href="$variant->account->external_id" target="_blank" rel="noopener" color="gray" size="sm" icon="heroicon-o-arrow-top-right-on-square">Otvori grupu</x-filament::button>
       @endif
       @if($variant->permalink)
-        <a href="{{ $variant->permalink }}" target="_blank" rel="noopener" style="padding:6px 12px;border:1px solid rgba(128,128,128,.4);border-radius:8px;text-decoration:none">↗ Otvori objavu</a>
+        <x-filament::button tag="a" :href="$variant->permalink" target="_blank" rel="noopener" color="gray" size="sm" icon="heroicon-o-arrow-top-right-on-square">Otvori objavu</x-filament::button>
       @endif
     </div>
 
-    <div style="font-size:12px;opacity:.75">
+    <div class="hub-media__status">
       Status: <strong>{{ $variant->status->label() }}</strong>
       @if(! $rendering && ($first = $media->first()))
         · {{ $first->width }}×{{ $first->height }}@if($first->isVideo()), {{ number_format((float) $first->durationSeconds(), 1, ',', '') }} s @endif
       @endif
       @if($variant->published_at) · {{ $variant->published_at->timezone('Europe/Zagreb')->format('d.m.Y H:i') }} @endif
-      @if($variant->error_message) <br><span style="color:#dc2626">{{ $variant->error_code }}: {{ $variant->error_message }}</span> @endif
+      @if($variant->error_message) <br><span class="hub-media__error">{{ $variant->error_code }}: {{ $variant->error_message }}</span> @endif
     </div>
   @endif
 </div>

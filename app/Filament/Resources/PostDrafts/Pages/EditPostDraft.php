@@ -69,7 +69,9 @@ final class EditPostDraft extends EditRecord
             $item->expires_at ? ', istječe '.$item->expires_at->timezone('Europe/Zagreb')->format('d.m.Y') : '',
         ))->implode(' · ');
 
-        return new HtmlString(e($status).($items !== '' ? ' — '.$items : ''));
+        $label = $draft->contentItems->count() > 1 ? 'Stavke' : 'Stavka';
+
+        return new HtmlString(e($status).($items !== '' ? "<br>{$label}: {$items}" : ''));
     }
 
     protected function getHeaderActions(): array

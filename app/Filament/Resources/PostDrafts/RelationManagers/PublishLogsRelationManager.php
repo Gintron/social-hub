@@ -25,12 +25,13 @@ final class PublishLogsRelationManager extends RelationManager
                 TextColumn::make('created_at')->label('Vrijeme')->dateTime('d.m.Y H:i:s', 'Europe/Zagreb'),
                 TextColumn::make('variant.platform')->label('Kanal')->badge(),
                 TextColumn::make('event')->label('Događaj')->badge()->color('gray'),
-                TextColumn::make('http_status')->label('HTTP')->badge()
+                TextColumn::make('http_status')->label('HTTP')->visibleFrom('md')->badge()
                     ->color(fn (?int $state): string => $state !== null && $state < 300 ? 'success' : 'danger')->placeholder('—'),
                 TextColumn::make('response')->label('Odgovor')
                     ->state(fn (PublishLog $record): string => json_encode($record->response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '')
                     ->limit(80)->tooltip(fn (PublishLog $record): string => json_encode($record->response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '')
-                    ->fontFamily('mono'),
+                    ->fontFamily('mono')
+                    ->visibleFrom('md'),
             ])
             ->recordActions([])
             ->toolbarActions([])
