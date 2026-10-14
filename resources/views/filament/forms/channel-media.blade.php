@@ -31,6 +31,12 @@
     $item = $variant?->draft?->contentItems->first();
 
     // What the voice did for this video: spoke it (and what it said), failed (and why), or was not asked.
+    $advice = \App\Publishing\FailureAdvice::for($variant?->error_code);
+    $failure = match ($variant?->status) {
+        \App\Enums\VariantStatus::Failed => ['danger', 'Objava nije izašla'],
+        \App\Enums\VariantStatus::Skipped => ['warning', 'Objava je preskočena'],
+        default => ['warning', 'Zadnji pokušaj nije uspio, hub pokušava ponovno'],
+    };
     $voice = $video ? (array) data_get($video->params, 'voiceover', []) : [];
     $voiced = ($voice['status'] ?? null) === 'ok';
     $voiceWanted = $variant?->wantsVoiceover() ?? false;
@@ -39,6 +45,15 @@
   @if($variant === null)
     <p class="hub-media__note">Kanal više ne postoji.</p>
   @else
+    @if($variant->error_message)
+      <x-filament::callout :color="$failure[0]" icon="heroicon-o-exclamation-circle" :heading="$failure[1]">
+        <x-slot name="description">{{ $variant->error_message }}</x-slot>
+        @if($advice)
+          <x-slot name="footer"><strong>Što učiniti:</strong> {{ $advice }}</x-slot>
+        @endif
+      </x-filament::callout>
+    @endif
+
     @if($problem !== null && ! $rendering)
       <x-filament::callout color="warning" icon="heroicon-o-exclamation-triangle" :description="$problem" />
     @endif
@@ -163,7 +178,7 @@
         · {{ $first->width }}×{{ $first->height }}@if($first->isVideo()), {{ number_format((float) $first->durationSeconds(), 1, ',', '') }} s @endif
       @endif
       @if($variant->published_at) · {{ $variant->published_at->timezone('Europe/Zagreb')->format('d.m.Y H:i') }} @endif
-      @if($variant->error_message) <br><span class="hub-media__error">{{ $variant->error_code }}: {{ $variant->error_message }}</span> @endif
+      @if($variant->error_code) · šifra <code>{{ $variant->error_code }}</code> @endif
     </div>
   @endif
 </div>

@@ -15,7 +15,6 @@
     --hub-text: var(--gray-950);
     /* Primary as text: the 600 shade is too pale on white. */
     --hub-accent: var(--primary-700);
-    --hub-danger-text: var(--danger-700);
 }
 
 .dark {
@@ -25,7 +24,6 @@
     --hub-hover: rgb(255 255 255 / 0.08);
     --hub-text: var(--gray-100);
     --hub-accent: var(--primary-400);
-    --hub-danger-text: var(--danger-400);
 }
 
 /* Filament's own empty value ("—", "ne istječe") is gray-400 on white, 2.6:1: too faint to read. */
@@ -406,10 +404,6 @@
 
 .hub-media__status strong {
     color: var(--hub-text);
-}
-
-.hub-media__error {
-    color: var(--hub-danger-text);
 }
 
 .hub-media__list {

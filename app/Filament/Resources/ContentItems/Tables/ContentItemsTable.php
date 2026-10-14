@@ -6,9 +6,12 @@ namespace App\Filament\Resources\ContentItems\Tables;
 
 use App\Enums\ContentKind;
 use App\Filament\Resources\ContentItems\ContentItemActions;
+use App\Filament\Resources\Sources\SourceResource;
 use App\Filament\Support\Placeholders;
 use App\Models\ContentItem;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -22,6 +25,15 @@ final class ContentItemsTable
     {
         return $table
             ->defaultSort('last_seen_at', 'desc')
+            ->emptyStateIcon(Heroicon::OutlinedNewspaper)
+            ->emptyStateHeading('Nema stavki za ovaj prikaz')
+            ->emptyStateDescription('Promijeni filtere ili pretragu. Ako izvor još nije povezan, dodaj ga: bez izvora hub nema iz čega napraviti objavu.')
+            ->emptyStateActions([
+                Action::make('sources')->label('Izvori sadržaja')->icon(Heroicon::OutlinedRss)->color('gray')
+                    ->url(SourceResource::getUrl('index')),
+            ])
+            // The brand is named under the title, so it is loaded with the rows and not once per row.
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('brand'))
             ->columns([
                 ImageColumn::make('image')->label('')->state(fn (ContentItem $record): ?string => $record->imageUrl('primary'))
                     ->defaultImageUrl(Placeholders::thumbnail())

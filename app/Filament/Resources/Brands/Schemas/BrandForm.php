@@ -113,7 +113,7 @@ final class BrandForm
                             ])->columns(2),
 
                         Section::make('Glazba')
-                            ->description('Podloge koje hub umiksa ispod TikTok videa i Reelsa. TikTokov API ne može dodati zvuk iz TikTokove knjižnice, pa ovdje idu samo pjesme za koje brend ima prava (royalty-free ili licencirane) — poslovni računi ne smiju koristiti komercijalnu glazbu bez licence. Za trending zvuk pošalji TikTok varijantu u inbox.')
+                            ->description('Podloge koje hub umiksa ispod videa. Samo pjesme za koje brend ima prava (royalty-free ili licencirane): TikTokov API ne može dodati zvuk iz njihove knjižnice. Za trending zvuk pošalji TikTok objavu u inbox.')
                             ->schema([
                                 Repeater::make('audio_tracks')->hiddenLabel()
                                     ->schema([
@@ -136,7 +136,7 @@ final class BrandForm
 
                     Tab::make('Voice-over')->icon(Heroicon::OutlinedSpeakerWave)->schema([
                         Section::make('Voice-over (ElevenLabs)')
-                            ->description('Videi (Reels i TikTok) dobivaju glas koji izgovara ono što je na slajdovima: proizvod, cijenu, popust i poziv brenda. Tekst se piše iz podataka stavke, iznosi se provjeravaju kao i u tekstu objave, riječi koje glas griješi dobivaju izgovor u IPA koji si odabrao uhom, a glas se plaća samo jednom po rečenici. Kanal ili pravilo automatske objave mogu voice-over uključiti ili isključiti za sebe.')
+                            ->description('Videi dobivaju glas koji izgovara ono što je na slajdovima: proizvod, cijenu, popust i poziv brenda. Tekst dolazi iz podataka stavke (iznosi se provjeravaju kao i u objavi), a svaka se rečenica plaća samo jednom. Kanal ili pravilo automatske objave može voice-over uključiti ili isključiti za sebe.')
                             ->schema([
                                 Placeholder::make('voiceover_status')->label('Veza')
                                     ->content(fn (Get $get): string => VoiceoverPanel::status((string) $get('voiceover.ipa'), (string) $get('voiceover.model'), (array) $get('voiceover.words'), filled($get('voiceover.ipa_auto')) ? (bool) $get('voiceover.ipa_auto') : null))
@@ -174,12 +174,12 @@ final class BrandForm
                                     }.')')
                                     ->helperText('Kako se IPA riječi iz popisa dolje umeće u tekst koji glas čita. Plaća se samo za riječi s popisa. Kako koji zapis zvuči čuje se samo na uho: „Preslušaj glas“.'),
                                 Toggle::make('voiceover.ipa_auto')->label('OpenAI predlaže izgovor i za ostale riječi (eksperimentalno)')
-                                    ->helperText('Zadano isključeno. Pravi test (2. 10. 2026.): model je odabrao Listo i Konzum, ne letku, i obični tekst je zvučao bolje. Traži OPENAI_API_KEY.')
+                                    ->helperText('Eksperimentalno, zadano isključeno: u probi je model birao imena trgovina umjesto riječi koje glas stvarno griješi, pa je ručni popis ispod pouzdaniji. Traži OpenAI ključ.')
                                     ->columnSpanFull(),
                                 TextInput::make('voiceover.speed')->label('Brzina')->numeric()
                                     ->minValue(VoiceoverSettings::MIN_SPEED)->maxValue(VoiceoverSettings::MAX_SPEED)->step(0.05)
                                     ->placeholder('1,05')
-                                    ->helperText('0,7–1,2, zadano 1,05. Model v4 ovu postavku ne primjenjuje (izmjereno: isti redak je jednako dug uz 0,7 i 1,2), pa je za sada bez učinka.'),
+                                    ->helperText('0,7–1,2, zadano 1,05. Trenutni model glasa ne primjenjuje brzinu, pa je za sada bez učinka.'),
                                 Select::make('voiceover.music')->label('Glasnoća glazbe ispod glasa')
                                     ->options(['quiet' => 'Tiho', 'medium' => 'Srednje (zadano)', 'loud' => 'Glasnije'])
                                     ->helperText('Glazba brenda se uz to još stišava dok glas govori.'),

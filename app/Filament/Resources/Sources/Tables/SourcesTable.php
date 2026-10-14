@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Sources\Tables;
 
 use App\Filament\Resources\Sources\SourceActions;
+use App\Filament\Resources\Sources\SourceResource;
 use App\Models\Source;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -19,6 +22,13 @@ final class SourcesTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with('brand'))
+            ->emptyStateIcon(Heroicon::OutlinedRss)
+            ->emptyStateHeading('Još nema izvora sadržaja')
+            ->emptyStateDescription('Izvor je stranica koju hub čita (Social Feed v1). Dodaj prvi, zalijepi adresu i token, pa klikni „Testiraj vezu“.')
+            ->emptyStateActions([
+                Action::make('create')->label('Dodaj izvor')->icon(Heroicon::OutlinedPlus)
+                    ->url(SourceResource::getUrl('create')),
+            ])
             ->columns([
                 // The brand sits under the name, as in the other lists, so a phone has room for what matters.
                 TextColumn::make('name')->label('Izvor')->wrap()

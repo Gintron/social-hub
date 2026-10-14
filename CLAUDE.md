@@ -283,6 +283,18 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Nadzorna ploča mjeri `App\Filament\Support\HubStatus`.** Brojke i vodič „Kako početi“ dolaze odande; nova stvar
   koja traži pažnju ide u `HubStatus` i `AttentionOverview`, ne kao zaseban upit u widgetu. Tablice na ploči su pregled
   na prvi pogled, bez stupca kanala; kratke nazive daje `Platform::shortLabel()` (`PlatformBadges`).
+- **Zašto objava nije izašla piše u sučelju, ne samo u šifri.** Kanal koji je preskočen ili pao pokazuje poruku i „Što
+  učiniti“ (`App\Publishing\FailureAdvice`), a popis objava stupac „Razlog“. Savjet imaju samo šifre čiji je uzrok poznat iz
+  koda koji ih postavlja; platformina vlastita greška ostaje kakva je došla, jer bi nagađanje poslalo čovjeka krivim putem.
+  Novi kod s poznatim uzrokom dobiva rečenicu ondje, uz test.
+- **Izgled se provjerava alatom, ne dojmom.** Nakon izmjene panela:
+  `AUDIT_EMAIL=… AUDIT_PASSWORD=… node scripts/panel-audit.mjs` (lokalni panel, korisnik iz `HUB_ADMIN_EMAILS`, baza s
+  ponešto od svega; Chrome iz `HUB_CHROME_PATH` ili Puppeteerova cachea; `--only=/admin/brands` za jednu stranicu) otvara svaku
+  stranicu na laptopu i telefonu, u svijetloj i tamnoj temi, i javlja preljev stranice, sekcije nejednake visine jednu uz
+  drugu, greške u konzoli i WCAG A/AA (axe). Bez preglednika čuvaju `PanelLayoutTest` (svaka forma je jedna kolona) i
+  `ListQueryCountTest` (popis ne postavlja upit po retku: kad se brend spoji pod naslov, relacija se više ne učitava sama,
+  pa je `->with('brand')` dio svakog takvog popisa). Ćelija klikabilnog retka koja ostane bez teksta i slike je prazna
+  poveznica za čitač zaslona: stupac dobiva `placeholder('—')`, slika `defaultImageUrl` (`Placeholders::thumbnail()`).
 
 ## Rad
 

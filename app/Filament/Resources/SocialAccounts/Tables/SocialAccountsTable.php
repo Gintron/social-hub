@@ -27,6 +27,9 @@ final class SocialAccountsTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with('brand'))
+            ->emptyStateIcon(Heroicon::OutlinedUserGroup)
+            ->emptyStateHeading('Još nema povezanih računa')
+            ->emptyStateDescription('Poveži Facebook stranicu, Instagram, TikTok ili YouTube brenda gumbima iznad tablice. Facebook grupu dodaj ručno (izbornik „Ručno“).')
             ->columns([
                 TextColumn::make('platform')->label('Platforma')->badge()->formatStateUsing(fn (Platform $state): string => $state->shortLabel()),
                 TextColumn::make('name')->label('Račun')->wrap()

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Brands\Tables;
 
+use App\Filament\Resources\Brands\BrandResource;
 use App\Filament\Support\Placeholders;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -15,6 +18,13 @@ final class BrandsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->emptyStateIcon(Heroicon::OutlinedSwatch)
+            ->emptyStateHeading('Još nema brendova')
+            ->emptyStateDescription('Brend je jedna stranica ili marka s vlastitim bojama, tekstovima, računima i terminima objave. Dodaj prvi.')
+            ->emptyStateActions([
+                Action::make('create')->label('Dodaj brend')->icon(Heroicon::OutlinedPlus)
+                    ->url(BrandResource::getUrl('create')),
+            ])
             ->columns([
                 ImageColumn::make('logo_path')->label('')->disk('public')->circular()
                     ->defaultImageUrl(Placeholders::thumbnail())

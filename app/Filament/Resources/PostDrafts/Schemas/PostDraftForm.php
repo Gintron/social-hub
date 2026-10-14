@@ -57,6 +57,7 @@ final class PostDraftForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(1)
             ->components([
                 Callout::make('Sadržaj je promijenjen na izvoru')
                     ->warning()
@@ -157,7 +158,7 @@ final class PostDraftForm
                         Select::make("{$path}.privacy_level")
                             ->label('Vidljivost na TikToku')
                             ->options([
-                                'SELF_ONLY' => 'Samo ja (obavezno dok app nije auditirana)',
+                                'SELF_ONLY' => 'Samo ja (jedino dopušteno dok TikTok ne odobri aplikaciju)',
                                 'PUBLIC_TO_EVERYONE' => 'Javno',
                                 'MUTUAL_FOLLOW_FRIENDS' => 'Prijatelji',
                                 'FOLLOWER_OF_CREATOR' => 'Pratitelji',

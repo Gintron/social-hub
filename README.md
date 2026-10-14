@@ -45,6 +45,24 @@ YouTube Shorts, Facebook grupa). Izbornik prati taj tok:
 Nova instalacija: **Brendovi** → **Izvori sadržaja** → **Društveni računi** → prva objava iz **Sadržaja iz izvora**.
 Isti redoslijed prikazuje vodič „Kako početi“ na nadzornoj ploči.
 
+**Što znači status objave**
+
+| Status | Značenje |
+|---|---|
+| Nacrt | Započeta, još nije predana na pregled. |
+| Čeka odobrenje | Čeka čovjeka. Hub ili AI agent je pripremio tekst i sliku; ništa ne izlazi dok je ne odobriš. |
+| Odobreno | Spremna za objavu: čeka termin ili klik na „Spremi i objavi“. |
+| Zakazano | Ima termin; hub je sam šalje u to vrijeme. |
+| Objavljuje se | U tijeku: hub razgovara s platformom. |
+| Objavljeno | Izašla na svim uključenim kanalima. |
+| Djelomično objavljeno | Izašla na nekim kanalima; ostali su pali ili čekaju ručnu objavu. |
+| Neuspjelo | Platforma je odbila ili račun ne radi. Otvori objavu: kanal piše što se dogodilo i što učiniti. |
+| Preskočeno | Hub je namjerno preskočio **sve** kanale: stavka je istekla, stranica više ne postoji, sadržaj se promijenio otkad je objava pripremljena, ili spominje alkohol. Razlog piše na kanalu. Preskočen je i samo jedan kanal kad su ostali izašli; tada je objava „Objavljeno“. |
+| Odbačeno | Odbacio si je. |
+
+**Ručni kanali.** Facebook grupe nemaju API: hub pripremi tekst i sliku, ti ih zalijepiš u grupu i na objavi odabereš
+„Više“ → „Označi kao ručno objavljeno“. Isto vrijedi za TikTok poslan u inbox (dodaješ zvuk u aplikaciji).
+
 ## Naredbe
 
 | Naredba | Što radi |
