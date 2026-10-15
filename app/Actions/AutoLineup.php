@@ -14,6 +14,7 @@ use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\SocialAccount;
 use App\Publishing\LinkPreflight;
+use App\Publishing\RestrictedGoodsCheck;
 use App\Support\DailyPostLimit;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
@@ -72,6 +73,7 @@ final class AutoLineup
         private readonly PostingSchedule $schedule,
         private readonly LinkPreflight $links,
         private readonly DailyPostLimit $dailyLimit,
+        private readonly RestrictedGoodsCheck $goods,
     ) {}
 
     /**
@@ -145,78 +147,86 @@ final class AutoLineup
             return 0;
         }
 
-        $pool = ContentItem::query()
-            ->whereIn('source_id', $rules->pluck('source_id')->unique()->all())
-            ->whereIn('kind', $order)
-            ->postableAt($slot)
-            ->stillNews()
-            ->notDrafted()
-            ->orderByDesc('priority')
-            ->orderByDesc('published_at')
-            ->limit(self::CANDIDATE_POOL)
-            ->get()
-            ->sortBy(fn (ContentItem $item): int => array_search($item->kind->value, $order, true))
-            ->values();
-
         $checks = 0;
 
-        foreach ($pool as $item) {
-            if ($checks >= self::LINK_CHECKS) {
-                break;
-            }
+        // Kind by kind, in the brand's order, so the best waiting item of the first kind is looked at before any of the
+        // next. One pool across the kinds would be filled by whichever kind has the most items ranked highest, and a
+        // leaflet behind a hundred deals would never be reached.
+        foreach ($order as $kind) {
+            $pool = ContentItem::query()
+                ->whereIn('source_id', $rules->pluck('source_id')->unique()->all())
+                ->where('kind', $kind)
+                ->postableAt($slot)
+                ->stillNews()
+                ->notDrafted()
+                ->orderByDesc('priority')
+                ->orderByDesc('published_at')
+                ->limit(self::CANDIDATE_POOL)
+                ->get();
 
-            if (! $item->isPostableAt($slot)) {
-                continue;
-            }
+            foreach ($pool as $item) {
+                if ($checks >= self::LINK_CHECKS) {
+                    break 2;
+                }
 
-            $checks++;
+                if (! $item->isPostableAt($slot)) {
+                    continue;
+                }
 
-            if (! $this->links->isAlive($item)) {
-                continue;
-            }
+                // The rules of the item's own source, for the channels that still have room today and take what the item
+                // is (RestrictedGoodsCheck). An item no such channel takes would be skipped by the publish job, and held
+                // the window until then, so it is passed over here, as ApplyAutoPublishRules does.
+                $blocked = $this->goods->blockedOn($item);
+                $itemRules = $rules
+                    ->filter(fn (AutoPublishRule $rule): bool => $rule->source_id === $item->source_id
+                        && in_array($rule->platform->value, $open, true)
+                        && ! in_array($rule->platform->value, $blocked, true))
+                    ->values();
 
-            // The rules of the item's own source, for the channels that still have room today.
-            $itemRules = $rules
-                ->filter(fn (AutoPublishRule $rule): bool => $rule->source_id === $item->source_id && in_array($rule->platform->value, $open, true))
-                ->values();
+                if ($itemRules->isEmpty()) {
+                    continue;
+                }
 
-            if ($itemRules->isEmpty()) {
-                continue;
-            }
+                $checks++;
 
-            $platforms = $itemRules->map(fn (AutoPublishRule $rule): string => $rule->platform->value)->all();
+                if (! $this->links->isAlive($item)) {
+                    continue;
+                }
 
-            // A leaflet without a usable demo has no video. CreateDraft would save the draft before it found that
-            // out, and the window would then hold a post with no media, so the leaflet is passed over here.
-            if ($item->kind === ContentKind::Catalog) {
+                $platforms = $itemRules->map(fn (AutoPublishRule $rule): string => $rule->platform->value)->all();
+
+                // A leaflet without a usable demo has no video. CreateDraft would save the draft before it found that
+                // out, and the window would then hold a post with no media, so the leaflet is passed over here.
+                if ($item->kind === ContentKind::Catalog) {
+                    try {
+                        CatalogDemo::fromItem($item);
+                    } catch (InvalidArgumentException $e) {
+                        Log::info('hub.autolineup.no_demo', ['item' => $item->id, 'reason' => $e->getMessage()]);
+
+                        continue;
+                    }
+                }
+
                 try {
-                    CatalogDemo::fromItem($item);
-                } catch (InvalidArgumentException $e) {
-                    Log::info('hub.autolineup.no_demo', ['item' => $item->id, 'reason' => $e->getMessage()]);
+                    $this->createDraft->execute(
+                        item: $item,
+                        accounts: $accounts->filter(fn (SocialAccount $account): bool => in_array($account->platform->value, $platforms, true))->values(),
+                        actor: ActorType::System,
+                        scheduledAt: $slot,
+                        // One rule that wants a person's look holds the whole post, as in ApplyAutoPublishRules.
+                        status: $itemRules->contains(fn (AutoPublishRule $rule): bool => $rule->requires_approval) ? DraftStatus::PendingApproval : DraftStatus::Approved,
+                        channelOptions: $itemRules->mapWithKeys(fn (AutoPublishRule $rule): array => [$rule->platform->value => $rule->channelOptions()])->all(),
+                    );
+                } catch (Throwable $e) {
+                    Log::warning('hub.autolineup.draft_failed', ['item' => $item->id, 'error' => $e->getMessage()]);
 
                     continue;
                 }
+
+                Log::info('hub.autolineup', ['brand' => $brand->slug, 'item' => $item->id, 'kind' => $item->kind->value, 'slot' => $slot->toIso8601String()]);
+
+                return 1;
             }
-
-            try {
-                $this->createDraft->execute(
-                    item: $item,
-                    accounts: $accounts->filter(fn (SocialAccount $account): bool => in_array($account->platform->value, $platforms, true))->values(),
-                    actor: ActorType::System,
-                    scheduledAt: $slot,
-                    // One rule that wants a person's look holds the whole post, as in ApplyAutoPublishRules.
-                    status: $itemRules->contains(fn (AutoPublishRule $rule): bool => $rule->requires_approval) ? DraftStatus::PendingApproval : DraftStatus::Approved,
-                    channelOptions: $itemRules->mapWithKeys(fn (AutoPublishRule $rule): array => [$rule->platform->value => $rule->channelOptions()])->all(),
-                );
-            } catch (Throwable $e) {
-                Log::warning('hub.autolineup.draft_failed', ['item' => $item->id, 'error' => $e->getMessage()]);
-
-                continue;
-            }
-
-            Log::info('hub.autolineup', ['brand' => $brand->slug, 'item' => $item->id, 'kind' => $item->kind->value, 'slot' => $slot->toIso8601String()]);
-
-            return 1;
         }
 
         return 0;
@@ -233,8 +243,8 @@ final class AutoLineup
         $day = $local->startOfDay();
 
         foreach ($this->schedule->windows($brand) as $index => [$fromMinutes, $toMinutes]) {
-            $from = $day->addMinutes($fromMinutes);
-            $to = $day->addMinutes($toMinutes);
+            $from = $this->schedule->wallClock($day, $fromMinutes);
+            $to = $this->schedule->wallClock($day, $toMinutes);
 
             if ($local->greaterThanOrEqualTo($from->subMinutes(self::LEAD_MINUTES)) && $local->lessThan($to)) {
                 return [$from->utc(), $to->utc(), $index];

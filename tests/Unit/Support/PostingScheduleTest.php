@@ -98,6 +98,26 @@ final class PostingScheduleTest extends TestCase
         $this->assertSame('UTC', $slot->timezone->getName());
     }
 
+    public function test_a_window_keeps_its_wall_clock_time_on_the_day_the_clocks_go_back(): void
+    {
+        // 25 October 2026 has 25 hours: counting 480 minutes from midnight lands on 07:00, an hour before the window.
+        $slot = $this->schedule->nextSlot($this->brand(), $this->zagreb('2026-10-25 05:00'));
+
+        $this->assertSame('2026-10-25 08:00', $this->local($slot));
+        $this->assertSame('2026-10-25 08:00', $this->local($this->schedule->nextSlot($this->brand(), $this->zagreb('2026-10-24 22:00'))), 'the evening before rolls to the same window');
+    }
+
+    public function test_a_window_keeps_its_wall_clock_time_on_the_day_the_clocks_go_forward(): void
+    {
+        // 29 March 2026 has 23 hours: counting 480 minutes from midnight lands on 09:00, an hour after the window opened.
+        $slot = $this->schedule->nextSlot($this->brand(), $this->zagreb('2026-03-29 05:00'));
+
+        $this->assertSame('2026-03-29 08:00', $this->local($slot));
+        // And a time inside the window is inside it, not before the late one.
+        $inside = $this->zagreb('2026-03-29 08:30');
+        $this->assertTrue($inside->equalTo($this->schedule->nextSlot($this->brand(), $inside)));
+    }
+
     /**
      * @param  list<array{from: string, to: string}>|null  $windows
      */

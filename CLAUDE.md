@@ -129,9 +129,13 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   stavke odmah po sinkronizaciji, nego po terminu objave (`brands.posting_windows`). Termin se puni 30 min prije
   otvaranja (sinkronizacija, ingest i `hub:auto-lineup` u :30). Dnevni limit se dijeli po terminima (5 nad 3 daje
   2, 2, 1; limit manji od broja termina daje jednu po terminu). Vrsta ide po `brands.lineup_priority` (zadano
-  katalog, usporedba, akcija); vrsta koja nije na popisu se ne objavljuje. Stavka kataloga bez `raw.demo` se
-  preskače prije nego što se nacrt spremi, da termin ne ostane zauzet bez medija. `ApplyAutoPublishRules` za
-  ostale brendove radi kao prije.
+  katalog, usporedba, akcija); vrsta koja nije na popisu se ne objavljuje. Kandidati se čitaju **vrstu po vrstu**
+  (do 100 po vrsti), ne jedan bazen preko vrsta: inače bi sto akcija višeg prioriteta zauvijek zaklonilo katalog koji
+  brend stavlja prvim. Stavka kataloga bez `raw.demo` i stavka koju nijedan otvoreni kanal ne uzima (alkohol,
+  `RestrictedGoodsCheck`) preskaču se prije nego što se nacrt spremi, da termin ne ostane zauzet objavom koju bi
+  `PublishVariantJob` ionako preskočio. Prozori se računaju po satu na zidu (`PostingSchedule::wallClock`), nikad
+  zbrajanjem minuta od ponoći: dan promjene vremena ima 23 ili 25 sati pa bi prozor od 08:00 otvorio u 07:00 ili 09:00.
+  `ApplyAutoPublishRules` za ostale brendove radi kao prije.
 - **Pregledi su automatika, ne novi kanal**: `brands.digests` je lista serija (`App\Drafting\DigestSeries`:
   dani, vrijeme, broj, vrsta, **oznaka**, format FB/IG; TikTok je uvijek video). Gradi ih `hub:auto-digest` (satno, sat
   unaprijed) kroz `App\Actions\ScheduleDigest` — svaku seriju jednom na dan (`post_drafts.digest_series`),

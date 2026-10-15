@@ -47,8 +47,8 @@ final class PostingSchedule
             $date = $local->addDays($day)->startOfDay();
 
             foreach ($windows as [$fromMinutes, $toMinutes]) {
-                $start = $date->addMinutes($fromMinutes);
-                $end = $date->addMinutes($toMinutes);
+                $start = $this->wallClock($date, $fromMinutes);
+                $end = $this->wallClock($date, $toMinutes);
 
                 if ($local->lessThanOrEqualTo($start)) {
                     return $start->setTimezone($after->timezone);
@@ -61,6 +61,17 @@ final class PostingSchedule
         }
 
         return $after;
+    }
+
+    /**
+     * The moment `$minutes` after midnight on the local day of `$day`, by the clock on the wall.
+     *
+     * Not `startOfDay()->addMinutes()`: that counts minutes that have passed, and on the two days a year the clocks change
+     * (23 or 25 hours long) it lands an hour away from the time a window names — a 08:00 window opening at 07:00 or 09:00.
+     */
+    public function wallClock(CarbonImmutable $day, int $minutes): CarbonImmutable
+    {
+        return $day->setTime(intdiv($minutes, 60), $minutes % 60);
     }
 
     /**

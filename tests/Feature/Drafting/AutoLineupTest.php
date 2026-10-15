@@ -284,6 +284,76 @@ final class AutoLineupTest extends TestCase
         );
     }
 
+    public function test_an_item_no_channel_takes_is_passed_over_and_the_window_goes_to_the_next(): void
+    {
+        $brand = $this->brand();
+        $source = $this->sourceWithRule($brand);
+        // One the source marked, one the words give away: both stay off every channel, and neither holds the window.
+        $this->item($source, ContentKind::Deal, 'deal:marked', priority: 99, extra: ['title' => 'Akcija tjedna', 'restricted' => ['alcohol']]);
+        $this->item($source, ContentKind::Deal, 'deal:wine', priority: 90, extra: ['title' => 'Vino Graševina 0,75 l']);
+        $this->item($source, ContentKind::Deal, 'deal:coffee', priority: 1, extra: ['title' => 'Kava 500 g']);
+
+        $this->assertSame(1, $this->lineup($brand));
+
+        $this->assertSame(
+            ['deal:coffee'],
+            PostDraft::query()->with('contentItems')->get()->flatMap->contentItems->pluck('external_id')->all(),
+            'a draft the publish job would skip as alcohol would only have held the window',
+        );
+    }
+
+    public function test_alcohol_that_is_all_there_is_leaves_the_window_empty(): void
+    {
+        $brand = $this->brand();
+        $source = $this->sourceWithRule($brand);
+        $this->item($source, ContentKind::Deal, 'deal:wine', priority: 90, extra: ['title' => 'Pivo Ožujsko 0,5 l']);
+
+        $this->assertSame(0, $this->lineup($brand));
+        $this->assertSame(0, PostDraft::query()->count());
+    }
+
+    public function test_a_kind_the_brand_ranks_first_is_not_crowded_out_by_a_hundred_of_another(): void
+    {
+        $brand = $this->brand();
+        $source = $this->sourceWithRule($brand);
+
+        // More deals, and all ranked higher, than the candidates the lineup looks at: the leaflet still comes first.
+        foreach (range(1, 101) as $number) {
+            $this->item($source, ContentKind::Deal, "deal:{$number}", priority: 500 + $number);
+        }
+
+        $this->item($source, ContentKind::Catalog, 'catalog:1', priority: 1);
+
+        $this->assertSame(1, $this->lineup($brand));
+        $this->assertSame(ContentKind::Catalog, PostDraft::query()->with('contentItems')->sole()->contentItems->sole()->kind);
+    }
+
+    public function test_the_window_opens_at_its_local_time_on_the_day_the_clocks_go_back(): void
+    {
+        // 25 October 2026 has 25 hours; the 12:00 window opens at 12:00 on the wall, not at 11:00.
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-25 11:15', 'Europe/Zagreb'));
+        $brand = $this->brand();
+        $source = $this->sourceWithRule($brand);
+        $this->item($source, ContentKind::Deal, 'deal:1');
+
+        $this->assertSame(0, $this->lineup($brand), 'at 11:15 the 12:00 window is still more than its lead away');
+
+        $this->assertSame(1, $this->lineup($brand, '2026-10-25 11:45'));
+        $this->assertSame('2026-10-25 12:00', $this->zagreb(PostDraft::query()->sole()));
+    }
+
+    public function test_the_window_opens_at_its_local_time_on_the_day_the_clocks_go_forward(): void
+    {
+        // 29 March 2026 has 23 hours; at 12:15 the 12:00 window is open, not an hour away.
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-29 12:15', 'Europe/Zagreb'));
+        $brand = $this->brand();
+        $source = $this->sourceWithRule($brand);
+        $this->item($source, ContentKind::Deal, 'deal:1');
+
+        $this->assertSame(1, $this->lineup($brand));
+        $this->assertSame('2026-03-29 12:15', $this->zagreb(PostDraft::query()->sole()));
+    }
+
     public function test_the_auto_publish_entry_point_fills_the_window_for_a_brand_on_the_lineup(): void
     {
         $brand = $this->brand();
@@ -346,7 +416,10 @@ final class AutoLineupTest extends TestCase
         return $source;
     }
 
-    private function item(Source $source, ContentKind $kind, string $externalId, int $priority = 3, ?string $url = null): ContentItem
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    private function item(Source $source, ContentKind $kind, string $externalId, int $priority = 3, ?string $url = null, array $extra = []): ContentItem
     {
         $attributes = [
             'kind' => $kind,
@@ -356,6 +429,7 @@ final class AutoLineupTest extends TestCase
             'priority' => $priority,
             'published_at' => CarbonImmutable::now()->subHour(),
             'expires_at' => CarbonImmutable::now()->addDays(10),
+            ...$extra,
         ];
 
         // A leaflet is made from the feed as Listo sends it, with the demo block its video needs.
