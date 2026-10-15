@@ -36,14 +36,23 @@ final class YouTubeCaptionTest extends TestCase
         $this->assertStringContainsString('#Shorts', $caption);
     }
 
-    public function test_a_long_headline_is_cut_to_the_title_limit_with_an_ellipsis(): void
+    public function test_a_long_headline_is_cut_to_the_title_limit_with_an_ellipsis_and_said_in_full_below(): void
     {
         $caption = (new CaptionBuilder)->youtube($this->item(['title' => str_repeat('Vrlo dugačak naslov ', 12)]), $this->brand());
 
-        [$title] = YouTubePreflight::split($caption);
+        [$title, $description] = YouTubePreflight::split($caption);
 
         $this->assertLessThanOrEqual(100, Utf16::length($title));
         $this->assertStringEndsWith('…', $title);
+        // What the cut took off is not lost: the title is said in full as the description begins.
+        $this->assertStringContainsString(str_repeat('Vrlo dugačak naslov ', 11).'Vrlo dugačak naslov', $description);
+    }
+
+    public function test_a_title_that_fits_is_not_repeated_in_the_description(): void
+    {
+        [$title, $description] = YouTubePreflight::split((new CaptionBuilder)->youtube($this->item(), $this->brand()));
+
+        $this->assertStringNotContainsString($title, $description);
     }
 
     public function test_an_agent_text_becomes_the_title_and_description_with_the_link_and_tags_added(): void
@@ -94,6 +103,42 @@ final class YouTubeCaptionTest extends TestCase
         $this->assertStringEndsWith('…', $title);
         $this->assertStringContainsString('Iv 3,16', $description);
         $this->assertStringContainsString('#Shorts', $caption);
+        // A title is only 100 characters; a quote is not shortened to fit it. The words are said in full under it,
+        // and the reference stays with them.
+        $this->assertStringStartsWith(mb_trim((string) $item->title)."\n— Iv 3,16", $description);
+    }
+
+    public function test_a_quote_that_fits_the_title_is_not_said_twice(): void
+    {
+        $item = $this->item([
+            'kind' => ContentKind::Quote,
+            'title' => 'Ljubav je strpljiva.',
+            'subtitle' => 'Iv 3,16',
+            'body_text' => null,
+            'url' => null,
+            'cta' => [],
+        ]);
+
+        [$title, $description] = YouTubePreflight::split((new CaptionBuilder)->for(Platform::YouTube, $item, $this->brand()));
+
+        $this->assertSame('Ljubav je strpljiva.', $title);
+        $this->assertStringStartsWith('— Iv 3,16', $description);
+        $this->assertStringNotContainsString('Ljubav je strpljiva.', $description);
+    }
+
+    public function test_a_digest_headline_longer_than_the_title_is_cut_and_said_in_full_below(): void
+    {
+        $headline = 'Top 5 akcija u Kauflandu ovog tjedna: kava, mlijeko, jaja, kruh, sir i još puno toga što se isplati kupiti prije petka';
+        $this->assertGreaterThan(100, Utf16::length($headline));
+
+        $caption = (new CaptionBuilder)->digest(Platform::YouTube, collect([$this->item()]), $this->brand(), $headline);
+
+        [$title, $description] = YouTubePreflight::split($caption);
+
+        $this->assertLessThanOrEqual(100, Utf16::length($title));
+        $this->assertStringEndsWith('…', $title);
+        $this->assertStringStartsWith($headline, $description);
+        $this->assertStringContainsString('1. Konobar/ica', $description);
     }
 
     public function test_the_builder_for_youtube_is_the_youtube_caption(): void

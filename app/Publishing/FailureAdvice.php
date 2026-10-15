@@ -25,6 +25,8 @@ final class FailureAdvice
         'media_not_ready' => 'Slika ili video ne odgovara formatu kanala. Klikni „Renderiraj ponovno“ pod pregledom.',
         'token_invalid' => 'Pristup računu je istekao ili je opozvan. Poveži račun ponovno u Društvenim računima.',
         'permission_denied' => 'Račun nema potrebnu dozvolu. Poveži ga ponovno i potvrdi sve tražene dozvole.',
+        'title_invalid' => 'Naslov (prvi red teksta) sadrži znak < ili >, a YouTube ih ne prima. Ukloni ih iz teksta pa objavi ponovno.',
+        'description_invalid' => 'Opis (tekst ispod prvog reda) sadrži znak < ili >, a YouTube ih ne prima. Ukloni ih iz teksta pa objavi ponovno.',
         'invalid_parameter' => 'Platforma je odbila podatke objave, obično format ili duljinu. Provjeri tekst i medij pa objavi ponovno.',
         'rate_limited' => 'Platforma je privremeno ograničila objavljivanje. Hub pokušava ponovno sam; ako ostane, pokušaj kasnije.',
     ];

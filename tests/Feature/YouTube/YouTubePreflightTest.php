@@ -71,6 +71,19 @@ final class YouTubePreflightTest extends TestCase
         $this->assertRefused($this->youtubeVariant(['caption' => "Naslov <b>x</b>\n\nopis"]), 'title_invalid');
     }
 
+    public function test_angle_brackets_in_the_description_are_refused_as_they_are_in_the_title(): void
+    {
+        // YouTube takes "all valid UTF-8 characters except < and >" in both, and says no only after the upload was opened.
+        $this->assertRefused($this->youtubeVariant(['caption' => "Naslov\n\nPlaća > 7 €/h, <b>odmah</b>"]), 'description_invalid');
+    }
+
+    public function test_a_description_without_them_passes_whatever_else_it_holds(): void
+    {
+        $variant = $this->youtubeVariant(['caption' => "Naslov\n\nPlaća 7,00 €/h & obrok — prijavi se: https://example.test/posao?a=1&b=2 #Shorts"]);
+
+        $this->assertSame($variant->media->first()->id, app(YouTubePreflight::class)->assert($variant)->id);
+    }
+
     public function test_a_description_over_5000_bytes_is_refused(): void
     {
         $this->assertRefused($this->youtubeVariant(['caption' => "Naslov\n\n".str_repeat('x', 5001)]), 'description_too_long');

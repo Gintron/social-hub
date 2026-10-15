@@ -72,6 +72,12 @@ final class YouTubePreflight
             throw new PermanentPublishException('Naslov ne smije sadržavati znakove < i >.', 'title_invalid');
         }
 
+        // The Data API takes "all valid UTF-8 characters except < and >" in a description as in a title, and says no only
+        // once the upload was opened.
+        if (preg_match('/[<>]/', $description) === 1) {
+            throw new PermanentPublishException('Opis ne smije sadržavati znakove < i >.', 'description_invalid');
+        }
+
         $descriptionLimit = (int) config('youtube.description_bytes', 5000);
         $descriptionBytes = mb_strlen($description, '8bit');
 

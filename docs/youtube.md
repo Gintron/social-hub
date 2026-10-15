@@ -14,8 +14,11 @@ na stvarnom kanalu čeka Google klijent (postavljanje ispod) i odluku o auditu.
   Provjera (`YouTubePreflight`) prije prvog poziva: jedan MP4, uspravan (visina > širina),
   najviše 180 s, datoteka mora biti na disku.
 - **Naslov**: prvi red teksta, do 100 znakova. YouTube broji UTF-16 jedinice, pa je emoji dva.
-  Predugačak naslov iz feeda hub pri pisanju nacrta skrati s „…“. Naslov koji čovjek upiše ručno
-  se ne skraćuje: objava se ne pusti i pokaže se razlog.
+  Predugačak naslov iz feeda (stavka, citat, naslov serije pregleda) hub pri pisanju nacrta skrati s „…“,
+  a **cijeli red kaže prvim redom opisa**: citat se ne smije izgubiti zato što naslov ima 100 znakova.
+  Naslov koji čovjek upiše ručno se ne skraćuje: objava se ne pusti i pokaže se razlog.
+  Ni naslov ni opis ne smiju sadržavati znakove `<` i `>` (Data API: „all valid UTF-8 characters except < and >“);
+  preflight to javlja prije prvog poziva (`title_invalid`, `description_invalid`), a ne tek kad Google odbije upload.
 - **Opis**: ostatak teksta, do 5000 bajtova. Poveznica na stranicu stavke je u opisu i klikabilna
   (za razliku od TikToka), a `#Shorts` označava video.
 - **Vidljivost**: `settings.privacy` = `public` | `unlisted` | `private`. Zadano je `YOUTUBE_PRIVACY`.

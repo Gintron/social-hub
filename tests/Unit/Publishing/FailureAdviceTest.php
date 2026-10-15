@@ -16,7 +16,7 @@ final class FailureAdviceTest extends TestCase
     public static function knownCodes(): array
     {
         return array_combine(
-            $codes = ['content_expired', 'dead_link', 'link_check_failed', 'stale_content', 'restricted_goods', 'media_not_ready', 'token_invalid', 'permission_denied', 'invalid_parameter', 'rate_limited'],
+            $codes = ['content_expired', 'dead_link', 'link_check_failed', 'stale_content', 'restricted_goods', 'media_not_ready', 'token_invalid', 'permission_denied', 'invalid_parameter', 'rate_limited', 'title_invalid', 'description_invalid'],
             array_map(fn (string $code): array => [$code], $codes),
         );
     }

@@ -177,7 +177,8 @@ final class CaptionBuilder
         $body = $text !== null ? self::tidy($text) : $this->youtubeText($item, $brand);
         [$title, $rest] = array_pad(explode("\n", $body, 2), 2, '');
 
-        $sections = [$this->titleLine(mb_trim($title))];
+        [$title, $whole] = $this->youtubeTitle(mb_trim($title));
+        $sections = array_filter([$title, $whole]);
 
         if (mb_trim($rest) !== '') {
             $sections[] = mb_trim($rest);
@@ -207,6 +208,11 @@ final class CaptionBuilder
         // Instagram, TikTok and YouTube show the text as typed: a Unicode-bold headline is not searchable there.
         $plain = $instagram || $platform === Platform::YouTube;
         $sections = [$plain ? $headline : self::bold($headline)];
+
+        // On a Short the first line is the title, which YouTube shows in 100 characters: the headline of a series can be longer.
+        if ($platform === Platform::YouTube) {
+            $sections = array_filter($this->youtubeTitle(mb_trim($headline)));
+        }
 
         $lines = [];
 
@@ -427,6 +433,19 @@ final class CaptionBuilder
     }
 
     /**
+     * The title of a Short and, when the cut took something off it, the whole line to say under it: what a headline, a
+     * quote or a job title says past the hundredth character goes first in the description instead of being lost.
+     *
+     * @return array{0: string, 1: string|null}
+     */
+    private function youtubeTitle(string $line): array
+    {
+        $title = $this->titleLine($line);
+
+        return [$title, $title === $line ? null : $line];
+    }
+
+    /**
      * The title line and the details under it: the opening TikTok and YouTube share.
      *
      * @return list<string>
@@ -471,8 +490,10 @@ final class CaptionBuilder
         $label = mb_trim((string) ($item->cta['label'] ?? ''));
         $pointed = $label !== '' && filled($item->url);
 
-        // On a YouTube Short the first line is the title, so the words are cut to the title limit like any other.
-        $first = $platform === Platform::YouTube ? $this->titleLine($words) : $words;
+        // On a YouTube Short the first line is the title, so the words are cut to the title limit like any other, and said
+        // in full under it: a quote is not shortened to fit a title.
+        [$first, $whole] = $platform === Platform::YouTube ? $this->youtubeTitle($words) : [$words, null];
+        $attributed = fn (string $text): string => filled($item->subtitle) ? $text."\n— ".mb_trim((string) $item->subtitle) : $text;
 
         [$under, $hashtags] = match ($platform) {
             // A Page's link is its first comment (FacebookPagePublisher); this line points down at it.
@@ -486,7 +507,8 @@ final class CaptionBuilder
         };
 
         return self::tidy(implode("\n\n", array_filter([
-            filled($item->subtitle) ? $first."\n— ".mb_trim((string) $item->subtitle) : $first,
+            $whole === null ? $attributed($first) : $first,
+            $whole === null ? null : $attributed($whole),
             TemplateData::excerpt($item->body_text, 200),
             $under,
             implode(' ', array_slice($hashtags, 0, $platform === Platform::FacebookPage ? 3 : self::FEW_HASHTAGS)),
