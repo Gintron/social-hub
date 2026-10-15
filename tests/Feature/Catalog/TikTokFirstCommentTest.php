@@ -120,6 +120,35 @@ final class TikTokFirstCommentTest extends TestCase
         Notification::assertSentOnDemand(TikTokCommentNeeded::class, fn (TikTokCommentNeeded $n): bool => $n->text === self::COMMENT && $n->reason === 'not_enabled');
     }
 
+    public function test_the_comment_follows_the_accounts_own_api_not_the_global_switch(): void
+    {
+        // The account was connected through API for Business and keeps being served by it, whatever TIKTOK_API says today.
+        config()->set('tiktok.driver', 'developer');
+        $this->fakeTikTok();
+        $variant = $this->published();
+
+        $this->leaveComment($variant);
+
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/business/comment/create/'));
+        $this->assertSame('posted', $variant->refresh()->setting('first_comment_status'));
+        Notification::assertNothingSent();
+    }
+
+    public function test_an_account_from_the_developer_api_is_given_to_a_person_whatever_the_switch_says(): void
+    {
+        // Its token is the developer API's, which has no comments, and the business endpoint would only refuse it.
+        config()->set('tiktok.driver', 'business');
+        Http::fake();
+        $variant = $this->published(api: null);
+
+        $this->leaveComment($variant);
+
+        Http::assertNothingSent();
+        $this->assertSame('manual', $variant->refresh()->setting('first_comment_status'));
+        $this->assertSame('developer_account', $variant->setting('first_comment_reason'));
+        Notification::assertSentOnDemand(TikTokCommentNeeded::class, fn (TikTokCommentNeeded $n): bool => $n->text === self::COMMENT && $n->reason === 'developer_account');
+    }
+
     public function test_a_refusal_for_the_missing_permission_is_told_as_that(): void
     {
         Http::fake([
@@ -212,20 +241,21 @@ final class TikTokFirstCommentTest extends TestCase
         ]);
     }
 
-    private function published(): PostVariant
+    private function published(?string $api = 'business'): PostVariant
     {
-        $variant = $this->readyToPublish();
+        $variant = $this->readyToPublish(api: $api);
         $variant->forceFill(['status' => VariantStatus::Published, 'external_post_id' => 'v_pub_url~v1.42', 'published_at' => now()])->save();
 
         return $variant;
     }
 
-    private function readyToPublish(bool $comment = true): PostVariant
+    private function readyToPublish(bool $comment = true, ?string $api = 'business'): PostVariant
     {
         $brand = Brand::factory()->create(['slug' => 'brand-'.uniqid(), 'name' => 'Listo', 'voice' => ['cta' => 'Preuzmi Listo']]);
         $item = $this->catalogItem($brand);
         $account = $this->catalogAccounts($brand, [Platform::TikTok])[0];
-        $account->forceFill(['token_expires_at' => now()->addHours(20), 'meta' => ['open_id' => 'open-id-1', 'api' => 'business']])->save();
+        // A developer-track account has no `api` marker.
+        $account->forceFill(['token_expires_at' => now()->addHours(20), 'meta' => array_filter(['open_id' => 'open-id-1', 'api' => $api])])->save();
 
         $draft = app(CreateDraft::class)->execute($item, [$account], status: DraftStatus::Approved, render: false);
         $variant = $draft->variants->first();

@@ -71,4 +71,29 @@ final class TikTokAccountVerificationTest extends TestCase
         Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'graph.facebook.com'));
         $this->assertSame(AccountStatus::Active, $this->tiktok->refresh()->status);
     }
+
+    public function test_the_verify_button_follows_the_accounts_own_api_not_the_global_switch(): void
+    {
+        $this->actingAs(User::factory()->create(['email' => 'ops@example.test']));
+        Http::fake(['*/business/get/*' => Http::response(['code' => 0, 'data' => ['username' => 'listo_hrvatska']])]);
+
+        // A business account is asked about whatever TIKTOK_API says today...
+        config()->set('tiktok.driver', 'developer');
+        Livewire::test(ListSocialAccounts::class)
+            ->assertTableActionVisible('verify', $this->tiktok)
+            ->callTableAction('verify', $this->tiktok);
+
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/business/get/'));
+
+        // ...and a developer-track one is not, even with the switch on business: its token would be sent to the wrong API.
+        config()->set('tiktok.driver', 'business');
+        $developer = SocialAccount::factory()->create([
+            'platform' => Platform::TikTok,
+            'name' => '@stari_racun',
+            'external_id' => 'open-id-1',
+            'meta' => ['open_id' => 'open-id-1'],
+        ]);
+
+        Livewire::test(ListSocialAccounts::class)->assertTableActionHidden('verify', $developer);
+    }
 }

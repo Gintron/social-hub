@@ -149,8 +149,9 @@ objavljeni video učini javnim do tri minute kasnije), u tri poziva iz dokumenta
    sakriva komentar koji drži za spam i ništa ne javlja; dokumentacija izričito upozorava na gotovo iste komentare).
 
 Ishod je u `settings.first_comment_status`: `posted`, ili `manual` (+ `first_comment_reason`). **Ako komentar ne uspije,
-admin dobije mail s točnim tekstom** (`TikTokCommentNeeded`: nema dozvole, objava nije postala javna, komentar sakriven,
-TikTok odbio): tekst zalijepi ručno i obećanje videa vrijedi. Isti mail stiže dok je komentiranje isključeno
+admin dobije mail s točnim tekstom** (`TikTokCommentNeeded`: nema dozvole, račun je s developer API-ja pa ne zna komentirati,
+objava nije postala javna, komentar sakriven, TikTok odbio): tekst zalijepi ručno i obećanje videa vrijedi. Račun odlučuje
+(`meta.api`), ne prekidač `TIKTOK_API`. Isti mail stiže dok je komentiranje isključeno
 (`TIKTOK_BUSINESS_COMMENTS=false`, zadano), pa se može pustiti prve videe prije nego dozvola stigne. Id objave se sprema
 u `settings.tiktok_video_id`. Poveznica u TikTok komentaru nije klikabilna; to je znana granica.
 

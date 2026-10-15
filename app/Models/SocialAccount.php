@@ -56,6 +56,17 @@ final class SocialAccount extends Model
         $query->where('status', AccountStatus::Active->value);
     }
 
+    /**
+     * Was this TikTok account's token issued by API for Business (the Organic API)? An account remembers which API
+     * it was connected through (`meta.api`) and keeps being served by it: publishing, refreshing, metrics and
+     * comments follow the account, not the `TIKTOK_API` switch of the day. Accounts from before the marker are the
+     * developer API's.
+     */
+    public function isTikTokBusiness(): bool
+    {
+        return $this->platform === Platform::TikTok && data_get($this->meta, 'api') === 'business';
+    }
+
     public function isUsable(): bool
     {
         if ($this->status !== AccountStatus::Active) {

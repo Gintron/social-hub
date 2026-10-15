@@ -25,7 +25,7 @@ final class TikTokMetrics implements MetricsFetcher
     {
         // Legacy developer accounts have no api marker. The global publishing driver does not
         // change the product that issued an existing account's token or publication id.
-        return data_get($variant->account?->meta, 'api') !== 'business';
+        return $variant->account?->isTikTokBusiness() !== true;
     }
 
     public function fetch(PostVariant $variant): ?MetricsSnapshot

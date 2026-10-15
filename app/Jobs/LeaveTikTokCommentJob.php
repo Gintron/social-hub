@@ -75,7 +75,15 @@ final class LeaveTikTokCommentJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if (! config('tiktok.business.comments') || config('tiktok.driver') !== 'business') {
+        // Only API for Business comments, and only on an account that API issued: a developer-track token has no comments
+        // (the account decides, not the TIKTOK_API switch of the day), so a person pastes the text.
+        if ($variant->account === null || ! $variant->account->isTikTokBusiness()) {
+            $this->manual($variant, 'developer_account', $text, $notifier);
+
+            return;
+        }
+
+        if (! config('tiktok.business.comments')) {
             $this->manual($variant, 'not_enabled', $text, $notifier);
 
             return;

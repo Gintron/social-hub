@@ -47,7 +47,7 @@ final class RefreshTikTokTokens extends Command
 
         foreach ($accounts as $account) {
             try {
-                $oauth = data_get($account->meta, 'api') === 'business' ? $business : $developer;
+                $oauth = $account->isTikTokBusiness() ? $business : $developer;
                 $token = $oauth->refresh((string) $account->refresh_token);
             } catch (Throwable $e) {
                 $failed++;

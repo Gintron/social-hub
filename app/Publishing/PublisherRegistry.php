@@ -25,7 +25,7 @@ final class PublisherRegistry
             Platform::FacebookPage => $this->container->make(FacebookPagePublisher::class),
             Platform::InstagramBusiness => $this->container->make(InstagramPublisher::class),
             Platform::TikTok => $this->container->make(
-                ($account !== null ? data_get($account->meta, 'api') === 'business' : config('tiktok.driver') === 'business')
+                ($account !== null ? $account->isTikTokBusiness() : config('tiktok.driver') === 'business')
                     ? TikTokBusinessPublisher::class : TikTokPublisher::class,
             ),
             Platform::YouTube => $this->container->make(YouTubePublisher::class),

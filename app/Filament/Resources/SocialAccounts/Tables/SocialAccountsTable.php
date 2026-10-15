@@ -60,9 +60,10 @@ final class SocialAccountsTable
                     ->iconButton()
                     ->tooltip('Provjeri token')
                     ->color('gray')
-                    // A developer-track TikTok token has nothing to be asked here; that track is on its way out.
+                    // A developer-track TikTok token has nothing to be asked here, and sending it to the Business API would only
+                    // be refused. Which API an account is on is the account's own (`meta.api`), not the switch of the day.
                     ->visible(fn (SocialAccount $record): bool => ! $record->platform->isManual()
-                        && ($record->platform !== Platform::TikTok || config('tiktok.driver') === 'business'))
+                        && ($record->platform !== Platform::TikTok || $record->isTikTokBusiness()))
                     ->action(function (SocialAccount $record): void {
                         try {
                             $answer = match ($record->platform) {

@@ -190,8 +190,10 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   odobrena 23. 09. 2026. — puštanje u produkciju u `docs/tiktok-business-api.md` § 11, pozadina u
   `docs/tiktok.md` („Zid 0"). Na Business tracku `video_url` mora biti unutar verificiranog URL
   prefiksa (`hub:tiktok-url-property`, verificira `storage/media/`); verifikacija je po aplikaciji,
-  ne po računu. Dok postoje računi oba tracka, račun pamti koji ga je API izdao (`meta.api`) i objava,
-  osvježavanje tokena i mjerenje idu po računu, ne po globalnom `TIKTOK_API`. Mjerenje Business računa
+  ne po računu. Dok postoje računi oba tracka, račun pamti koji ga je API izdao (`meta.api`,
+  `SocialAccount::isTikTokBusiness()`) i objava, osvježavanje tokena, mjerenje, gumb „Provjeri“ i prvi komentar
+  (`LeaveTikTokCommentJob`; račun developer tracka dobiva razlog `developer_account` i mail s tekstom) idu po
+  računu, ne po globalnom `TIKTOK_API`. Mjerenje Business računa
   nije implementirano (`TikTokMetrics::supports()`): collector ih preskače, a „nema očitanja" nije nula.
   Prekidač je privremen, ne trajna apstrakcija: kad Business proradi, developer track i `TikTokTokens`
   sučelje idu van.
