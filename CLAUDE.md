@@ -69,8 +69,13 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   kojem su svi kanali preskočeni prelazi u `DraftStatus::Skipped`, ne ostaje „objavljuje se".
 - **Nacrt ne izlazi s podacima koje je izvor u međuvremenu promijenio.** `post_draft_content_items.publication_checksum`
   je hash samo onoga što ulazi u objavu (`ContentItem::publicationChecksum()`: tekst, cijena, činjenice, URL, slike,
-  `expires_at`, `raw.emoji`/`raw.rows`); prioritet i ostalo knjigovodstvo feeda ne računaju se, pa „dodir" bez
-  izmjene ne diže uzbunu. `PostDraft::staleItems()` je usporedba; `PublishVariantJob` varijantu koja ne odgovara
+  `expires_at`, `raw.emoji`/`raw.rows` i `raw.demo`, koji video kataloga ispisuje u cijelosti: nazive, cijene, zbroj,
+  datume, „1 / 64“); prioritet i ostalo knjigovodstvo feeda ne računaju se, pa „dodir" bez
+  izmjene ne diže uzbunu. Decimalni brojevi se zaokružuju na 6 mjesta jer JSON stupac vraća manje znamenki nego što je
+  upisano (`0.38863460386531523` → `0.3886346038653152`), pa bi inače objava iz stavke u memoriji odmah bila „izmijenjena“
+  naspram iste stavke iz baze. Kad se formula mijenja, migracija prežigosa objave čija stavka od nastanka nije
+  izmijenjena (`2026_10_15_000001_stamp_catalog_demo_into_publication_checksums`), inače bi sve nepublicirane objave
+  odjednom bile „zastarjele“. `PostDraft::staleItems()` je usporedba; `PublishVariantJob` varijantu koja ne odgovara
   preskače s `error_code=stale_content` (`PublishVariantJob::contentBlock`, uz alkohol), jer automatika nikad ne vidi upozorenje iz panela.
   Nema toka „osvježi nacrt": put naprijed je novi nacrt iz stavke. Razmatrano i odbačeno 14. 10. 2026.
   (sinkroni render u web zahtjevu, prepisivanje ručnih izmjena, poništavanje odobrenja pri svakom syncu).

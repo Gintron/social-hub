@@ -93,15 +93,29 @@ final class ContentItem extends Model
         return $this->belongsToMany(PostDraft::class, 'post_draft_content_items')->withPivot('position');
     }
 
-    /** Hash only data that captions, slides and narration can publish; feed bookkeeping is excluded. */
+    /**
+     * Hash only data that captions, slides, narration and video can publish; feed bookkeeping is excluded.
+     *
+     * Of `raw` that is `emoji` and `rows` (the digest and offer cards) and `demo`, which a new-catalog video prints in
+     * full: the products and their prices, the sum, the dates and the page count. Without it a price the source
+     * corrected after the video was made would go out in the video.
+     */
     public function publicationChecksum(): string
     {
         $data = $this->only(['title', 'subtitle', 'body_text', 'facts', 'badges', 'price', 'cta', 'url', 'images', 'tags']);
         $data['kind'] = $this->kind->value;
         $data['expires_at'] = $this->expires_at?->utc()->toIso8601String();
-        $data['raw'] = Arr::only($this->raw ?? [], ['emoji', 'rows']);
+        $data['raw'] = Arr::only($this->raw ?? [], ['emoji', 'rows', 'demo']);
 
         $canonical = function (mixed $value) use (&$canonical): mixed {
+            // The JSON column hands a double back with fewer digits than were written (0.38863460386531523 comes back
+            // as 0.3886346038653152), and a leaflet's tap points are full of them: an item read from the database has to
+            // hash like the one just saved, or its draft is "changed" the moment it is made. Six decimals are far finer
+            // than anything a picture or a price shows.
+            if (is_float($value)) {
+                return round($value, 6);
+            }
+
             if (! is_array($value)) {
                 return $value;
             }
