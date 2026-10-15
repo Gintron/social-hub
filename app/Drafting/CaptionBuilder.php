@@ -178,7 +178,11 @@ final class CaptionBuilder
         [$title, $rest] = array_pad(explode("\n", $body, 2), 2, '');
 
         [$title, $whole] = $this->youtubeTitle(mb_trim($title));
-        $sections = array_filter([$title, $whole]);
+        $sections = [$title];
+
+        if ($whole !== null) {
+            $sections[] = $whole;
+        }
 
         if (mb_trim($rest) !== '') {
             $sections[] = mb_trim($rest);
@@ -209,9 +213,11 @@ final class CaptionBuilder
         $plain = $instagram || $platform === Platform::YouTube;
         $sections = [$plain ? $headline : self::bold($headline)];
 
-        // On a Short the first line is the title, which YouTube shows in 100 characters: the headline of a series can be longer.
+        // On a Short the first line is the title, which YouTube shows in 100 characters: the headline of a series can be
+        // longer, and is said in full under the title when it is.
         if ($platform === Platform::YouTube) {
-            $sections = array_filter($this->youtubeTitle(mb_trim($headline)));
+            [$title, $whole] = $this->youtubeTitle(mb_trim($headline));
+            $sections = $whole === null ? [$title] : [$title, $whole];
         }
 
         $lines = [];

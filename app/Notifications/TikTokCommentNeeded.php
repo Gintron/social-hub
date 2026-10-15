@@ -50,6 +50,7 @@ final class TikTokCommentNeeded extends Notification implements ShouldQueue
     {
         return match ($this->reason) {
             'not_enabled' => 'Komentiranje preko API-ja nije uključeno (TIKTOK_BUSINESS_COMMENTS): aplikacija još nema dozvolu za komentare.',
+            'no_account' => 'Račun s kojeg je video objavljen više nije u hubu, pa komentar nema kojim pristupom biti ostavljen.',
             'developer_account' => 'Račun je povezan preko TikTok Developers API-ja, koji ne zna ostaviti komentar. Komentirati može račun povezan kroz Business Center (Organic API): poveži ga ponovno.',
             'hidden' => 'TikTok je ostavljeni komentar sakrio (najčešće kao spam), pa ga drugi ne vide.',
             'no_post_id' => 'TikTok u 45 minuta nije javio id objavljenog videa, pa nema na što komentirati.',

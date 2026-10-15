@@ -149,6 +149,20 @@ final class TikTokFirstCommentTest extends TestCase
         Notification::assertSentOnDemand(TikTokCommentNeeded::class, fn (TikTokCommentNeeded $n): bool => $n->text === self::COMMENT && $n->reason === 'developer_account');
     }
 
+    public function test_a_post_whose_account_is_gone_is_given_to_a_person_and_not_called_a_developer_account(): void
+    {
+        Http::fake();
+        $variant = $this->published();
+        $variant->forceFill(['social_account_id' => null])->save();
+
+        $this->leaveComment($variant);
+
+        Http::assertNothingSent();
+        $this->assertSame('manual', $variant->refresh()->setting('first_comment_status'));
+        $this->assertSame('no_account', $variant->setting('first_comment_reason'));
+        Notification::assertSentOnDemand(TikTokCommentNeeded::class, fn (TikTokCommentNeeded $n): bool => $n->reason === 'no_account');
+    }
+
     public function test_a_refusal_for_the_missing_permission_is_told_as_that(): void
     {
         Http::fake([

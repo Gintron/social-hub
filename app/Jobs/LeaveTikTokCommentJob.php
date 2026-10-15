@@ -76,8 +76,15 @@ final class LeaveTikTokCommentJob implements ShouldBeUnique, ShouldQueue
         }
 
         // Only API for Business comments, and only on an account that API issued: a developer-track token has no comments
-        // (the account decides, not the TIKTOK_API switch of the day), so a person pastes the text.
-        if ($variant->account === null || ! $variant->account->isTikTokBusiness()) {
+        // (the account decides, not the TIKTOK_API switch of the day), so a person pastes the text. An account that is gone
+        // has no token at all.
+        if ($variant->account === null) {
+            $this->manual($variant, 'no_account', $text, $notifier);
+
+            return;
+        }
+
+        if (! $variant->account->isTikTokBusiness()) {
             $this->manual($variant, 'developer_account', $text, $notifier);
 
             return;

@@ -69,6 +69,17 @@ final class YouTubeCaptionTest extends TestCase
         $this->assertStringEndsWith('#Shorts #studentskiposao #konobar #split #posao', $caption);
     }
 
+    public function test_a_title_that_is_only_a_zero_is_still_a_title(): void
+    {
+        // Falsy is not empty: a title of "0" must not be dropped and let the description step up into its place.
+        $caption = (new CaptionBuilder)->youtube($this->item(), $this->brand(), "0\n\nOpis ispod.");
+
+        [$title, $description] = YouTubePreflight::split($caption);
+
+        $this->assertSame('0', $title);
+        $this->assertStringStartsWith('Opis ispod.', $description);
+    }
+
     public function test_a_youtube_digest_is_plain_text_with_the_brand_page_and_the_short_tag(): void
     {
         $items = collect([$this->item(), $this->item(['title' => 'Kuhar/ica'])]);
