@@ -144,6 +144,51 @@ final class YouTubePublisherTest extends TestCase
         $this->assertSame('unlisted', $result->raw['requested_privacy']);
     }
 
+    public function test_a_video_with_a_synthetic_voice_is_declared_as_synthetic_media(): void
+    {
+        Http::fake($this->googleFakes());
+
+        // The same rule as for TikTok and Instagram (PostVariant::aiGenerated()): a synthesised voice is AI-generated audio.
+        $variant = $this->youtubeVariant(['token_valid' => true]);
+        $variant->media->first()->update(['params' => ['voiceover' => ['status' => 'ok']]]);
+
+        app(YouTubePublisher::class)->publish($variant->load('media'));
+
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+            && ($request->data()['status']['containsSyntheticMedia'] ?? null) === true);
+    }
+
+    public function test_a_video_without_a_synthetic_voice_says_nothing_about_synthetic_media(): void
+    {
+        Http::fake($this->googleFakes());
+
+        app(YouTubePublisher::class)->publish($this->youtubeVariant(['token_valid' => true]));
+
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+            && ! array_key_exists('containsSyntheticMedia', $request->data()['status']));
+    }
+
+    public function test_the_channel_can_ask_for_the_declaration_or_refuse_it_whatever_the_video_carries(): void
+    {
+        Http::fake($this->googleFakes());
+
+        $asked = $this->youtubeVariant(['token_valid' => true, 'settings' => ['ai_generated' => true]]);
+        app(YouTubePublisher::class)->publish($asked);
+
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+            && ($request->data()['status']['containsSyntheticMedia'] ?? null) === true);
+
+        // A voice in the video, and the channel says it is not to be declared.
+        $refused = $asked->forceFill(['settings' => ['format' => 'video', 'ai_generated' => false]]);
+        $refused->media->first()->update(['params' => ['voiceover' => ['status' => 'ok']]]);
+        Http::fake($this->googleFakes());
+
+        app(YouTubePublisher::class)->publish($refused->load('media'));
+
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+            && ! array_key_exists('containsSyntheticMedia', $request->data()['status']));
+    }
+
     public function test_each_call_is_logged_on_the_variant_without_any_token_in_it(): void
     {
         Http::fake($this->googleFakes());

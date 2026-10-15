@@ -64,6 +64,9 @@ final class YouTubePublisher implements Publisher
             'status' => [
                 'privacyStatus' => $privacy,
                 'selfDeclaredMadeForKids' => false,
+                // A synthesised voice is AI-generated audio, declared on every network that has the field
+                // (PostVariant::aiGenerated()); the Data API's own is `status.containsSyntheticMedia`.
+                ...($variant->aiGenerated() ? ['containsSyntheticMedia' => true] : []),
             ],
         ], $bytes, $token);
 

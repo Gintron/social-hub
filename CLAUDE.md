@@ -274,7 +274,8 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   (serije) ne čitaju prekidač. Letak je „vijest“ tri dana (`hub.max_age_days`), da prva sinkronizacija ne stavi u red
   videe za sve što izvor već drži.
 - **Oznaka AI-generiranog sadržaja**: `PostVariant::aiGenerated()` (video sa sintetičkim glasom) → TikTok
-  `is_ai_generated`/`is_aigc`, Instagram `is_ai_generated`; Facebook Reels API nema parametar.
+  `is_ai_generated`/`is_aigc`, Instagram `is_ai_generated`, YouTube `status.containsSyntheticMedia`; Facebook Reels API
+  nema parametar.
 
 ## Panel (izgled)
 

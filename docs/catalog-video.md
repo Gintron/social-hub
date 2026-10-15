@@ -182,6 +182,7 @@ osim ako kanal kaže `ai_generated = false`):
 | TikTok Business API | `post_info.is_ai_generated` (oznaka „Creator labeled as AI-generated“, ne može se naknadno maknuti) | dokumentacija `business/video/publish/` |
 | TikTok Content Posting API (developer track) | `post_info.is_aigc` | dokumentacija Direct Post |
 | Instagram | `is_ai_generated=true` pri izradi spremnika (od 22. 6. 2026.) | Instagram Platform changelog |
+| YouTube | `status.containsSyntheticMedia=true` pri `videos.insert` (šalje se samo kad vrijedi) | dokumentacija YouTube Data API, resurs `videos` |
 | Facebook Reels | **nema parametra** u dokumentaciji `video_reels` | — |
 
 Instagram: ako pripnuta verzija Grapha (`META_GRAPH_VERSION`, sad `v23.0`) parametar ne poznaje, Reel se ne

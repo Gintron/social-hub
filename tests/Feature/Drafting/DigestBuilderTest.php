@@ -16,7 +16,9 @@ use App\Models\PostDraft;
 use App\Models\SocialAccount;
 use App\Models\Source;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use InvalidArgumentException;
@@ -285,6 +287,51 @@ final class DigestBuilderTest extends TestCase
         $picked = app(DigestBuilder::class)->pick($brand, ContentKind::Deal, 2, platforms: ['tiktok']);
 
         $this->assertSame(['Jaja', 'Kava'], $picked->pluck('title')->all());
+    }
+
+    public function test_the_pool_is_read_in_pieces_and_never_the_whole_catalogue_at_once(): void
+    {
+        $brand = $this->brand();
+        $source = Source::factory()->for($brand)->create();
+
+        foreach (range(1, 230) as $i) {
+            ContentItem::factory()->for($source)->for($brand)->create(['kind' => ContentKind::Deal, 'title' => "Artikl {$i}", 'priority' => 300 - $i]);
+        }
+
+        $reads = [];
+        DB::listen(function (QueryExecuted $query) use (&$reads): void {
+            if (str_starts_with($query->sql, 'select') && str_contains($query->sql, 'from `content_items`')) {
+                $reads[] = $query->sql;
+            }
+        });
+
+        $picked = app(DigestBuilder::class)->pick($brand, ContentKind::Deal, 3);
+
+        $this->assertSame(['Artikl 1', 'Artikl 2', 'Artikl 3'], $picked->pluck('title')->all());
+        // The MySQL driver hands a whole result to PHP before the first row is read: a pool read as one query holds every
+        // postable item of the kind in memory however early the loop stops (a leaflet's `raw` is tens of kilobytes).
+        $this->assertNotEmpty($reads);
+
+        foreach ($reads as $sql) {
+            $this->assertStringContainsString(' limit ', $sql, 'a read of the pool without a limit takes the whole catalogue');
+        }
+    }
+
+    public function test_items_that_rank_the_same_come_in_one_order_across_the_pieces(): void
+    {
+        $brand = $this->brand();
+        $source = Source::factory()->for($brand)->create();
+        $published = now()->subDay();
+
+        // Same priority and same moment: only the id tells them apart, and a read in pieces must not repeat or lose one.
+        foreach (range(1, 230) as $i) {
+            ContentItem::factory()->for($source)->for($brand)->create(['kind' => ContentKind::Deal, 'title' => "Artikl {$i}", 'priority' => 50, 'published_at' => $published]);
+        }
+
+        $picked = app(DigestBuilder::class)->pick($brand, ContentKind::Deal, 100);
+
+        $this->assertCount(100, $picked);
+        $this->assertCount(100, $picked->pluck('id')->unique());
     }
 
     public function test_a_roundup_leaves_out_an_item_one_of_its_channels_does_not_take(): void

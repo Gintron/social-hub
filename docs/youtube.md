@@ -25,6 +25,9 @@ na stvarnom kanalu čeka Google klijent (postavljanje ispod) i odluku o auditu.
   Bira se na nacrtu (kanal YouTube), u pravilu automatske objave i preko MCP-a (`hub.update_variant`).
 - **Kategorija**: `YOUTUBE_CATEGORY_ID`, zadano `22` (People & Blogs). Hub uvijek šalje
   `selfDeclaredMadeForKids=false`. Sadržaj namijenjen djeci hub zasad ne podržava.
+- **Sintetički sadržaj**: video sa sintetičkim glasom (voice-over) ide s `status.containsSyntheticMedia=true`, kao i na
+  TikToku i Instagramu (`PostVariant::aiGenerated()`; kanal to može isključiti ili tražiti postavkom `ai_generated`).
+  Video bez sintetičkog glasa ne šalje ništa. Slanje na živom kanalu nije isprobano.
 - **Upload**: resumable upload u dva koraka. Prvo `POST …/upload/youtube/v3/videos?uploadType=resumable`
   s metapodacima (dobije se `Location`), zatim `PUT` cijele datoteke na tu adresu. Uspjeh je `201`
   s resursom videa; `id` se sprema kao `external_post_id`, pa se objava nikad ne ponavlja.

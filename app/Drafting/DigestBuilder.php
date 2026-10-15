@@ -191,15 +191,19 @@ final class DigestBuilder
                 ->where('kind', PostDraft::KIND_DIGEST)
                 ->where('post_drafts.created_at', '>=', $since)))
             ->orderByDesc('priority')
-            ->orderByDesc('published_at');
+            ->orderByDesc('published_at')
+            // A total order, so reading in pieces neither repeats nor skips items that rank the same.
+            ->orderByDesc('id');
 
         // A roundup is one post on all of its channels: an item one of them does not take is left out of all of them.
         // The pool is the best CANDIDATE_POOL items the roundup may take: the read goes on past blocked rows, instead of
-        // a fixed LIMIT that let them shrink the pool.
+        // a fixed LIMIT that let them shrink the pool. It goes on piece by piece, and not with cursor(): the MySQL driver
+        // buffers a whole result before the first row is read, so a cursor held every postable item of the kind in memory
+        // (a leaflet's `raw` is tens of kilobytes) however early the loop stopped.
         $platforms = $platforms !== [] ? $platforms : $this->goods->configuredPlatforms();
         $candidates = new Collection;
 
-        foreach ($query->cursor() as $item) {
+        foreach ($query->lazy(self::CANDIDATE_POOL) as $item) {
             if (array_intersect($platforms, $this->goods->blockedOn($item)) !== []) {
                 continue;
             }
