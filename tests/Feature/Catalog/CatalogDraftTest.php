@@ -138,6 +138,39 @@ final class CatalogDraftTest extends TestCase
         $this->assertNull($tiktok->setting('first_comment'), 'a link in the bio is not a comment');
     }
 
+    public function test_a_youtube_video_is_rendered_saying_its_link_is_in_the_description(): void
+    {
+        $draft = $this->draft([Platform::FacebookPage, Platform::YouTube], render: true);
+        $youtube = $draft->variants->firstWhere('platform', Platform::YouTube);
+
+        // The caption already said "u opisu"; the video used to say "u komentaru" over a link that was never posted as one.
+        $this->assertStringContainsString('Poveznica do aplikacije je u opisu', $youtube->caption);
+        $this->assertSame('description', $youtube->linkIn());
+        $this->assertSame('Poveznica do aplikacije je u opisu.', $this->lastLine($youtube));
+
+        Queue::assertPushed(RenderCatalogVideoJob::class, 2);
+        Queue::assertPushed(RenderCatalogVideoJob::class, fn (RenderCatalogVideoJob $job): bool => $job->variantIds === [$youtube->id] && $job->where === 'description');
+    }
+
+    public function test_a_video_that_points_to_a_comment_is_not_reused_by_a_channel_that_points_to_the_description(): void
+    {
+        $draft = $this->draft([Platform::FacebookPage, Platform::YouTube]);
+        $video = MediaAsset::factory()->for($draft->brand)->create([
+            'post_draft_id' => $draft->id,
+            'template_key' => 'video/catalog-demo',
+            'format' => 'mp4',
+            'params' => ['link_in' => 'comment', 'voiceover' => null],
+        ]);
+
+        app(PrepareVariantMedia::class)->execute($draft->variants()->get());
+
+        $youtube = $draft->variants->firstWhere('platform', Platform::YouTube);
+
+        $this->assertCount(1, $video->variants()->get(), 'only the channel that says "u komentaru" took it');
+        Queue::assertPushed(RenderCatalogVideoJob::class, 1);
+        Queue::assertPushed(RenderCatalogVideoJob::class, fn (RenderCatalogVideoJob $job): bool => $job->variantIds === [$youtube->id] && $job->where === 'description');
+    }
+
     public function test_a_video_that_already_exists_for_the_same_voice_and_link_is_reused_and_another_is_not(): void
     {
         $draft = $this->draft();

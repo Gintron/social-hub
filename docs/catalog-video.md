@@ -130,6 +130,10 @@ registracija s `source/campaign` može pripisati objavi. Android: Listo bilježi
   `instagram_manage_comments` (`ig.first_comment` 400, `(#10)`). Dozvola je dodana u Meta dashboardu (use case i Login
   Configuration) i u `config/meta.php`; nakon ponovnog povezivanja Instagram i TikTok komentar su na idućoj objavi bili
   vidljivi (potvrdio Marijan).
+- **YouTube:** poveznica je u **opisu**, gdje je klikabilna (`catalog_video.link_in.youtube` = `description`), i ništa se
+  ne objavljuje poslije videa. Zato i glas i završna kartica kažu „Poveznica do aplikacije je u opisu.“, a ne „u
+  komentaru“. Mjesto poveznice je jedno od `CatalogCopy::PLACES` (`comment`, `bio`, `description`); video koji kaže jedno
+  mjesto ne uzima kanal koji kaže drugo (`PostVariant::linkIn()` → `PrepareVariantMedia`).
 - **TikTok:** komentar ostavlja `LeaveTikTokCommentJob` kroz API čim aplikacija dobije dozvolu, a do tada ga adminu daje kao tekst za lijepljenje (niže).
 
 ### TikTok: prvi komentar (odluka 3. 10. 2026.: komentirati preko API-ja, uz dozvolu)

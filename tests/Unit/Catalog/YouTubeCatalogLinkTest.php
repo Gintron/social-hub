@@ -7,6 +7,7 @@ namespace Tests\Unit\Catalog;
 use App\Catalog\CatalogCopy;
 use App\Catalog\TrackedLink;
 use App\Enums\Platform;
+use App\Models\PostVariant;
 use Tests\TestCase;
 
 final class YouTubeCatalogLinkTest extends TestCase
@@ -25,6 +26,23 @@ final class YouTubeCatalogLinkTest extends TestCase
         config()->set('catalog_video.link_in.tiktok', 'bio');
 
         $this->assertSame(CatalogCopy::WHERE_BIO, CatalogCopy::where(Platform::TikTok));
+    }
+
+    public function test_a_channel_reads_back_the_place_it_was_given_description_included(): void
+    {
+        $youtube = new PostVariant(['platform' => Platform::YouTube, 'settings' => ['link_in' => 'description']]);
+        $tiktok = new PostVariant(['platform' => Platform::TikTok, 'settings' => ['link_in' => 'bio']]);
+
+        $this->assertSame(CatalogCopy::WHERE_DESCRIPTION, $youtube->linkIn());
+        $this->assertSame(CatalogCopy::WHERE_BIO, $tiktok->linkIn());
+    }
+
+    public function test_a_channel_with_no_place_of_its_own_takes_its_platforms(): void
+    {
+        $this->assertSame(CatalogCopy::WHERE_DESCRIPTION, (new PostVariant(['platform' => Platform::YouTube, 'settings' => ['format' => 'video']]))->linkIn());
+        $this->assertSame(CatalogCopy::WHERE_COMMENT, (new PostVariant(['platform' => Platform::FacebookPage, 'settings' => null]))->linkIn());
+        // Something that is not a place is no choice either.
+        $this->assertSame(CatalogCopy::WHERE_DESCRIPTION, (new PostVariant(['platform' => Platform::YouTube, 'settings' => ['link_in' => 'nowhere']]))->linkIn());
     }
 
     public function test_a_youtube_link_is_measured_as_youtube(): void

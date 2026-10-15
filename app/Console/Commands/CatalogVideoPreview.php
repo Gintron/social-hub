@@ -28,7 +28,7 @@ final class CatalogVideoPreview extends Command
         {--item= : Id of a kind=catalog item in the hub}
         {--brand=uselisto : Brand slug (an unsaved Listo stands in when there is none)}
         {--at=1.0,2.4 : Seconds to draw, comma separated}
-        {--where=comment : Where the link is: comment or bio}
+        {--where=comment : Where the link is: comment, bio or description}
         {--out= : Folder for the pictures (default storage/app/catalog-stills)}';
 
     protected $description = 'Draw single frames of the new-catalog video as PNG, for checking how it looks';
@@ -41,7 +41,7 @@ final class CatalogVideoPreview extends Command
             $brand = Brand::query()->where('slug', (string) $this->option('brand'))->first()
                 ?? new Brand(['slug' => 'uselisto', 'name' => 'Listo', 'site_url' => 'https://uselisto.com', 'voice' => ['cta' => 'Preuzmi Listo']]);
 
-            $where = (string) $this->option('where') === CatalogCopy::WHERE_BIO ? CatalogCopy::WHERE_BIO : CatalogCopy::WHERE_COMMENT;
+            $where = CatalogCopy::knownPlace($this->option('where')) ?? CatalogCopy::WHERE_COMMENT;
             $plan = CatalogVideoPlan::build($demo, CatalogCopy::voiceLines($demo, $where, (string) data_get($brand->voice, 'cta', 'Preuzmi Listo')));
 
             $work = storage_path('app/catalog-stills/work');

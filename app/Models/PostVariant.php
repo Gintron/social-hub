@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Catalog\CatalogCopy;
 use App\Enums\ContentFormat;
 use App\Enums\Platform;
 use App\Enums\VariantStatus;
@@ -144,14 +145,12 @@ final class PostVariant extends Model
     }
 
     /**
-     * Where the new-catalog video says its link is (`comment` or `bio`): the channel's own setting, else the
-     * hub's choice for that platform (config/catalog_video.php).
+     * Where the new-catalog video says its link is (`comment`, `bio` or `description`, CatalogCopy::PLACES): the
+     * channel's own setting, else the hub's choice for that platform (config/catalog_video.php).
      */
     public function linkIn(): string
     {
-        $choice = $this->setting('link_in') ?? config('catalog_video.link_in.'.$this->platform->value);
-
-        return $choice === 'bio' ? 'bio' : 'comment';
+        return CatalogCopy::knownPlace($this->setting('link_in')) ?? CatalogCopy::where($this->platform);
     }
 
     /**

@@ -43,7 +43,7 @@ final class RenderCatalogVideoJob implements ShouldQueue
     /**
      * @param  list<int>  $variantIds
      * @param  bool  $voiceover  Narrate with the brand's voice.
-     * @param  string  $where  Where the link is, as the video says it: `comment` or `bio`.
+     * @param  string  $where  Where the link is, as the video says it: one of CatalogCopy::PLACES.
      * @param  string  $audio  `auto`, `none`, or an index into the brand's library (Brand::audioTrackPath).
      */
     public function __construct(

@@ -195,11 +195,12 @@ final class PrepareVariantMedia
         [$type, $argument] = array_pad(explode(':', $group, 2), 2, '');
 
         return match ($type) {
+            // The group is `catalog:{voice|plain}:{where}`: the argument is "voice:bio", "plain:description"…
             'catalog' => new RenderCatalogVideoJob(
                 $draft->id,
                 $ids,
                 voiceover: str_starts_with($argument, 'voice'),
-                where: str_ends_with($argument, CatalogCopy::WHERE_BIO) ? CatalogCopy::WHERE_BIO : CatalogCopy::WHERE_COMMENT,
+                where: CatalogCopy::knownPlace(array_pad(explode(':', $argument, 2), 2, '')[1]) ?? CatalogCopy::WHERE_COMMENT,
                 audio: (string) ($video['audio'] ?? 'auto'),
             ),
             'video' => new RenderVideoJob(

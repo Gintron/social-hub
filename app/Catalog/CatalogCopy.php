@@ -26,6 +26,9 @@ final class CatalogCopy
     /** A YouTube video's link is its description, where it is clickable: nothing is posted after the video. */
     public const WHERE_DESCRIPTION = 'description';
 
+    /** Every place a video can say its link is. Anything else is not one. */
+    public const PLACES = [self::WHERE_COMMENT, self::WHERE_BIO, self::WHERE_DESCRIPTION];
+
     /**
      * The four sentences, in the order they are said: the news, what to do, the call, where the link is.
      *
@@ -58,11 +61,17 @@ final class CatalogCopy
      */
     public static function where(Platform $platform): string
     {
-        return match (config("catalog_video.link_in.{$platform->value}")) {
-            self::WHERE_BIO => self::WHERE_BIO,
-            self::WHERE_DESCRIPTION => self::WHERE_DESCRIPTION,
-            default => self::WHERE_COMMENT,
-        };
+        return self::knownPlace(config("catalog_video.link_in.{$platform->value}")) ?? self::WHERE_COMMENT;
+    }
+
+    /**
+     * `$where` when it is a place a video can name, else null: the caller says what "not a place" falls back to.
+     * One list for everything that reads a stored or typed place, so a place added here is not lost to the one
+     * `match` that did not hear of it (a YouTube video once said "u komentaru" over a link that was in the description).
+     */
+    public static function knownPlace(mixed $where): ?string
+    {
+        return is_string($where) && in_array($where, self::PLACES, true) ? $where : null;
     }
 
     /**
