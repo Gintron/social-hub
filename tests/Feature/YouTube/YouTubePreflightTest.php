@@ -115,6 +115,27 @@ final class YouTubePreflightTest extends TestCase
         $this->assertRefused($this->youtubeVariant(['settings' => ['privacy' => 'friends']]), 'bad_privacy');
     }
 
+    public function test_a_visibility_stored_as_nothing_is_the_hubs_default_not_an_unknown_one(): void
+    {
+        $variant = $this->youtubeVariant();
+
+        // The rule form saves an unfilled "Vidljivost" as null, and a cleared one as '': both mean "use the setting".
+        foreach ([null, '', '  '] as $stored) {
+            $variant->forceFill(['settings' => ['format' => 'video', 'privacy' => $stored]]);
+
+            $this->assertSame($variant->media->first()->id, app(YouTubePreflight::class)->assert($variant)->id);
+            $this->assertSame('public', YouTubePreflight::privacy($variant));
+        }
+    }
+
+    public function test_the_visibility_the_channel_asks_for_wins_over_the_hubs_default(): void
+    {
+        $variant = $this->youtubeVariant(['settings' => ['privacy' => 'unlisted']]);
+
+        $this->assertSame('unlisted', YouTubePreflight::privacy($variant));
+        $this->assertSame('private', YouTubePreflight::privacy($variant->forceFill(['settings' => ['privacy' => ' private ']])));
+    }
+
     private function assertRefused(PostVariant $variant, string $code): void
     {
         try {

@@ -196,6 +196,25 @@ final class AutoPublishTest extends TestCase
         $this->assertNull($tiktok->setting('unknown'), 'pravilo smije postaviti samo ono što smije i pregled objave');
     }
 
+    public function test_a_setting_the_rule_form_left_empty_is_not_a_setting_of_the_channel(): void
+    {
+        $this->fakeFeed(1);
+        $source = $this->source();
+        SocialAccount::factory()->for($source->brand)->create(['platform' => Platform::YouTube]);
+        // The form saves an unfilled select as null and a cleared text as '': neither chose anything, and
+        // a YouTube Short asked for visibility "null" is refused. A switch turned off (false) did choose.
+        $this->rule($source, Platform::YouTube, settings: ['privacy' => null, 'first_comment' => '', 'voiceover' => 'off', 'ai_generated' => false]);
+
+        $this->sync($source);
+
+        $variant = PostDraft::query()->firstOrFail()->variants->firstOrFail();
+
+        $this->assertArrayNotHasKey('privacy', $variant->settings);
+        $this->assertArrayNotHasKey('first_comment', $variant->settings);
+        $this->assertSame('off', $variant->setting('voiceover'));
+        $this->assertFalse($variant->setting('ai_generated'));
+    }
+
     public function test_a_small_cap_gets_the_best_items_and_a_channel_without_one_gets_them_all(): void
     {
         $this->fakeFeed(3);

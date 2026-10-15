@@ -33,6 +33,20 @@ final class YouTubePreflight
     }
 
     /**
+     * The visibility this channel asks for, otherwise the hub's own (`youtube.privacy`).
+     *
+     * A value that was never chosen is no choice: the rule form saves an unfilled select as null and a cleared
+     * one as '', and asking YouTube for visibility "" is what refused every Short such a rule made.
+     */
+    public static function privacy(PostVariant $variant): string
+    {
+        $chosen = $variant->setting('privacy');
+        $chosen = is_scalar($chosen) ? mb_trim((string) $chosen) : '';
+
+        return $chosen !== '' ? $chosen : (string) config('youtube.privacy', 'public');
+    }
+
+    /**
      * Stops here when the variant cannot become a Short; otherwise returns its one video.
      *
      * @throws PermanentPublishException
@@ -65,7 +79,7 @@ final class YouTubePreflight
             throw new PermanentPublishException("Opis ima {$descriptionBytes} bajtova; YouTube dopušta {$descriptionLimit}.", 'description_too_long');
         }
 
-        $privacy = (string) $variant->setting('privacy', config('youtube.privacy', 'public'));
+        $privacy = self::privacy($variant);
 
         if (! in_array($privacy, self::PRIVACY, true)) {
             throw new PermanentPublishException("Vidljivost '{$privacy}' nije poznata YouTubeu (public, unlisted ili private).", 'bad_privacy');

@@ -133,7 +133,7 @@ final class ScheduleDigest
                 scheduledAt: $scheduledAt,
                 status: DraftStatus::Approved,
                 includePosted: true,
-                channelSettings: $rules->mapWithKeys(fn (AutoPublishRule $rule): array => [$rule->platform->value => (array) $rule->settings])->all(),
+                channelSettings: $rules->mapWithKeys(fn (AutoPublishRule $rule): array => [$rule->platform->value => $rule->channelSettings()])->all(),
                 tag: $series->tag,
                 formats: $accounts->mapWithKeys(fn (SocialAccount $account): array => [$account->platform->value => $series->formatFor($account->platform)])->all(),
                 video: ['seconds' => $series->secondsPerSlide],

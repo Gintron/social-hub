@@ -48,8 +48,24 @@ final class AutoPublishRule extends Model
 
         return array_filter([
             'format' => $format,
-            'settings' => $this->settings ?: null,
+            'settings' => $this->channelSettings() ?: null,
         ], fn (mixed $value): bool => $value !== null);
+    }
+
+    /**
+     * What the rule actually chose for the channel. The form saves a select nobody touched as null and a text
+     * nobody filled as '': neither is a choice, and handed to the variant they would override the platform's own
+     * default with nothing (a YouTube Short asked for visibility "null" is refused). A switch turned off is
+     * `false` and does choose.
+     *
+     * @return array<string, mixed>
+     */
+    public function channelSettings(): array
+    {
+        return array_filter(
+            (array) $this->settings,
+            fn (mixed $value): bool => $value !== null && $value !== '',
+        );
     }
 
     protected function casts(): array

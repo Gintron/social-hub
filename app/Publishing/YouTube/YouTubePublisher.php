@@ -43,7 +43,7 @@ final class YouTubePublisher implements Publisher
 
         $asset = $this->preflight->assert($variant);
         [$title, $description] = YouTubePreflight::split((string) $variant->caption);
-        $privacy = (string) $variant->setting('privacy', config('youtube.privacy', 'public'));
+        $privacy = YouTubePreflight::privacy($variant);
 
         $path = $asset->absolutePath();
         $bytes = filesize($path);

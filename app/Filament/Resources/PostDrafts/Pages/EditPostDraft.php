@@ -18,6 +18,7 @@ use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
 use App\Publishing\PublishProblem;
+use App\Publishing\YouTube\YouTubePreflight;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -185,7 +186,7 @@ final class EditPostDraft extends EditRecord
                 'auto_add_music' => (bool) $variant->setting('auto_add_music', true),
                 // Only a YouTube channel has a visibility to choose; the others would carry an unused key.
                 ...($variant->platform === Platform::YouTube
-                    ? ['privacy' => (string) $variant->setting('privacy', config('youtube.privacy', 'public'))]
+                    ? ['privacy' => YouTubePreflight::privacy($variant)]
                     : []),
             ]])
             ->all();

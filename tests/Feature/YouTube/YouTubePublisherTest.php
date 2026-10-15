@@ -131,6 +131,19 @@ final class YouTubePublisherTest extends TestCase
             && ($request->data()['status']['privacyStatus'] ?? null) === 'unlisted');
     }
 
+    public function test_a_visibility_stored_as_null_uploads_with_the_hubs_default(): void
+    {
+        Http::fake($this->googleFakes());
+        config()->set('youtube.privacy', 'unlisted');
+
+        // What an auto-publish rule with the visibility left unfilled used to hand every Short it made.
+        $result = app(YouTubePublisher::class)->publish($this->youtubeVariant(['token_valid' => true, 'settings' => ['privacy' => null]]));
+
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+            && ($request->data()['status']['privacyStatus'] ?? null) === 'unlisted');
+        $this->assertSame('unlisted', $result->raw['requested_privacy']);
+    }
+
     public function test_each_call_is_logged_on_the_variant_without_any_token_in_it(): void
     {
         Http::fake($this->googleFakes());
