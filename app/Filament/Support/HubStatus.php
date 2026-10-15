@@ -34,7 +34,13 @@ final class HubStatus
     public const TOKEN_WARNING_DAYS = 7;
 
     /**
-     * The one definition of "this account needs a person", for the count and for the per-brand table.
+     * The one definition of "this account needs a person", for the count and for the per-brand table: it was
+     * disconnected, or its grant is about to end.
+     *
+     * What ends depends on the platform. A Meta token lasts until a date and is not renewed, so the date is the
+     * deadline. TikTok's access token lasts a day and YouTube's an hour and the hub swaps them for fresh ones by
+     * itself, so they are always "about to end" and are no deadline at all; what can lapse is the refresh token
+     * (TikTok sets its end, Google's has none until it is revoked).
      *
      * @template TBuilder of Builder
      *
@@ -43,11 +49,14 @@ final class HubStatus
      */
     public static function accountsNeedingAttention(Builder $query): Builder
     {
+        $soon = now()->addDays(self::TOKEN_WARNING_DAYS);
+
         return $query
             ->where('status', '!=', AccountStatus::Disabled->value)
             ->where(fn ($query) => $query
                 ->where('status', AccountStatus::NeedsReconnect->value)
-                ->orWhere('token_expires_at', '<=', now()->addDays(self::TOKEN_WARNING_DAYS)));
+                ->orWhere(fn ($query) => $query->whereNull('refresh_token')->where('token_expires_at', '<=', $soon))
+                ->orWhere(fn ($query) => $query->whereNotNull('refresh_token')->where('refresh_token_expires_at', '<=', $soon)));
     }
 
     /**
@@ -86,13 +95,12 @@ final class HubStatus
     }
 
     /**
-     * Posts that did not go out, or only partly. A person has to decide what happens to them.
+     * Posts that did not go out and wait for a person to decide. The same posts as the "Neuspjelo" tab of the list
+     * the dashboard card opens, so the number and the list cannot disagree (PostDraft::scopeNeedingFix).
      */
     public function needFixing(): int
     {
-        return PostDraft::query()
-            ->whereIn('status', [DraftStatus::Failed->value, DraftStatus::PartiallyPublished->value])
-            ->count();
+        return PostDraft::query()->needingFix()->count();
     }
 
     /**

@@ -31,8 +31,9 @@ final class ListPostDrafts extends ListRecords
                 ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', [DraftStatus::Approved->value, DraftStatus::Scheduled->value, DraftStatus::Publishing->value])),
             'published' => Tab::make('Objavljeno')
                 ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', [DraftStatus::Published->value, DraftStatus::PartiallyPublished->value])),
+            // What the dashboard's "Nije uspjelo" counts, and a person has to decide about (PostDraft::scopeNeedingFix).
             'failed' => Tab::make('Neuspjelo')
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', [DraftStatus::Failed->value, DraftStatus::Skipped->value])),
+                ->modifyQueryUsing(fn (Builder $query) => $query->needingFix()),
             'all' => Tab::make('Sve'),
         ];
     }

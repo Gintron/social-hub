@@ -281,8 +281,12 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   je *stavka* (izbornik „Sadržaj iz izvora“), `PostVariant` je *kanal*. Izbornik ide po toku rada (Objavljivanje →
   Sadržaj → Postavke), ne po tablicama. Izvor je u Sadržaju jer je dio toka, a ne podešavanje.
 - **Nadzorna ploča mjeri `App\Filament\Support\HubStatus`.** Brojke i vodič „Kako početi“ dolaze odande; nova stvar
-  koja traži pažnju ide u `HubStatus` i `AttentionOverview`, ne kao zaseban upit u widgetu. Tablice na ploči su pregled
-  na prvi pogled, bez stupca kanala; kratke nazive daje `Platform::shortLabel()` (`PlatformBadges`).
+  koja traži pažnju ide u `HubStatus` i `AttentionOverview`, ne kao zaseban upit u widgetu. Brojka i popis koji otvara
+  dijele jednu definiciju (`PostDraft::scopeNeedingFix` za „Nije uspjelo“ i tab „Neuspjelo“): „Djelomično objavljeno“ je
+  greška samo ako je kanal pao, a objava koja čeka ručni kanal (FB grupa) je običan dan. Rok računa nije `token_expires_at`
+  svakog računa: TikTokov (24 h) i YouTubeov (1 h) pristupni token hub obnavlja sam, pa je rok refresh token, a Metin token
+  bez obnove ima rok na svom datumu. Tablice na ploči su pregled na prvi pogled, bez stupca kanala; kratke nazive daje
+  `Platform::shortLabel()` (`PlatformBadges`).
 - **Zašto objava nije izašla piše u sučelju, ne samo u šifri.** Kanal koji je preskočen ili pao pokazuje poruku i „Što
   učiniti“ (`App\Publishing\FailureAdvice`), a popis objava stupac „Razlog“. Savjet imaju samo šifre čiji je uzrok poznat iz
   koda koji ih postavlja; platformina vlastita greška ostaje kakva je došla, jer bi nagađanje poslalo čovjeka krivim putem.

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Filament;
 
+use App\Actions\CreateDraft;
 use App\Enums\AccountStatus;
 use App\Enums\DraftStatus;
 use App\Enums\Platform;
 use App\Enums\SourceType;
+use App\Enums\VariantStatus;
 use App\Filament\Resources\Brands\BrandResource;
 use App\Filament\Resources\ContentItems\ContentItemResource;
+use App\Filament\Resources\PostDrafts\Pages\ListPostDrafts;
 use App\Filament\Resources\PostDrafts\PostDraftResource;
 use App\Filament\Resources\SocialAccounts\SocialAccountResource;
 use App\Filament\Resources\Sources\SourceResource;
@@ -109,15 +112,37 @@ final class DashboardTest extends TestCase
         // Further than a week away, or already past: neither is "this week".
         PostDraft::factory()->for($brand)->create(['status' => DraftStatus::Scheduled, 'scheduled_at' => now()->addDays(20)]);
         PostDraft::factory()->for($brand)->create(['status' => DraftStatus::Scheduled, 'scheduled_at' => now()->subDay()]);
-        PostDraft::factory()->for($brand)->create(['status' => DraftStatus::Failed]);
-        PostDraft::factory()->for($brand)->create(['status' => DraftStatus::PartiallyPublished]);
         PostDraft::factory()->for($brand)->create(['status' => DraftStatus::Published]);
 
         $status = app(HubStatus::class);
 
         $this->assertSame(2, $status->pendingApproval());
         $this->assertSame(2, $status->scheduledThisWeek());
-        $this->assertSame(2, $status->needFixing());
+    }
+
+    public function test_what_needs_fixing_is_what_the_failed_tab_lists(): void
+    {
+        $brand = Brand::factory()->create();
+
+        $failed = PostDraft::factory()->for($brand)->create(['status' => DraftStatus::Failed]);
+        // Every channel skipped on purpose (a dead link, a changed item): a person decides what is next.
+        $skipped = PostDraft::factory()->for($brand)->create(['status' => DraftStatus::Skipped]);
+        // Out on one channel, failed on the other.
+        $partlyFailed = $this->partlyPublishedDraft($brand, VariantStatus::Failed);
+        // Out everywhere the hub can post; what is left is a person pasting it into a group. That is work, but not a failure.
+        $waitingForAPerson = $this->partlyPublishedDraft($brand, VariantStatus::ManualPending);
+        $this->partlyPublishedDraft($brand, VariantStatus::ManualPending);
+        $published = PostDraft::factory()->for($brand)->create(['status' => DraftStatus::Published]);
+
+        $this->assertSame(DraftStatus::PartiallyPublished, $partlyFailed->status);
+        $this->assertSame(DraftStatus::PartiallyPublished, $waitingForAPerson->status);
+        $this->assertSame(3, app(HubStatus::class)->needFixing());
+
+        // The number on the dashboard and the list it opens say the same thing.
+        Livewire::test(ListPostDrafts::class)
+            ->set('activeTab', 'failed')
+            ->assertCanSeeTableRecords([$failed, $skipped, $partlyFailed])
+            ->assertCanNotSeeTableRecords([$waitingForAPerson, $published]);
     }
 
     public function test_an_account_is_flagged_when_it_needs_a_reconnect_or_its_token_is_about_to_end(): void
@@ -132,6 +157,32 @@ final class DashboardTest extends TestCase
         SocialAccount::factory()->for($brand)->create(['status' => AccountStatus::Disabled, 'token_expires_at' => now()->subDay()]);
 
         $this->assertSame(2, app(HubStatus::class)->accountsToReconnect());
+    }
+
+    public function test_a_token_the_hub_renews_by_itself_is_not_a_deadline(): void
+    {
+        $brand = Brand::factory()->create();
+
+        // TikTok's access token lasts a day and YouTube's an hour: both are always "about to end", and both are
+        // swapped for a fresh one by the hub. What can end is the refresh token.
+        SocialAccount::factory()->for($brand)->create([
+            'platform' => Platform::TikTok, 'token_expires_at' => now()->addHours(23),
+            'refresh_token' => 'refresh', 'refresh_token_expires_at' => now()->addDays(300),
+        ]);
+        SocialAccount::factory()->for($brand)->create([
+            'platform' => Platform::YouTube, 'token_expires_at' => now()->addMinutes(50),
+            'refresh_token' => 'refresh', 'refresh_token_expires_at' => null,
+        ]);
+
+        $this->assertSame(0, app(HubStatus::class)->accountsToReconnect());
+
+        // A TikTok grant that is about to lapse is a real one.
+        SocialAccount::factory()->for($brand)->create([
+            'platform' => Platform::TikTok, 'token_expires_at' => now()->addHours(23),
+            'refresh_token' => 'refresh', 'refresh_token_expires_at' => now()->addDays(3),
+        ]);
+
+        $this->assertSame(1, app(HubStatus::class)->accountsToReconnect());
     }
 
     public function test_a_source_is_flagged_when_it_failed_or_has_gone_quiet(): void
@@ -247,5 +298,22 @@ final class DashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Sadržaj iz izvora')
             ->assertSee($item->title);
+    }
+
+    /**
+     * A draft out on a page and, on its second channel, in the given state: the status is worked out from its channels, not set.
+     */
+    private function partlyPublishedDraft(Brand $brand, VariantStatus $second): PostDraft
+    {
+        $item = ContentItem::factory()->for(Source::factory()->for($brand))->for($brand)->create();
+        $page = SocialAccount::factory()->for($brand)->create();
+        $other = SocialAccount::factory()->instagram()->for($brand)->create();
+
+        $draft = app(CreateDraft::class)->execute($item, [$page, $other], render: false);
+        $draft->variants()->where('social_account_id', $page->id)->update(['status' => VariantStatus::Published->value]);
+        $draft->variants()->where('social_account_id', $other->id)->update(['status' => $second->value]);
+        $draft->refreshStatusFromVariants();
+
+        return $draft->refresh();
     }
 }

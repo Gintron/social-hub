@@ -56,7 +56,7 @@ Isti redoslijed prikazuje vodič „Kako početi“ na nadzornoj ploči.
 | Objavljuje se | U tijeku: hub razgovara s platformom. |
 | Objavljeno | Izašla na svim uključenim kanalima. |
 | Djelomično objavljeno | Izašla na nekim kanalima; ostali su pali ili čekaju ručnu objavu. |
-| Neuspjelo | Platforma je odbila ili račun ne radi. Otvori objavu: kanal piše što se dogodilo i što učiniti. |
+| Neuspjelo | Platforma je odbila ili račun ne radi. Otvori objavu: kanal piše što se dogodilo i što učiniti. Tab „Neuspjelo“ pokazuje i djelomično objavljene objave kojima je jedan kanal pao; objava koja samo čeka da je zalijepiš u grupu nije greška. |
 | Preskočeno | Hub je namjerno preskočio **sve** kanale: stavka je istekla, stranica više ne postoji, sadržaj se promijenio otkad je objava pripremljena, ili spominje alkohol. Razlog piše na kanalu. Preskočen je i samo jedan kanal kad su ostali izašli; tada je objava „Objavljeno“. |
 | Odbačeno | Odbacio si je. |
 

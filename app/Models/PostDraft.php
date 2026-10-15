@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ActorType;
 use App\Enums\DraftStatus;
+use App\Enums\VariantStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -94,6 +95,22 @@ final class PostDraft extends Model
     public function agentRun(): BelongsTo
     {
         return $this->belongsTo(AgentRun::class);
+    }
+
+    /**
+     * Posts that did not go out and wait on a person to decide: failed, skipped on every channel, or out on some
+     * channels with another one that failed. A post that is out everywhere the hub can reach and waits only for
+     * someone to paste it into a group (a manual channel) is also "partly published", but it is nothing to fix.
+     *
+     * @param  Builder<PostDraft>  $query
+     */
+    public function scopeNeedingFix(Builder $query): void
+    {
+        $query->where(fn (Builder $query) => $query
+            ->whereIn('status', [DraftStatus::Failed->value, DraftStatus::Skipped->value])
+            ->orWhere(fn (Builder $query) => $query
+                ->where('status', DraftStatus::PartiallyPublished->value)
+                ->whereHas('variants', fn (Builder $variants) => $variants->where('status', VariantStatus::Failed->value))));
     }
 
     /**

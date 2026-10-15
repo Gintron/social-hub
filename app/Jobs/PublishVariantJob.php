@@ -234,7 +234,7 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
         $stale = $variant->draft?->staleItems() ?? collect();
 
         if ($stale->isNotEmpty()) {
-            return ['stale_content', "Stavka '{$stale->first()->title}' promijenila se otkad je nacrt pripremljen; objava preskočena. Napravi nacrt ponovno."];
+            return ['stale_content', "Stavka '{$stale->first()->title}' promijenila se otkad je objava pripremljena; objava preskočena."];
         }
 
         return null;
