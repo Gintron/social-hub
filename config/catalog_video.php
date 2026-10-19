@@ -35,14 +35,23 @@ return [
     /*
      * Where the link of the comment is copied by hand instead of tapped (Marijan, 7 Oct 2026): nothing in a TikTok or an
      * Instagram comment can be tapped, and a link with a query on it is too long for anyone to copy. There the comment says
-     * the address alone (`uselisto.com/app`), and the channel is not told apart in Listo (docs/catalog-video.md § Poveznica).
-     * Facebook's comment is tapped, so it keeps the tracked link.
+     * the address alone, and Facebook's comment, which is tapped, keeps the tracked link (docs/catalog-video.md § Poveznica).
      */
     'link_typed' => [
         'fb_page' => false,
         'ig_business' => true,
         'tiktok' => true,
         'youtube' => false,
+    ],
+
+    /*
+     * The path a typed address ends in, per channel. The source's address (`uselisto.com/app`) does not say which channel it
+     * was copied from; Listo's short address of the channel does (`uselisto.com/tiktok`: it opens the store like `/app` and
+     * carries the channel's `utm_source`). A channel without one here says the source's address as it is.
+     */
+    'link_typed_path' => [
+        'ig_business' => 'instagram',
+        'tiktok' => 'tiktok',
     ],
 
     /*

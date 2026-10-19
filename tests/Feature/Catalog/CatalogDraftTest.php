@@ -62,13 +62,24 @@ final class CatalogDraftTest extends TestCase
     {
         $draft = $this->draft();
 
-        foreach ([Platform::InstagramBusiness, Platform::TikTok] as $platform) {
-            $variant = $draft->variants->firstWhere('platform', $platform);
+        // The address is the channel's own short one on the site: it opens the store like `/app` and carries the channel.
+        foreach ([Platform::InstagramBusiness->value => 'instagram', Platform::TikTok->value => 'tiktok'] as $platform => $path) {
+            $variant = $draft->variants->firstWhere('platform', Platform::from($platform));
 
-            $this->assertSame('👉 Preuzmi Listo: uselisto.com/app', $variant->setting('first_comment'), $platform->value);
-            $this->assertSame('https://uselisto.com/app', $variant->link_url, $platform->value);
+            $this->assertSame("👉 Preuzmi Listo: uselisto.com/{$path}", $variant->setting('first_comment'), $platform);
+            $this->assertSame("https://uselisto.com/{$path}", $variant->link_url, $platform);
             $this->assertNull($variant->setting('tracking'), 'nothing is stored as tracked when the comment does not carry the tracking');
         }
+    }
+
+    public function test_a_typed_channel_without_a_short_address_of_its_own_says_the_address_of_the_source(): void
+    {
+        config()->set('catalog_video.link_typed_path.tiktok', null);
+
+        $tiktok = $this->draft()->variants->firstWhere('platform', Platform::TikTok);
+
+        $this->assertSame('👉 Preuzmi Listo: uselisto.com/app', $tiktok->setting('first_comment'));
+        $this->assertSame('https://uselisto.com/app', $tiktok->link_url);
     }
 
     public function test_the_bare_address_is_a_choice_of_the_config_and_the_tracked_link_comes_back_with_it(): void

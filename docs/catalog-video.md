@@ -120,12 +120,15 @@ registracija s `source/campaign` može pripisati objavi. Android: Listo bilježi
 
 - **Facebook stranica i Instagram:** poveznica je **prvi komentar** (`settings.first_comment`:
   `FacebookPagePublisher`, `InstagramPublisher`): „👉 Preuzmi Listo: <poveznica>“. Na Facebooku je klikabilna i ima
-  oznake kanala. Na Instagramu i TikToku se ne može dodirnuti, pa je tamo komentar **„👉 Preuzmi Listo: uselisto.com/app“**
-  (Marijan, 7. 10. 2026.: prva objava imala je cijelu poveznicu s `utm` upitom, a nitko je ne bi prepisao). Izbor je
-  `catalog_video.link_typed` po kanalu; kad je uključen, varijanta ne sprema `settings.tracking` jer komentar ne nosi oznaku.
-  **Cijena:** gola `/app` Listo bilježi bez kanala (`utm_source=uselisto.com`, mjesto „poveznica“), pa se TikTok i Instagram
-  više ne razlikuju ni po videu. Ako to zatreba, Listo već ima jednako kratke `uselisto.com/tiktok` i `uselisto.com/instagram`
-  (`server/pages/entryLinks.ts`) koje nose izvor, ali vode na naslovnicu, ne izravno u trgovinu (jedan dodir više).
+  oznake kanala. Na Instagramu i TikToku se ne može dodirnuti, pa je tamo komentar **„👉 Preuzmi Listo: uselisto.com/tiktok“**
+  odnosno `/instagram` (Marijan, 7. 10. 2026.: prva objava imala je cijelu poveznicu s `utm` upitom, a nitko je ne bi
+  prepisao; 19. 10. 2026.: umjesto gole `/app` kanalova vlastita kratka adresa). Izbor je `catalog_video.link_typed` po
+  kanalu, a put adrese `catalog_video.link_typed_path`; kad je uključen, varijanta ne sprema `settings.tracking` jer komentar
+  ne nosi oznaku. **Cijena:** adresa kaže kanal, ne video: Listo bilježi `utm_source=tiktok`, `utm_medium=social`,
+  `utm_campaign=profil`, bez datuma i lanca. Ista kampanja `profil` je i poveznica u biografiji, ako je gola; da se
+  razlikuju, u biografiju ide `uselisto.com/tiktok?utm_campaign=bio`. Listo `/tiktok` i `/instagram` na mobitelu otvara
+  ravno trgovinu, kao `/app` (`server/pages/entryLinks.ts`, `DIRECT_ENTRY_SOURCES`); računalo dobije naslovnicu. Dok Listo
+  ne izađe s tom promjenom, te dvije adrese vode na naslovnicu, jedan dodir više.
   Prva živa objava (6. 10. 2026.): Facebook ostavio komentar (`fb.first_comment` 200); Instagram ne, jer token nema
   `instagram_manage_comments` (`ig.first_comment` 400, `(#10)`). Dozvola je dodana u Meta dashboardu (use case i Login
   Configuration) i u `config/meta.php`; nakon ponovnog povezivanja Instagram i TikTok komentar su na idućoj objavi bili

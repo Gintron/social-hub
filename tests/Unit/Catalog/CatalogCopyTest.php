@@ -93,6 +93,15 @@ final class CatalogCopyTest extends TestCase
         $this->assertSame('uselisto.com', CatalogCopy::typeable('https://uselisto.com/'));
     }
 
+    public function test_an_address_can_be_said_with_the_path_of_a_channel_instead_of_its_own(): void
+    {
+        $this->assertSame('uselisto.com/tiktok', CatalogCopy::typeable('https://www.uselisto.com/app?utm_source=x', 'tiktok'));
+        $this->assertSame('uselisto.com/instagram', CatalogCopy::typeable('uselisto.com', '/instagram/'));
+        $this->assertSame('uselisto.com/app', CatalogCopy::typeable('https://uselisto.com/app', null));
+        $this->assertSame('uselisto.com/app', CatalogCopy::typeable('https://uselisto.com/app', ' '));
+        $this->assertSame('', CatalogCopy::typeable('', 'tiktok'), 'no address, nothing to put a path on');
+    }
+
     private function brand(): Brand
     {
         return new Brand(['name' => 'Listo', 'voice' => ['cta' => 'Preuzmi Listo', 'hashtags' => ['listo']]]);

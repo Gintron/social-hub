@@ -133,15 +133,23 @@ final class CatalogCopy
 
     /**
      * An address as somebody types it: no scheme, no `www.`, no query and no trailing slash
-     * (`https://www.uselisto.com/app?x=1` → `uselisto.com/app`).
+     * (`https://www.uselisto.com/app?x=1` → `uselisto.com/app`). With a `$path` the site's own address of that path is
+     * said instead (`uselisto.com/tiktok`), which is how a channel is told apart when nothing but the address is copied.
      */
-    public static function typeable(string $url): string
+    public static function typeable(string $url, ?string $path = null): string
     {
         $address = (string) preg_replace('~^[a-z][a-z0-9+.-]*://~i', '', mb_trim($url));
         $address = (string) preg_replace('~^www\.~i', '', $address);
         $address = (string) preg_replace('~[?#].*$~', '', $address);
+        $address = mb_rtrim($address, '/');
 
-        return mb_rtrim($address, '/');
+        $path = mb_trim((string) $path, " \t\n\r\0\x0B/");
+
+        if ($path === '' || $address === '') {
+            return $address;
+        }
+
+        return explode('/', $address, 2)[0].'/'.$path;
     }
 
     /**

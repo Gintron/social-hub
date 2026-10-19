@@ -34,7 +34,7 @@ final class TikTokFirstCommentTest extends TestCase
     use RefreshDatabase;
 
     /** What the draft's TikTok comment says: the bare address, because it is copied by hand (`catalog_video.link_typed`). */
-    private const COMMENT = '👉 Preuzmi Listo: uselisto.com/app';
+    private const COMMENT = '👉 Preuzmi Listo: uselisto.com/tiktok';
 
     protected function setUp(): void
     {

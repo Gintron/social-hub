@@ -17,7 +17,8 @@ use InvalidArgumentException;
  *
  * The link is stored on the variant (`link_url`, `settings.tracking`) so a result can be attributed to the post
  * that brought it: the campaign is per catalog, the source per channel. The exception is a channel whose comment is
- * copied by hand (`catalog_video.link_typed`: TikTok and Instagram): there the comment is the bare address and nothing is
+ * copied by hand (`catalog_video.link_typed`: TikTok and Instagram): there the comment is the channel's own bare address
+ * (`catalog_video.link_typed_path`: `uselisto.com/tiktok`), which tells the channel but not the video, and nothing else is
  * tracked. The comment is left by the publisher on Facebook and Instagram and, on TikTok, by LeaveTikTokCommentJob
  * (docs/catalog-video.md).
  */
@@ -54,9 +55,13 @@ final class CatalogVariant
         // Where the comment is copied by hand, the address alone is what it says: a query on it is what nobody copies. The
         // comment is not tracked then, so nothing is stored as if it were (`settings.tracking`).
         if ($where === CatalogCopy::WHERE_COMMENT && $demo->appUrl !== null && (bool) config("catalog_video.link_typed.{$platform->value}", false)) {
-            $settings['first_comment'] = CatalogCopy::comment($demo, CatalogCopy::typeable($demo->appUrl), $brand);
+            // The channel's own short address where the site has one: it carries the channel, so a registration can still be
+            // told to come from TikTok or from Instagram, which a query on the address would have done and nobody copies.
+            $path = config("catalog_video.link_typed_path.{$platform->value}");
+            $address = CatalogCopy::typeable($demo->appUrl, is_string($path) ? $path : null);
+            $settings['first_comment'] = CatalogCopy::comment($demo, $address, $brand);
 
-            return ['link_url' => $demo->appUrl, 'settings' => $settings];
+            return ['link_url' => is_string($path) ? 'https://'.$address : $demo->appUrl, 'settings' => $settings];
         }
 
         if ($tracked !== null) {
