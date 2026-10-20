@@ -169,6 +169,11 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Opseg tokena je stvarna granica**: `mcp` čita, `mcp:draft` piše nacrte, `mcp:approve` odobrava,
   `mcp:publish` objavljuje. Alat provjerava ovlast na ulazu (`App\Mcp\Support\Ability`).
 
+- **Gotov video iz drugog alata ide kroz `App\Actions\CreateVideoPost` / `hub:video-post`** (`docs/own-video.md`), ne kroz
+  ad hoc zapise u bazi: isti nacrt, ista čuvanja (istek, poveznica, „sadržaj se promijenio"), izvor „Gotovi videi" koji nitko ne
+  povlači i nijedno pravilo ne čita. Tekst i prvi komentar dao je čovjek; hub ih ne piše ni ne provjerava, i ne smije ih
+  generirati. Oznaka AI ide u `settings.ai_generated`.
+
 - **Video je isti sadržaj, druga visina.** `VideoRenderer` spaja postojeće predloške renderirane u
   1080×1920; nema zasebnog dizajna za video. Izlaz mora ostati H.264/yuv420p + AAC + `faststart`,
   inače ga uploaderi odbijaju.
