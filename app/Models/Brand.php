@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Drafting\DigestSeries;
+use App\Persona\Persona;
 use App\Voiceover\VoiceoverSettings;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -28,6 +29,7 @@ use Illuminate\Support\Facades\Storage;
  * @property array<array-key, array{path?: string|null, title?: string|null, license?: string|null}>|null $audio_tracks
  * @property array<string, mixed>|null $voiceover
  * @property array<array-key, array<string, mixed>>|null $digests
+ * @property array<string, mixed>|null $persona
  * @property string $timezone
  */
 final class Brand extends Model
@@ -40,7 +42,7 @@ final class Brand extends Model
     public const AUDIO_DISK = 'public';
 
     protected $fillable = [
-        'slug', 'name', 'site_url', 'logo_path', 'colors', 'voice', 'posting_windows', 'daily_post_limit', 'auto_lineup', 'lineup_priority', 'audio_tracks', 'voiceover', 'digests', 'timezone',
+        'slug', 'name', 'site_url', 'logo_path', 'colors', 'voice', 'posting_windows', 'daily_post_limit', 'auto_lineup', 'lineup_priority', 'audio_tracks', 'voiceover', 'digests', 'persona', 'timezone',
     ];
 
     public function sources(): HasMany
@@ -66,6 +68,19 @@ final class Brand extends Model
     public function mediaAssets(): HasMany
     {
         return $this->hasMany(MediaAsset::class);
+    }
+
+    public function topicIdeas(): HasMany
+    {
+        return $this->hasMany(TopicIdea::class);
+    }
+
+    /**
+     * The AI character the brand's channels belong to; switched off for a brand that is not one.
+     */
+    public function personaSettings(): Persona
+    {
+        return Persona::forBrand($this);
     }
 
     /**
@@ -161,6 +176,7 @@ final class Brand extends Model
             'audio_tracks' => 'array',
             'voiceover' => 'array',
             'digests' => 'array',
+            'persona' => 'array',
             'auto_lineup' => 'boolean',
             'lineup_priority' => 'array',
         ];

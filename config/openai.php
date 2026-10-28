@@ -9,6 +9,7 @@ return [
     |--------------------------------------------------------------------------
     | The hub's one AI provider. It writes the captions of the drafting agent (hub:agent-draft) and
     | writes how the words of what a voice-over is about to say are pronounced, in IPA (App\Voiceover\Phonetizer).
+    | It also proposes an AI character's topics and writes the script of the short a person picks (App\Persona).
     | Without a key the agent does not run, and a brand that wants IPA put into the text gets no voice.
     */
     'api_key' => env('OPENAI_API_KEY'),
@@ -49,5 +50,16 @@ return [
         'effort' => env('OPENAI_IPA_EFFORT'),
         'max_output_tokens' => (int) env('OPENAI_IPA_MAX_OUTPUT_TOKENS', 12000),
         'timeout' => (int) env('OPENAI_IPA_TIMEOUT', 60),
+    ],
+
+    /*
+     * An AI character's topics of the day and the script of the short a person picks (App\Persona). Blank model or
+     * effort means "the same as for captions". A script is a few hundred words; the ceiling is room to think.
+     */
+    'persona' => [
+        'model' => env('OPENAI_PERSONA_MODEL'),
+        'effort' => env('OPENAI_PERSONA_EFFORT'),
+        'max_output_tokens' => (int) env('OPENAI_PERSONA_MAX_OUTPUT_TOKENS', 16000),
+        'timeout' => (int) env('OPENAI_PERSONA_TIMEOUT', 120),
     ],
 ];

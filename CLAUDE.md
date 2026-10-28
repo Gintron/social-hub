@@ -169,6 +169,13 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Opseg tokena je stvarna granica**: `mcp` čita, `mcp:draft` piše nacrte, `mcp:approve` odobrava,
   `mcp:publish` objavljuje. Alat provjerava ovlast na ulazu (`App\Mcp\Support\Ability`).
 
+- **AI lik je brend, ne novi kanal** (`brands.persona`, `App\Persona\Persona`, `docs/ai-persona.md`): isti računi, glas,
+  termini i limit kao svaki brend; lik dodaje samo opis iz kojeg OpenAI svako jutro predlaže teme (`hub:suggest-topics`,
+  `topic_ideas`), a iz odabrane piše skriptu shorta. Područje lika (novac, kuhanje…) živi u opisu u panelu, nikad u kodu.
+  Jezik je postavka lika (zadano `en`); postojeći brendovi ostaju na hrvatskom. Čovjek bira temu, čita i odobrava skriptu;
+  glas i video (faza 2: ElevenLabs + fal.ai) nastaju samo iz **odobrene** skripte, a izmjena odobrene vraća je na pregled.
+  Ponovljena tema se odbacuje u kodu (`TopicSuggester`), ne samo uputom. Lik je otvoreno AI i ne tvrdi da je nešto proživio.
+
 - **Gotov video iz drugog alata ide kroz `App\Actions\CreateVideoPost` / `hub:video-post`** (`docs/own-video.md`), ne kroz
   ad hoc zapise u bazi: isti nacrt, ista čuvanja (istek, poveznica, „sadržaj se promijenio"), izvor „Gotovi videi" koji nitko ne
   povlači i nijedno pravilo ne čita. Tekst i prvi komentar dao je čovjek; hub ih ne piše ni ne provjerava, i ne smije ih

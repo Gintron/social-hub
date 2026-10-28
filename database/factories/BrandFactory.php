@@ -28,4 +28,28 @@ final class BrandFactory extends Factory
             'timezone' => 'Europe/Zagreb',
         ];
     }
+
+    /**
+     * A brand that is an AI character, described enough to write topics from.
+     *
+     * @param  array<string, mixed>  $persona
+     */
+    public function persona(array $persona = []): self
+    {
+        return $this->state(fn (): array => ['persona' => [
+            'enabled' => true,
+            'language' => 'en',
+            'name' => 'Mia',
+            'description' => 'A calm money coach in her thirties who explains personal finance without jargon.',
+            'goal' => 'Help young people spend less on impulse and save their first emergency fund.',
+            'audience' => 'People aged 18-30 with their first job',
+            'tone' => 'warm, direct, a little funny',
+            'appearance' => 'Woman with short dark hair, round glasses, mustard sweater',
+            'ambience' => 'A bright small kitchen with plants on the window sill',
+            'avoid' => 'Crypto, stock picks, debt collection',
+            'topics_per_day' => 3,
+            'suggest_at' => '07:00',
+            ...$persona,
+        ]]);
+    }
 }

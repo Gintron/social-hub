@@ -96,4 +96,18 @@ return [
         // How long to wait for the item's own landing page before treating it as dead (App\Publishing\LinkPreflight).
         'link_preflight_timeout' => (int) env('HUB_LINK_PREFLIGHT_TIMEOUT', 8),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | AI characters (App\Persona, docs/ai-persona.md)
+    |--------------------------------------------------------------------------
+    | `recent_days`: how far back the topics a character already had are shown to the model, so it does not offer them
+    | again. `max_seconds`: how long a short's script may run when spoken. `words_per_second`: speaking pace, for the
+    | estimate the panel shows before anything is paid for.
+    */
+    'persona' => [
+        'recent_days' => (int) env('HUB_PERSONA_RECENT_DAYS', 60),
+        'max_seconds' => (int) env('HUB_PERSONA_MAX_SECONDS', 60),
+        'words_per_second' => ['en' => 2.6, 'hr' => 2.3],
+    ],
 ];
