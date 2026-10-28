@@ -9,9 +9,11 @@ use App\Filament\Resources\Brands\Pages\EditBrand;
 use App\Filament\Resources\TopicIdeas\Pages\EditTopicIdea;
 use App\Filament\Resources\TopicIdeas\Pages\ListTopicIdeas;
 use App\Filament\Resources\TopicIdeas\TopicIdeaResource;
+use App\Jobs\ProduceShortJob;
 use App\Jobs\SuggestTopicsJob;
 use App\Jobs\WriteTopicScriptJob;
 use App\Models\Brand;
+use App\Models\PostDraft;
 use App\Models\TopicIdea;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -141,6 +143,35 @@ final class TopicIdeaPanelTest extends TestCase
         $idea->refresh();
         $this->assertSame(TopicStatus::Approved, $idea->status);
         $this->assertSame('Hold on. Wait a day.', $idea->shortScript()?->lines[0]['text']);
+    }
+
+    public function test_an_approved_script_is_made_into_a_video_from_its_page(): void
+    {
+        Queue::fake();
+        $idea = TopicIdea::factory()->scripted()->create(['status' => TopicStatus::Approved]);
+
+        Livewire::test(EditTopicIdea::class, ['record' => $idea->getRouteKey()])
+            ->assertActionVisible('produce')
+            ->callAction('produce');
+
+        $this->assertSame(TopicStatus::Producing, $idea->refresh()->status);
+        Queue::assertPushed(ProduceShortJob::class, fn (ProduceShortJob $job): bool => $job->ideaId === $idea->id);
+
+        // While it is made, and once it is in a post, the script stays as it was.
+        Livewire::test(EditTopicIdea::class, ['record' => $idea->getRouteKey()])
+            ->assertActionHidden('produce')
+            ->assertActionHidden('rewrite');
+    }
+
+    public function test_a_topic_whose_video_is_in_a_post_links_to_it(): void
+    {
+        $draft = PostDraft::factory()->create();
+        $idea = TopicIdea::factory()->scripted()->create(['status' => TopicStatus::Produced, 'post_draft_id' => $draft->id]);
+
+        $this->get(TopicIdeaResource::getUrl('edit', ['record' => $idea]))->assertOk()->assertSee('Video je u objavi');
+
+        Livewire::test(EditTopicIdea::class, ['record' => $idea->getRouteKey()])
+            ->assertActionVisible('open_post');
     }
 
     public function test_a_topic_without_a_script_has_nothing_to_save(): void

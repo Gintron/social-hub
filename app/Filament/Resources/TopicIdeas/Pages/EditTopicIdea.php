@@ -36,19 +36,21 @@ final class EditTopicIdea extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            TopicIdeaActions::openPost(),
             TopicIdeaActions::choose()->after(fn () => $this->refreshTopic()),
             TopicIdeaActions::approve()->after(fn () => $this->refreshTopic()),
+            TopicIdeaActions::produce()->after(fn () => $this->refreshTopic()),
             TopicIdeaActions::rewrite()->after(fn () => $this->refreshTopic()),
             TopicIdeaActions::reject()->after(fn () => $this->refreshTopic()),
         ];
     }
 
     /**
-     * Nothing to save until there is a script.
+     * Nothing to save until there is a script, and nothing once its video is being made or is in a post.
      */
     protected function getFormActions(): array
     {
-        return $this->topic()->status->hasScript() ? parent::getFormActions() : [];
+        return $this->topic()->status->isEditable() ? parent::getFormActions() : [];
     }
 
     /**

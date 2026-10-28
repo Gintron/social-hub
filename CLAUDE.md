@@ -173,8 +173,15 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   termini i limit kao svaki brend; lik dodaje samo opis iz kojeg OpenAI svako jutro predlaže teme (`hub:suggest-topics`,
   `topic_ideas`), a iz odabrane piše skriptu shorta. Područje lika (novac, kuhanje…) živi u opisu u panelu, nikad u kodu.
   Jezik je postavka lika (zadano `en`); postojeći brendovi ostaju na hrvatskom. Čovjek bira temu, čita i odobrava skriptu;
-  glas i video (faza 2: ElevenLabs + fal.ai) nastaju samo iz **odobrene** skripte, a izmjena odobrene vraća je na pregled.
+  glas i video nastaju samo iz **odobrene** skripte, a izmjena odobrene vraća je na pregled.
   Ponovljena tema se odbacuje u kodu (`TopicSuggester`), ne samo uputom. Lik je otvoreno AI i ne tvrdi da je nešto proživio.
+- **Video AI lika: ElevenLabs glas, fal.ai slika** (`App\Persona\ShortProducer`, `config/fal.php`). fal je jedina iznimka od
+  „jedan AI provider“ i radi **samo video** (lik koji govori, usne vođene našim zvukom; međukadrovi); svaki tekst i dalje piše
+  OpenAI. Svaki fal zahtjev zapisuje se u `topic_ideas.production` čim je poslan: ponovni pokušaj pita isti zahtjev, a kadar
+  koji se nije promijenio ne radi se opet. Posao ne čeka fal u jednom pokretanju (worker ubija posao nakon 180 s): vraća se
+  `release`-om. Sve što može odbiti (tekst objave kroz `CaptionValidator` prema skripti, kanali, slika lika, gornja cijena)
+  provjerava se prije prvog plaćenog poziva. Brojeve engleskom glasu ispisuje `SpokenEnglish`, kao `SpokenCroatian` hrvatskom.
+  Gotov short ide kroz `CreateVideoPost` i čeka odobrenje; tekst objave je iz skripte koju je čovjek odobrio.
 
 - **Gotov video iz drugog alata ide kroz `App\Actions\CreateVideoPost` / `hub:video-post`** (`docs/own-video.md`), ne kroz
   ad hoc zapise u bazi: isti nacrt, ista čuvanja (istek, poveznica, „sadržaj se promijenio"), izvor „Gotovi videi" koji nitko ne
@@ -245,7 +252,7 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Slajd čeka riječi, ne obrnuto.** `VideoRenderer::fitNarration` produžuje slajd na trajanje njegovog retka (nikad
   kraće nego bez glasa); glazba se ispod glasa stišava `sidechaincompress`-om. Ne rezati retke da stanu u zadano
   trajanje: Facebook Reel smije 90 s, proračun znakova (`elevenlabs.max_characters_per_video`) je ograda za to.
-- **Jedan AI provider: OpenAI.** Tekstove objava (`OpenAiCaptionWriter`) i izgovor riječi za voice-over (`Phonetizer`) traži isti
+- **Jedan AI provider: OpenAI** (za tekst; video AI lika je fal, vidi gore). Tekstove objava (`OpenAiCaptionWriter`) i izgovor riječi za voice-over (`Phonetizer`) traži isti
   klijent, `App\Ai\OpenAiClient` (Responses API, stroga JSON shema, `store: false`). Postavke su u `config/openai.php`
   (`OPENAI_*`), ime modela nikad u kodu. Novi AI poziv ide kroz taj klijent i hvata `OpenAiException`. Anthropic je
   maknut (Marijan, 29. 09. 2026.); ne uvoditi ga natrag kao drugi put.

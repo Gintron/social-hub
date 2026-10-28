@@ -108,6 +108,8 @@ return [
     'persona' => [
         'recent_days' => (int) env('HUB_PERSONA_RECENT_DAYS', 60),
         'max_seconds' => (int) env('HUB_PERSONA_MAX_SECONDS', 60),
+        // What the voice of one short may cost: characters actually spoken (a 60-second script is ~900).
+        'max_characters' => (int) env('HUB_PERSONA_MAX_CHARACTERS', 1200),
         'words_per_second' => ['en' => 2.6, 'hr' => 2.3],
     ],
 ];

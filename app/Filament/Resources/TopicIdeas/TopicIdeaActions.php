@@ -6,11 +6,14 @@ namespace App\Filament\Resources\TopicIdeas;
 
 use App\Actions\ApproveTopicScript;
 use App\Actions\ChooseTopic;
+use App\Actions\ProduceShort;
 use App\Actions\RejectTopic;
 use App\Enums\TopicStatus;
+use App\Filament\Resources\PostDrafts\PostDraftResource;
 use App\Jobs\SuggestTopicsJob;
 use App\Models\Brand;
 use App\Models\TopicIdea;
+use App\Persona\ShortProducer;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
@@ -43,7 +46,7 @@ final class TopicIdeaActions
             ->label('Napiši ponovno')
             ->icon(Heroicon::OutlinedArrowPath)
             ->color('gray')
-            ->visible(fn (TopicIdea $record): bool => $record->status->hasScript())
+            ->visible(fn (TopicIdea $record): bool => $record->status->isEditable())
             ->requiresConfirmation()
             ->modalDescription('Nova skripta zamjenjuje ovu, s tvojim izmjenama.')
             ->action(function (TopicIdea $record): void {
@@ -75,6 +78,45 @@ final class TopicIdeaActions
             ->action(function (TopicIdea $record): void {
                 self::run(fn () => app(ApproveTopicScript::class)->execute($record, Auth::id()), 'Skripta je odobrena');
             });
+    }
+
+    public static function produce(): Action
+    {
+        return Action::make('produce')
+            ->label(fn (TopicIdea $record): string => $record->status === TopicStatus::VideoFailed ? 'Pokušaj video ponovno' : 'Napravi video')
+            ->icon(Heroicon::OutlinedFilm)
+            ->color('primary')
+            ->visible(fn (TopicIdea $record): bool => $record->status->canProduce())
+            ->requiresConfirmation()
+            ->modalHeading('Napravi video iz ove skripte?')
+            ->modalDescription(function (TopicIdea $record): string {
+                $script = $record->shortScript();
+
+                if ($script === null) {
+                    return '';
+                }
+
+                $estimate = ShortProducer::estimate($script, $record->brand->personaSettings()->language);
+
+                return sprintf(
+                    'Glas (ElevenLabs) i kadrovi s fal.ai, oko %d s videa, procjena oko %s $ na falu. Video ide u objavu na kanale lika i čeka tvoje odobrenje. Kadrovi koje je fal već napravio ne plaćaju se ponovno.',
+                    $estimate['seconds'],
+                    number_format($estimate['cost'], 2, ',', '.'),
+                );
+            })
+            ->action(function (TopicIdea $record): void {
+                self::run(fn () => app(ProduceShort::class)->execute($record), 'Video se radi', 'Nekoliko minuta; stranica teme pokaže objavu kad bude gotova.');
+            });
+    }
+
+    public static function openPost(): Action
+    {
+        return Action::make('open_post')
+            ->label('Otvori objavu')
+            ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+            ->color('gray')
+            ->visible(fn (TopicIdea $record): bool => $record->post_draft_id !== null)
+            ->url(fn (TopicIdea $record): string => PostDraftResource::getUrl('edit', ['record' => $record->post_draft_id]));
     }
 
     public static function suggest(): Action

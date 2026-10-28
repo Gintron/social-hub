@@ -17,12 +17,12 @@ final class UpdateTopicScript
     /**
      * @param  array<string, mixed>  $script
      *
-     * @throws InvalidArgumentException When the topic has no script yet, or the edit leaves nothing a short is made of.
+     * @throws InvalidArgumentException When the script cannot change now (none yet, its video is being made or is in a post), or the edit leaves nothing a short is made of.
      */
     public function execute(TopicIdea $idea, array $script): TopicIdea
     {
-        if (! $idea->status->hasScript()) {
-            throw new InvalidArgumentException("Tema #{$idea->id} još nema skriptu.");
+        if (! $idea->status->isEditable()) {
+            throw new InvalidArgumentException("Skripta teme #{$idea->id} se ne može mijenjati ({$idea->status->label()}).");
         }
 
         $new = ShortScript::fromArray($script)->toArray();

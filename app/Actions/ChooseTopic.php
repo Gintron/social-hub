@@ -11,13 +11,14 @@ use InvalidArgumentException;
 
 /**
  * A person picks a topic and its script is written in the background (WriteTopicScriptJob). With `$rewrite` a topic
- * that already has a script gets a new one, which replaces the old one and any edits to it.
+ * that already has a script gets a new one, which replaces the old one and any edits to it — not while its video is
+ * being made, and not once the video is in a post.
  */
 final class ChooseTopic
 {
     public function execute(TopicIdea $idea, bool $rewrite = false): TopicIdea
     {
-        if (! $idea->status->canBeChosen() && ! ($rewrite && $idea->status->hasScript())) {
+        if (! $idea->status->canBeChosen() && ! ($rewrite && $idea->status->isEditable())) {
             throw new InvalidArgumentException("Tema #{$idea->id} je „{$idea->status->label()}“ i ne može se odabrati.");
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\TopicIdeas\Schemas;
 
+use App\Enums\TopicStatus;
 use App\Models\TopicIdea;
 use App\Persona\ShortScript;
 use Filament\Forms\Components\Placeholder;
@@ -33,8 +34,22 @@ final class TopicIdeaForm
                             ->visible(fn (?TopicIdea $record): bool => filled($record?->script_error)),
                     ]),
 
+                Section::make('Video')
+                    ->visible(fn (?TopicIdea $record): bool => in_array($record?->status, [TopicStatus::Producing, TopicStatus::Produced, TopicStatus::VideoFailed], true))
+                    ->schema([
+                        Placeholder::make('video_state')->label('Stanje')
+                            ->content(fn (?TopicIdea $record): string => match ($record?->status) {
+                                TopicStatus::Producing => 'Glas i kadrovi se rade; fal treba nekoliko minuta. Ova stranica se ne osvježava sama.',
+                                TopicStatus::Produced => 'Video je u objavi koja čeka odobrenje (gumb „Otvori objavu“ gore).',
+                                default => 'Video nije napravljen.',
+                            }),
+                        Placeholder::make('video_error')->label('Zašto')
+                            ->content(fn (?TopicIdea $record): string => (string) $record?->production_error)
+                            ->visible(fn (?TopicIdea $record): bool => filled($record?->production_error)),
+                    ]),
+
                 Section::make('Skripta')
-                    ->description('Što lik govori, redak po redak, i što se vidi dok to govori. Pročitaj naglas: tako će zvučati. Spremi izmjene pa odobri; glas i video nastaju samo iz odobrene skripte.')
+                    ->description('Što lik govori, redak po redak, i što se vidi dok to govori. Pročitaj naglas: tako će zvučati. Spremi izmjene pa odobri; glas i video nastaju samo iz odobrene skripte. Uzastopni redci istog kadra postaju jedan kadar.')
                     ->visible(fn (?TopicIdea $record): bool => $record?->status->hasScript() ?? false)
                     ->schema([
                         Placeholder::make('script_length')->label('Trajanje (procjena)')
