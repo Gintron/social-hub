@@ -12,6 +12,13 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   `query.*` ključeve iz `sources.config` (i sve što stoji u query stringu `base_url`-a) uz svaki
   zahtjev; `since`/`cursor`/`limit` iz ugovora imaju prednost. Novi filter je unos u panelu, nikad
   grana u kodu.
+- **Tržište je brend, jezik je postavka brenda.** Ista stranica za drugu državu (Listo Austrija) je zaseban brend
+  (`uselisto-at`) sa svojim izvorima (`query.country`), računima i pravilima: računi se biraju po brendu i
+  platformi, pa je to jedino što drži tržišta odvojena. `SocialFeedV1Source` odbija feed koji se predstavlja kao
+  **drugi brend ovog huba** (polje `brand`), a nepoznato ime ostaje upozorenje u testu izvora. Riječi koje hub sam
+  dodaje (opisi, natpisi na slikama, video novog kataloga, vezne riječi glasa) su u `App\Support\Wording` po
+  `brands.language` (`hr` zadano, `de`); brojeve glasu izgovara `SpokenGerman` ili `SpokenCroatian`. Novi tekst
+  ide u oba jezika (WordingTest), nikad hardkodiran na hrvatskom. Novo tržište: `hub:market-brand`.
 - **Predlošci slika su po `kind`, ne po brendu** (`config/templates.php`, `resources/views/templates/kinds`).
   Brend daje boje i logo. Brend-specifični predložak je iznimka s vlastitim ključem.
 - **Čija je ponuda, mora se vidjeti.** Izvor ponude (trgovački lanac, poslodavac, izdavač) dolazi kroz

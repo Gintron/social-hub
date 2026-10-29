@@ -49,6 +49,13 @@
     radial-gradient(circle 440px at 100px 1860px, rgba(${dark ? '244,241,233,.028' : '47,107,69,.028'}), rgba(0,0,0,0) 100%)`;
   $('#backdrop').style.background = `${backdropCircles(false)}, ${S.theme.cream}`;
 
+  // Natpisi kopije aplikacije na jeziku brenda (data-ui u scene.html); bez njih ostaje hrvatski kakav je u predlošku.
+  if (S.language) document.documentElement.lang = S.language;
+  document.querySelectorAll('[data-ui]').forEach((el) => {
+    const text = S.ui && S.ui[el.dataset.ui];
+    if (text) el.textContent = text;
+  });
+
   $('#lockup-icon').src = S.brand.icon;
   $('#cta-icon').src = S.brand.icon;
   $('#lockup-name').textContent = S.brand.name;
@@ -441,7 +448,7 @@
     await Promise.all([...document.images].map((img) => (img.complete ? Promise.resolve() : new Promise((resolve) => { img.onload = img.onerror = resolve; }))));
     await Promise.all([...document.images].map((img) => img.decode().catch(() => undefined)));
     toast.style.width = `${TOAST_W}px`;
-    toast.querySelector('.toast-detail').textContent = 'Naziv proizvoda';
+    toast.querySelector('.toast-detail').textContent = (S.ui && S.ui.product) || 'Naziv proizvoda';
     dim.toastH = toast.offsetHeight || 56;
     return true;
   })();

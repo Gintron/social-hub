@@ -102,6 +102,37 @@ final class CatalogCopyTest extends TestCase
         $this->assertSame('', CatalogCopy::typeable('', 'tiktok'), 'no address, nothing to put a path on');
     }
 
+    public function test_a_german_brand_says_it_all_in_german_and_names_the_chain_after_von(): void
+    {
+        $demo = CatalogDemo::fromArray([...$this->raw(), 'chain_phrase' => null, 'chain_name' => 'Billa', 'locale' => 'de-AT']);
+        $brand = new Brand(['name' => 'Listo', 'language' => 'de', 'voice' => ['cta' => 'Hol dir Listo', 'hashtags' => ['prospekt']]]);
+
+        $this->assertSame([
+            'Hey, der neue Prospekt von Billa ist da.',
+            'Blättere ihn durch und tipp auf ein Produkt, um es auf deine Liste zu setzen.',
+            'Hol dir Listo.',
+            'Den Link zur App findest du im Kommentar.',
+        ], CatalogCopy::voiceLines($demo, cta: CatalogCopy::cta($brand), language: 'de'));
+        $this->assertSame(['Neuer Prospekt', 'von Billa'], CatalogCopy::title($demo, 'de'));
+        $this->assertSame('Gültig von 7.10. bis 13.10.2026', CatalogCopy::validity($demo, 'de'));
+
+        $overNewYear = CatalogDemo::fromArray([...$this->raw(), 'valid_from' => '2026-12-28', 'valid_to' => '2027-01-03']);
+        $this->assertSame('Gültig von 28.12.2026 bis 3.1.2027', CatalogCopy::validity($overNewYear, 'de'));
+
+        $caption = CatalogCopy::caption(Platform::InstagramBusiness, new ContentItem(['tags' => ['billa', 'prospekt']]), $brand, $demo);
+        $this->assertStringContainsString('🛒 Neuer Prospekt von Billa', $caption);
+        $this->assertStringContainsString('👇 Hol dir Listo. Den Link zur App findest du im Kommentar.', $caption);
+        $this->assertDoesNotMatchRegularExpression('/izašao|Vrijedi|Poveznica|Preuzmi/u', $caption, 'not a Croatian word');
+    }
+
+    public function test_a_german_brand_without_its_own_call_gets_the_german_default(): void
+    {
+        $brand = new Brand(['name' => 'Listo', 'language' => 'de']);
+
+        $this->assertSame('Hol dir Listo', CatalogCopy::cta($brand));
+        $this->assertSame('Preuzmi Listo', CatalogCopy::cta(new Brand(['name' => 'Listo'])), 'a brand from before the choice stays Croatian');
+    }
+
     private function brand(): Brand
     {
         return new Brand(['name' => 'Listo', 'voice' => ['cta' => 'Preuzmi Listo', 'hashtags' => ['listo']]]);

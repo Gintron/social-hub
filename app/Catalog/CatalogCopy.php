@@ -7,6 +7,7 @@ namespace App\Catalog;
 use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\ContentItem;
+use App\Support\Wording;
 
 /**
  * Every word of the new-catalog video and of the post around it, written from what the item carries.
@@ -15,6 +16,9 @@ use App\Models\ContentItem;
  * writes them, so a change of wording cannot leave the picture saying one thing and the voice another.
  * The words about the call to action are the owner's (Marijan, 3 Oct 2026): "Poveznica do aplikacije je u
  * komentaru" — and nothing about a free trial or a saving, because neither is something the video can show.
+ *
+ * The words are the brand's language (Wording): a Croatian brand says "Konzumov katalog" in the form the feed gives
+ * (`chain_phrase`), a German one names the chain after "von", which needs no case of its own.
  */
 final class CatalogCopy
 {
@@ -34,26 +38,44 @@ final class CatalogCopy
      *
      * @return list<string>
      */
-    public static function voiceLines(CatalogDemo $demo, string $where = self::WHERE_COMMENT, string $cta = 'Preuzmi Listo'): array
+    public static function voiceLines(CatalogDemo $demo, string $where = self::WHERE_COMMENT, string $cta = 'Preuzmi Listo', string $language = Wording::DEFAULT): array
     {
         return [
-            'Hej, izašao je novi '.$demo->phrase().'.',
-            'Prelistaj ga i dodaj proizvod na svoju listu dodirom na letak.',
+            Wording::get($language, 'catalog.news', self::names($demo)),
+            Wording::get($language, 'catalog.how'),
             self::sentence($cta),
-            self::linkSentence($where),
+            self::linkSentence($where, $language),
         ];
+    }
+
+    /**
+     * The call to action a brand without its own says: "Preuzmi Listo", "Hol dir Listo".
+     */
+    public static function defaultCta(Brand $brand): string
+    {
+        return Wording::get($brand, 'catalog.cta', ['brand' => $brand->name]);
+    }
+
+    /**
+     * The brand's call to action (`voice.cta`), or the default one in its language.
+     */
+    public static function cta(Brand $brand): string
+    {
+        $cta = mb_trim((string) data_get($brand->voice, 'cta', ''));
+
+        return $cta === '' ? self::defaultCta($brand) : $cta;
     }
 
     /**
      * "Poveznica do aplikacije je u komentaru." — on the end card and in the voice.
      */
-    public static function linkSentence(string $where): string
+    public static function linkSentence(string $where, string $language = Wording::DEFAULT): string
     {
-        return match ($where) {
-            self::WHERE_BIO => 'Poveznica do aplikacije je u biografiji.',
-            self::WHERE_DESCRIPTION => 'Poveznica do aplikacije je u opisu.',
-            default => 'Poveznica do aplikacije je u komentaru.',
-        };
+        return Wording::get($language, match ($where) {
+            self::WHERE_BIO => 'catalog.link.bio',
+            self::WHERE_DESCRIPTION => 'catalog.link.description',
+            default => 'catalog.link.comment',
+        });
     }
 
     /**
@@ -79,37 +101,37 @@ final class CatalogCopy
      *
      * @return array{0: string, 1: string}
      */
-    public static function title(CatalogDemo $demo): array
+    public static function title(CatalogDemo $demo, string $language = Wording::DEFAULT): array
     {
-        return ['Izašao je novi', $demo->phrase()];
+        return [Wording::get($language, 'catalog.title'), Wording::get($language, 'catalog.title_chain', self::names($demo))];
     }
 
     /**
      * "Vrijedi od 7. 10. do 13. 10." — the dates the source gave, the year only when it is not this one.
      */
-    public static function validity(CatalogDemo $demo): string
+    public static function validity(CatalogDemo $demo, string $language = Wording::DEFAULT): string
     {
         $from = $demo->validFrom;
         $to = $demo->validTo;
         $sameYear = $from->year === $to->year;
 
-        return sprintf(
-            'Vrijedi od %s do %s',
-            $from->format('j. n.').($sameYear ? '' : ' '.$from->year.'.'),
-            $to->format('j. n. Y').'.',
-        );
+        // Croatian spaces its dates and closes the year with a dot ("7. 10. 2026."); German does neither ("7.10.2026").
+        [$from, $to] = Wording::language($language) === 'hr'
+            ? [$from->format('j. n.').($sameYear ? '' : ' '.$from->year.'.'), $to->format('j. n. Y').'.']
+            : [$from->format('j.n.').($sameYear ? '' : $from->year), $to->format('j.n.Y')];
+
+        return Wording::get($language, 'catalog.validity', ['from' => $from, 'to' => $to]);
     }
 
     public static function caption(Platform $platform, ContentItem $item, Brand $brand, CatalogDemo $demo, string $where = self::WHERE_COMMENT): string
     {
-        $cta = mb_trim((string) data_get($brand->voice, 'cta', 'Preuzmi '.$brand->name));
-        $headline = '🛒 Izašao je novi '.$demo->phrase();
+        $language = $brand->languageCode();
 
         $sections = [
-            $headline,
-            self::validity($demo).' Prelistaj ga i dodaj proizvod na svoju listu dodirom na letak.',
+            '🛒 '.Wording::get($language, 'catalog.headline', self::names($demo)),
+            self::validity($demo, $language).' '.Wording::get($language, 'catalog.how'),
             // Never a link here: on Facebook it is the first comment, on the others it is not clickable at all.
-            '👇 '.self::sentence($cta === '' ? 'Preuzmi '.$brand->name : $cta).' '.self::linkSentence($where),
+            '👇 '.self::sentence(self::cta($brand)).' '.self::linkSentence($where, $language),
         ];
 
         $tags = self::hashtags($item, $brand);
@@ -126,9 +148,7 @@ final class CatalogCopy
      */
     public static function comment(CatalogDemo $demo, string $url, Brand $brand): string
     {
-        $cta = mb_trim((string) data_get($brand->voice, 'cta', ''));
-
-        return '👉 '.($cta === '' ? 'Preuzmi '.$brand->name : $cta).': '.$url;
+        return '👉 '.self::cta($brand).': '.$url;
     }
 
     /**
@@ -168,6 +188,16 @@ final class CatalogCopy
         }
 
         return array_keys($tags);
+    }
+
+    /**
+     * What the sentences name the catalog by: the Croatian phrase ("Konzumov katalog") and the chain's own name.
+     *
+     * @return array{phrase: string, chain: string}
+     */
+    private static function names(CatalogDemo $demo): array
+    {
+        return ['phrase' => $demo->phrase(), 'chain' => $demo->chainName];
     }
 
     private static function sentence(string $text): string

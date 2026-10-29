@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="hr">
+<html lang="{{ $brand['language'] ?? 'hr' }}">
 <head>
 <meta charset="utf-8">
 <style>

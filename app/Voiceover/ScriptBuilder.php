@@ -10,6 +10,7 @@ use App\Models\Brand;
 use App\Models\ContentItem;
 use App\Rendering\Scene;
 use App\Rendering\TemplateData;
+use App\Support\Wording;
 use Illuminate\Support\Collection;
 
 /**
@@ -19,7 +20,8 @@ use Illuminate\Support\Collection;
  * every figure comes from the item's own price and facts (through Highlights, the code that also
  * decides what the hook slide shouts) and the wording around it is fixed. Nothing is left to a model's
  * memory of what a loaf of bread costs. The result is written text — digits and symbols — that
- * SpokenCroatian turns into speech.
+ * SpokenCroatian (or SpokenGerman, for a German brand) turns into speech. The glue between the item's words is the
+ * brand's language (Wording); the item's own words are the source's.
  *
  * A slide is spoken over by what it shows, no more: the hook says the product and the figure, the card
  * adds what the hook left out (the discount, the validity, the employer), the end card says what the
@@ -42,16 +44,17 @@ final class ScriptBuilder
     {
         $withHook = array_any($scenes, fn (Scene $scene): bool => $scene->role === Scene::HOOK);
         $sharedShop = $this->sharedShop($items);
+        $language = $brand->languageCode();
 
         return new Script(array_map(
             fn (Scene $scene): ScriptLine => new ScriptLine($scene->role, $this->limit(match ($scene->role) {
-                Scene::COVER => $this->cover($items, $headline),
+                Scene::COVER => $this->cover($items, $headline, $language),
                 Scene::CLOSING => $this->closing($brand),
-                Scene::HOOK => $scene->item === null ? '' : $this->headline($scene->item, showShop: true),
+                Scene::HOOK => $scene->item === null ? '' : $this->headline($scene->item, $language, showShop: true),
                 default => $scene->item === null
                     ? ''
                     // After a hook a card adds to it; with none (a roundup, one plain slide) it has to say it all.
-                    : ($withHook ? $this->details($scene->item) : $this->headline($scene->item, showShop: ! $sharedShop, discount: true)),
+                    : ($withHook ? $this->details($scene->item, $language) : $this->headline($scene->item, $language, showShop: ! $sharedShop, discount: true)),
             })),
             $scenes,
         ));
@@ -100,7 +103,7 @@ final class ScriptBuilder
     /**
      * @param  Collection<int, ContentItem>  $items
      */
-    private function cover(Collection $items, ?string $headline): string
+    private function cover(Collection $items, ?string $headline, string $language): string
     {
         $parts = [$this->sentence((string) $headline)];
 
@@ -108,7 +111,7 @@ final class ScriptBuilder
         $deepest = (int) $items->map(fn (ContentItem $item): int => (int) (($item->price ?? [])['discount_pct'] ?? 0))->max();
 
         if ($deepest > 0) {
-            $parts[] = "Popusti do {$deepest} %.";
+            $parts[] = Wording::get($language, 'voice.discounts_up_to', ['percent' => $deepest]);
         }
 
         return implode(' ', array_filter($parts));
@@ -117,66 +120,68 @@ final class ScriptBuilder
     /**
      * The line a viewer decides on: what it is and the figure beside it.
      */
-    private function headline(ContentItem $item, bool $showShop, bool $discount = false): string
+    private function headline(ContentItem $item, string $language, bool $showShop, bool $discount = false): string
     {
         return match ($item->kind) {
-            ContentKind::Deal => $this->dealHeadline($item, $showShop, $discount),
-            ContentKind::Job => $this->jobHeadline($item),
-            ContentKind::Comparison => $this->comparisonHeadline($item),
-            default => $this->genericHeadline($item),
+            ContentKind::Deal => $this->dealHeadline($item, $language, $showShop, $discount),
+            ContentKind::Job => $this->jobHeadline($item, $language),
+            ContentKind::Comparison => $this->comparisonHeadline($item, $language),
+            default => $this->genericHeadline($item, $language),
         };
     }
 
     /**
      * What a card adds to the hook the viewer has just seen.
      */
-    private function details(ContentItem $item): string
+    private function details(ContentItem $item, string $language): string
     {
         return match ($item->kind) {
-            ContentKind::Deal => $this->dealDetails($item),
-            ContentKind::Job => $this->jobDetails($item),
-            ContentKind::Comparison => $this->comparisonDetails($item),
+            ContentKind::Deal => $this->dealDetails($item, $language),
+            ContentKind::Job => $this->jobDetails($item, $language),
+            ContentKind::Comparison => $this->comparisonDetails($item, $language),
             default => $this->genericDetails($item),
         };
     }
 
-    private function dealHeadline(ContentItem $item, bool $showShop, bool $discount): string
+    private function dealHeadline(ContentItem $item, string $language, bool $showShop, bool $discount): string
     {
-        $title = $this->title($item->title);
-        // The chain's name is left as it stands: after "u trgovini" a name needs no case of its own.
-        $shop = $showShop && filled($item->subtitle) ? ' u trgovini '.mb_trim((string) $item->subtitle) : '';
+        $title = $this->title($item->title, $language);
+        // The chain's name is left as it stands: after "u trgovini" (or "bei") a name needs no case of its own.
+        $shop = $showShop && filled($item->subtitle) ? ' '.Wording::get($language, 'voice.in_shop', ['shop' => mb_trim((string) $item->subtitle)]) : '';
         $figure = Highlights::figure($item)['value'] ?? null;
 
         $line = match (true) {
             $figure === null => "{$title}{$shop}.",
             // "za 1,49 €" reads as a price; a figure the site worded itself ("od 1,49 €/kg") stands alone.
-            preg_match('/^\d/u', $figure) === 1 => "{$title}{$shop} za {$figure}.",
+            preg_match('/^\d/u', $figure) === 1 => "{$title}{$shop} ".Wording::get($language, 'voice.for_price', ['figure' => $figure]).'.',
             default => "{$title}{$shop}. {$this->sentence($figure)}",
         };
 
-        return $discount && ($percent = $this->discount($item)) !== null ? "{$line} Popust {$percent} %." : $line;
+        return $discount && ($percent = $this->discount($item)) !== null
+            ? $line.' '.Wording::get($language, 'voice.discount', ['percent' => $percent])
+            : $line;
     }
 
-    private function dealDetails(ContentItem $item): string
+    private function dealDetails(ContentItem $item, string $language): string
     {
         $parts = [];
 
         if (($percent = $this->discount($item)) !== null) {
-            $parts[] = "Popust {$percent} %.";
+            $parts[] = Wording::get($language, 'voice.discount', ['percent' => $percent]);
         }
 
-        if (($validity = $this->validity($item)) !== null) {
+        if (($validity = $this->validity($item, $language)) !== null) {
             $parts[] = $validity;
         }
 
         return implode(' ', $parts);
     }
 
-    private function jobHeadline(ContentItem $item): string
+    private function jobHeadline(ContentItem $item, string $language): string
     {
         // Exactly what the job slide shows: the title, the pay under its own label, the place.
         $job = TemplateData::jobSummary($item);
-        $parts = [$this->sentence($this->title($job['title']))];
+        $parts = [$this->sentence($this->title($job['title'], $language))];
 
         if ($job['pay'] !== null) {
             $parts[] = mb_ucfirst(mb_strtolower($job['pay_label'])).': '.$this->sentence((string) $job['pay']);
@@ -189,7 +194,7 @@ final class ScriptBuilder
         return implode(' ', $parts);
     }
 
-    private function jobDetails(ContentItem $item): string
+    private function jobDetails(ContentItem $item, string $language): string
     {
         $parts = [];
 
@@ -203,39 +208,41 @@ final class ScriptBuilder
         )));
 
         if ($badges !== []) {
-            $parts[] = $this->sentence(mb_ucfirst($this->enumerate($badges)));
+            $parts[] = $this->sentence(mb_ucfirst($this->enumerate($badges, $language)));
         }
 
         return implode(' ', $parts);
     }
 
-    private function comparisonHeadline(ContentItem $item): string
+    private function comparisonHeadline(ContentItem $item, string $language): string
     {
         $figure = Highlights::figure($item);
-        $line = $this->sentence($this->title($item->title));
+        $line = $this->sentence($this->title($item->title, $language));
 
         if ($figure === null) {
             return $line;
         }
 
-        $lead = preg_match('/(?<![\p{L}\p{N}])najjeftinije(?![\p{L}\p{N}])/iu', $line) === 1
-            ? 'U trgovini'
-            : 'Najjeftinije:';
+        // A title that already asks where it is cheapest is answered with the shop; any other is told which is.
+        $cheapest = preg_quote(Wording::get($language, 'voice.cheapest_word'), '/');
+        $lead = preg_match('/(?<![\p{L}\p{N}])'.$cheapest.'(?![\p{L}\p{N}])/iu', $line) === 1
+            ? Wording::get($language, 'voice.at_shop')
+            : Wording::get($language, 'voice.cheapest');
 
         // The cheapest row and whose it is: a price per kilogram with no shop beside it answers nothing.
         return "{$line} {$lead} {$figure['label']}, {$figure['value']}.";
     }
 
-    private function comparisonDetails(ContentItem $item): string
+    private function comparisonDetails(ContentItem $item, string $language): string
     {
         $points = Highlights::points($item, 2);
 
-        return $points === [] ? '' : 'Zatim '.implode(', ', $points).'.';
+        return $points === [] ? '' : Wording::get($language, 'voice.then').' '.implode(', ', $points).'.';
     }
 
-    private function genericHeadline(ContentItem $item): string
+    private function genericHeadline(ContentItem $item, string $language): string
     {
-        $parts = [$this->sentence($this->title($item->title))];
+        $parts = [$this->sentence($this->title($item->title, $language))];
 
         foreach (Highlights::points($item, 2) as $point) {
             $parts[] = $this->sentence($point);
@@ -255,9 +262,9 @@ final class ScriptBuilder
      * "Vrijedi do 30.09.2026." — end-of-day expiries arrive as 23:59:59Z, and the slide prints them in
      * UTC too, so the voice and the slide name the same day.
      */
-    private function validity(ContentItem $item): ?string
+    private function validity(ContentItem $item, string $language): ?string
     {
-        return $item->expires_at === null ? null : 'Vrijedi do '.$item->expires_at->utc()->format('d.m.Y').'.';
+        return $item->expires_at === null ? null : Wording::get($language, 'voice.valid_until', ['date' => $item->expires_at->utc()->format('d.m.Y')]);
     }
 
     private function discount(ContentItem $item): ?int
@@ -283,7 +290,7 @@ final class ScriptBuilder
     /**
      * A source title shortened at a word, for a slide's few seconds; the slide clamps it too.
      */
-    private function title(string $title): string
+    private function title(string $title, string $language): string
     {
         $title = mb_trim(preg_replace('/\s+/u', ' ', $title) ?? $title);
 
@@ -300,8 +307,8 @@ final class ScriptBuilder
 
         $cut = mb_rtrim($cut, ' ,;:-–—');
 
-        // A cut that ends on "u" or "s" leaves the sentence hanging on a word with nothing after it.
-        while (preg_match('/\s(?:s|sa|u|i|a|o|na|za|od|do|uz|iz|po|te|ili|bez|kao)$/iu', $cut) === 1) {
+        // A cut that ends on "u" or "s" ("mit", "und") leaves the sentence hanging on a word with nothing after it.
+        while (preg_match('/\s(?:'.Wording::get($language, 'voice.dangling').')$/iu', $cut) === 1) {
             $cut = mb_rtrim(mb_substr($cut, 0, (int) mb_strrpos($cut, ' ')), ' ,;:-–—');
         }
 
@@ -313,7 +320,7 @@ final class ScriptBuilder
      *
      * @param  list<string>  $words
      */
-    private function enumerate(array $words): string
+    private function enumerate(array $words, string $language): string
     {
         $words = array_map(fn (string $word, int $index): string => $index === 0 ? $word : mb_lcfirst($word), $words, array_keys($words));
 
@@ -323,7 +330,7 @@ final class ScriptBuilder
 
         $last = array_pop($words);
 
-        return implode(', ', $words).' i '.$last;
+        return implode(', ', $words).' '.Wording::get($language, 'voice.and').' '.$last;
     }
 
     private function sentence(string $text): string

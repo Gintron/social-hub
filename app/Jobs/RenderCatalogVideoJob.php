@@ -122,8 +122,7 @@ final class RenderCatalogVideoJob implements ShouldQueue
         }
 
         $brand = $draft->brand;
-        $cta = mb_trim((string) data_get($brand->voice, 'cta', ''));
-        $lines = CatalogCopy::voiceLines($demo, $this->where, $cta === '' ? 'Preuzmi '.$brand->name : $cta);
+        $lines = CatalogCopy::voiceLines($demo, $this->where, CatalogCopy::cta($brand), $brand->languageCode());
 
         // Four sentences, four stretches of the video: the news, what to do, the call, where the link is. The call and the
         // link are the brand's own words, so they are held to the rules of a closing line, not checked against an offer.

@@ -183,6 +183,23 @@ final class CaptionBuilderTest extends TestCase
     /**
      * @param  array<string, mixed>  $overrides
      */
+    public function test_a_german_brand_gets_german_words_around_the_items_own(): void
+    {
+        $builder = new CaptionBuilder;
+        $brand = new Brand(['name' => 'Listo', 'site_url' => 'https://uselisto.com/at', 'language' => 'de', 'voice' => ['hashtags' => ['angebote']]]);
+        $item = $this->item(['kind' => ContentKind::Deal, 'cta' => ['label' => 'Im Prospekt ansehen', 'url' => 'https://uselisto.com/at/prospekte/billa/1']]);
+
+        $page = $builder->facebookPage($item, $brand);
+        $instagram = $builder->instagram($item, $brand);
+
+        $this->assertStringContainsString(CaptionBuilder::bold('Im Prospekt ansehen').' im ersten Kommentar', $page);
+        $this->assertStringContainsString('🔗 Link in der Bio → ', $instagram);
+        $this->assertStringContainsString('📤 Schick es jemandem, der es brauchen kann', $instagram);
+        foreach ([$page, $instagram, $builder->tiktok($item, $brand)] as $caption) {
+            $this->assertDoesNotMatchRegularExpression('/u prvom komentaru|Link u biu|Pošalji prijatelju/u', $caption);
+        }
+    }
+
     private function item(array $overrides = []): ContentItem
     {
         return new ContentItem(array_replace([

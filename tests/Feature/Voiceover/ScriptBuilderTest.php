@@ -283,6 +283,46 @@ final class ScriptBuilderTest extends TestCase
         $this->assertSame('Kruh bijeli 500 g u trgovini Konzum za 1,49 €.', $script->lines[0]->text);
     }
 
+    public function test_a_german_brand_says_the_glue_in_german(): void
+    {
+        $brand = Brand::factory()->create([
+            'slug' => 'uselisto-at',
+            'name' => 'Listo',
+            'language' => 'de',
+            'voice' => ['cta' => 'Hol dir Listo', 'activation' => 'Füg dein erstes Produkt aus dem Prospekt hinzu.'],
+        ]);
+        $deal = $this->item(ContentKind::Deal, [
+            'title' => 'NÖM Vollmilch 1 l',
+            'subtitle' => 'Billa',
+            'price' => ['current_cents' => 119, 'old_cents' => 169, 'discount_pct' => 30, 'currency' => 'EUR', 'unit_label' => null],
+            'facts' => [['label' => 'NIEDRIGSTER PREIS (30 TAGE)', 'value' => '1,49 €']],
+            'badges' => ['−30 %'],
+            'expires_at' => '2026-10-25T23:59:59Z',
+        ]);
+
+        $this->assertSame([
+            'NÖM Vollmilch 1 l bei Billa um 1,19 €.',
+            'Minus 30 %. Gültig bis zum 25.10.2026.',
+            'Hol dir Listo. Füg dein erstes Produkt aus dem Prospekt hinzu.',
+        ], $this->script($this->draft($deal, brand: $brand))->texts());
+
+        $comparison = $this->item(ContentKind::Comparison, [
+            'title' => 'Wo ist Milch diese Woche am günstigsten?',
+            'subtitle' => null,
+            'price' => null,
+            'facts' => [
+                ['label' => 'Hofer', 'value' => '0,99 €/l'],
+                ['label' => 'Billa', 'value' => '1,19 €/l'],
+                ['label' => 'Spar Österreich', 'value' => '1,39 €/l'],
+            ],
+            'badges' => [],
+        ]);
+        $lines = $this->script($this->draft($comparison, brand: $brand))->texts();
+
+        $this->assertSame('Wo ist Milch diese Woche am günstigsten? Bei Hofer, 0,99 €/l.', $lines[0]);
+        $this->assertSame('Dann Billa 1,19 €/l, Spar Österreich 1,39 €/l.', $lines[1]);
+    }
+
     private function script(PostDraft $draft): \App\Voiceover\Script
     {
         return app(ScriptBuilder::class)->build(

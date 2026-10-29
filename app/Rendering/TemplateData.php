@@ -8,6 +8,7 @@ use App\Drafting\Highlights;
 use App\Enums\ContentKind;
 use App\Models\Brand;
 use App\Models\ContentItem;
+use App\Support\Wording;
 
 /**
  * Builds the view-model a kind template receives: item fields plus inlined images and brand theme.
@@ -223,7 +224,7 @@ final class TemplateData
             'emoji' => '📌',
             'kicker' => $kicker,
             'title' => $headline,
-            'subtitle' => $items->count().' '.self::plural($items->count(), 'ponuda', 'ponude', 'ponuda'),
+            'subtitle' => $items->count().' '.Wording::plural($brand, $items->count(), 'offers'),
             'facts' => [],
             'badges' => [],
             'price' => null,
@@ -233,7 +234,7 @@ final class TemplateData
             // A roundup speaks for one chain only when every item in it does.
             'provider' => $this->sharedProvider($items),
             'expires_at' => null,
-            'badge' => $deepest > 0 ? "do −{$deepest} %" : null,
+            'badge' => $deepest > 0 ? Wording::get($brand, 'digest.badge', ['percent' => $deepest]) : null,
             'offer_cards' => $items->every(fn (ContentItem $item): bool => $item->kind === ContentKind::Deal) ? $offers : [],
             'job_cards' => $items->every(fn (ContentItem $item): bool => $item->kind === ContentKind::Job)
                 ? $items->take(3)->map(fn (ContentItem $item): array => self::jobDisplay($item, Highlights::figure($item)))->values()->all()
@@ -272,6 +273,13 @@ final class TemplateData
             'cta_note' => filled(data_get($brand->voice, 'cta_note')) ? (string) data_get($brand->voice, 'cta_note') : null,
             'activation' => filled(data_get($brand->voice, 'activation')) ? (string) data_get($brand->voice, 'activation') : null,
             'video_style' => data_get($brand->voice, 'video_style'),
+            // The hub's own words on the slides (the item's words are the source's), and the page's language for hyphenation.
+            'language' => $brand->languageCode(),
+            'words' => [
+                'cheapest' => Wording::get($brand, 'template.cheapest'),
+                'deal_eyebrow' => Wording::get($brand, 'template.deal_eyebrow'),
+                'share' => Wording::get($brand, 'template.share'),
+            ],
             // A mark on a transparent background goes white on the primary colour; a filled one
             // (a square with a tick) would become a blank block, so it keeps its colours.
             'logo_filter' => ($colors['logo_footer'] ?? 'white') === 'original' ? 'border-radius: 14px;' : 'filter: brightness(0) invert(1);',

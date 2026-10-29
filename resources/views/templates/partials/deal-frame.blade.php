@@ -32,7 +32,7 @@
   <div class="deal__in">
     @if($hasProvider)
       <div class="deal-top">
-        <div class="eyebrow">AKCIJA U TRGOVINI</div>
+        <div class="eyebrow">{{ $brand['words']['deal_eyebrow'] ?? 'AKCIJA U TRGOVINI' }}</div>
         @include('templates.partials.provider', ['name' => true, 'class' => ''])
       </div>
     @endif

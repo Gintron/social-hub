@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Sources;
 
 use App\Enums\AuthType;
+use App\Models\Brand;
 use App\Models\Source;
 use App\Sources\Contracts\ContentSource;
 use App\Sources\Exceptions\FeedValidationException;
@@ -33,6 +34,7 @@ final class SocialFeedV1Source implements ContentSource
 
         for ($page = 0; $page < $maxPages; $page++) {
             $payload = $this->page($source, $since, $cursor, $limit);
+            $this->assertOwnFeed($source, (string) $payload['brand']);
 
             foreach ($payload['items'] as $item) {
                 yield ContentItemData::fromFeedItem($item);
@@ -93,6 +95,28 @@ final class SocialFeedV1Source implements ContentSource
             samples: $items,
             warnings: array_values(array_unique($warnings)),
             nextCursor: $payload['next_cursor'] ?? null,
+        );
+    }
+
+    /**
+     * A feed that says it is another brand's of this hub is not imported. One site can serve several markets from one
+     * address (Listo's `?country=hr|at`, reported as `uselisto` and `uselisto-at`), and a source with the wrong query
+     * would put one market's offers on the other market's channels, in the other market's language. A brand name the
+     * hub does not know is only a warning in the source test: a site may call itself differently than its brand here.
+     *
+     * @throws SourceException
+     */
+    private function assertOwnFeed(Source $source, string $feedBrand): void
+    {
+        $own = $source->brand?->slug;
+
+        if ($own === null || $feedBrand === $own || ! Brand::query()->where('slug', $feedBrand)->exists()) {
+            return;
+        }
+
+        throw new SourceException(
+            "Source {$source->name}: the feed belongs to brand '{$feedBrand}', the source to brand '{$own}'; nothing was imported. "
+            .'Check the source\'s filters (e.g. "query.country").'
         );
     }
 

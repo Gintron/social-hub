@@ -19,6 +19,7 @@ use App\Models\PostVariant;
 use App\Models\SocialAccount;
 use App\Publishing\LinkPreflight;
 use App\Publishing\RestrictedGoodsCheck;
+use App\Support\Wording;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
@@ -106,7 +107,7 @@ final class DigestBuilder
             throw new InvalidArgumentException("Nema dovoljno svježih stavki vrste {$kind->value}{$scope} za brend {$brand->name} (pronađeno {$items->count()}, treba barem 2).");
         }
 
-        $headline = str_replace('{count}', (string) $items->count(), $headline ?? $this->defaultHeadline($kind, $items->count()));
+        $headline = str_replace('{count}', (string) $items->count(), $headline ?? $this->defaultHeadline($kind, $items->count(), $brand));
         $kicker ??= $brand->name;
 
         $draft = DB::transaction(function () use ($brand, $items, $accounts, $headline, $actor, $actorId, $scheduledAt, $status, $channelSettings, $formats, $series): PostDraft {
@@ -311,14 +312,14 @@ final class DigestBuilder
         return in_array($format, $slides, true) ? $format : ($slides[0] ?? ContentFormat::Carousel);
     }
 
-    private function defaultHeadline(ContentKind $kind, int $count): string
+    private function defaultHeadline(ContentKind $kind, int $count, Brand $brand): string
     {
-        return match ($kind) {
-            ContentKind::Deal => "Top {$count} akcija ovog tjedna",
-            ContentKind::Job => "Top {$count} oglasa ovog tjedna",
-            ContentKind::Event => "{$count} događaja koje ne propuštaš",
-            ContentKind::Comparison => "{$count} usporedbi cijena",
-            default => "Izdvojeno: {$count} novosti",
-        };
+        return Wording::get($brand, match ($kind) {
+            ContentKind::Deal => 'digest.deal',
+            ContentKind::Job => 'digest.job',
+            ContentKind::Event => 'digest.event',
+            ContentKind::Comparison => 'digest.comparison',
+            default => 'digest.other',
+        }, ['count' => $count]);
     }
 }

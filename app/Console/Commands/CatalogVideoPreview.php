@@ -27,6 +27,7 @@ final class CatalogVideoPreview extends Command
         {--fixture= : A Social Feed v1 file with a kind=catalog item (tests/Fixtures/catalog-feed-*.json)}
         {--item= : Id of a kind=catalog item in the hub}
         {--brand=uselisto : Brand slug (an unsaved Listo stands in when there is none)}
+        {--language=hr : Language of the stand-in Listo: hr or de}
         {--at=1.0,2.4 : Seconds to draw, comma separated}
         {--where=comment : Where the link is: comment, bio or description}
         {--out= : Folder for the pictures (default storage/app/catalog-stills)}';
@@ -39,10 +40,10 @@ final class CatalogVideoPreview extends Command
             $item = $this->item();
             $demo = CatalogDemo::fromItem($item);
             $brand = Brand::query()->where('slug', (string) $this->option('brand'))->first()
-                ?? new Brand(['slug' => 'uselisto', 'name' => 'Listo', 'site_url' => 'https://uselisto.com', 'voice' => ['cta' => 'Preuzmi Listo']]);
+                ?? new Brand(['slug' => 'uselisto', 'name' => 'Listo', 'site_url' => 'https://uselisto.com', 'language' => (string) $this->option('language'), 'voice' => []]);
 
             $where = CatalogCopy::knownPlace($this->option('where')) ?? CatalogCopy::WHERE_COMMENT;
-            $plan = CatalogVideoPlan::build($demo, CatalogCopy::voiceLines($demo, $where, (string) data_get($brand->voice, 'cta', 'Preuzmi Listo')));
+            $plan = CatalogVideoPlan::build($demo, CatalogCopy::voiceLines($demo, $where, CatalogCopy::cta($brand), $brand->languageCode()));
 
             $work = storage_path('app/catalog-stills/work');
             File::deleteDirectory($work);

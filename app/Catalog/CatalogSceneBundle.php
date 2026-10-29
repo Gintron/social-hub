@@ -8,6 +8,7 @@ use App\Models\Brand;
 use App\Models\ContentItem;
 use App\Rendering\RemoteImageCache;
 use App\Rendering\TemplateData;
+use App\Support\Wording;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
 
@@ -71,8 +72,9 @@ final class CatalogSceneBundle
         $logo = $this->fetch($item->imageUrl('logo'), $dir, 'chain-logo');
         $icon = $this->icon($dir);
 
-        $cta = mb_trim((string) data_get($brand->voice, 'cta', ''));
         $theme = (array) config('catalog_video.theme');
+        $language = $brand->languageCode();
+        $words = fn (string $key): string => Wording::get($language, $key);
 
         $data = [
             'fps' => CatalogVideoPlan::FPS,
@@ -83,16 +85,24 @@ final class CatalogSceneBundle
                 'icon' => $icon,
             ],
             'chain' => ['name' => $demo->chainName, 'slug' => $demo->chain, 'logo' => $logo],
-            'title' => CatalogCopy::title($demo),
-            'validity' => CatalogCopy::validity($demo),
-            'titles' => ['tap' => ['Dodirni proizvod.', 'Dodan je na listu.'], 'list' => ['Tvoja lista', 'je spremna.']],
+            'title' => CatalogCopy::title($demo, $language),
+            'validity' => CatalogCopy::validity($demo, $language),
+            'titles' => ['tap' => [$words('catalog.tap'), $words('catalog.tapped')], 'list' => [$words('catalog.list'), $words('catalog.list_ready')]],
+            // The app's own labels in the copy of its screen, as the app shows them in this language (app/locales).
+            'language' => $language,
+            'ui' => [
+                'lists' => $words('app.lists'), 'mine' => $words('app.mine'), 'shared' => $words('app.shared'),
+                'share' => $words('app.share'), 'toBuy' => $words('app.to_buy'), 'add' => $words('app.add'),
+                'total' => $words('app.total'), 'catalogs' => $words('app.catalogs'), 'search' => $words('app.search'),
+                'settings' => $words('app.settings'), 'added' => $words('app.added'), 'product' => $words('app.product'),
+            ],
             'pageCount' => $demo->pageCount,
             'pages' => $pages,
             'taps' => $taps,
             'totalCents' => $demo->totalCents,
             'currency' => $demo->currency,
             'locale' => $demo->locale,
-            'cta' => ['headline' => $cta === '' ? 'Preuzmi '.$brand->name : $cta, 'link' => CatalogCopy::linkSentence($where)],
+            'cta' => ['headline' => CatalogCopy::cta($brand), 'link' => CatalogCopy::linkSentence($where, $language)],
             'timeline' => $timeline,
         ];
 

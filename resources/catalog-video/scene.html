@@ -40,25 +40,25 @@
     </div>
     <div id="lists" class="screen">
       <div id="lists-scroll">
-        <div id="lists-header"><div id="lists-title">Liste</div><div class="add-button">＋</div></div>
-        <div id="lists-tabs"><div class="tab active">Moje liste</div><div class="tab">Podijeljeno</div></div>
+        <div id="lists-header"><div id="lists-title" data-ui="lists">Liste</div><div class="add-button">＋</div></div>
+        <div id="lists-tabs"><div class="tab active" data-ui="mine">Moje liste</div><div class="tab" data-ui="shared">Podijeljeno</div></div>
         <div id="chain-list" class="section">
           <div class="section-head">
             <div class="head-title"><div id="chain-mark"></div><div id="list-chain-name"></div></div>
-            <div class="head-actions"><div class="share">Podijeli</div><div class="kebab"><i class="ion">&#xf2ce;</i></div></div>
+            <div class="head-actions"><div class="share" data-ui="share">Podijeli</div><div class="kebab"><i class="ion">&#xf2ce;</i></div></div>
           </div>
-          <div class="group-label">Za kupiti</div>
+          <div class="group-label" data-ui="toBuy">Za kupiti</div>
           <div id="rows"></div>
-          <div class="add-row"><div class="add-mark">＋</div><div class="add-text">Dopiši</div></div>
-          <div class="total-row"><div class="total-label">Ukupno</div><div id="total-value"></div></div>
+          <div class="add-row"><div class="add-mark">＋</div><div class="add-text" data-ui="add">Dopiši</div></div>
+          <div class="total-row"><div class="total-label" data-ui="total">Ukupno</div><div id="total-value"></div></div>
           <div id="total-ring"></div>
         </div>
       </div>
       <div id="tabbar">
-        <div class="tab-item"><div class="tab-icon"><i class="ion">&#xf2b4;</i></div><div class="tab-label">Katalozi</div></div>
-        <div class="tab-item"><div class="tab-icon"><i class="ion">&#xf563;</i></div><div class="tab-label">Traži</div></div>
-        <div class="tab-item active"><div class="tab-icon"><i class="ion check">&#xf21d;</i></div><div class="tab-label">Liste</div></div>
-        <div class="tab-item"><div class="tab-icon"><i class="ion">&#xf56c;</i></div><div class="tab-label">Postavke</div></div>
+        <div class="tab-item"><div class="tab-icon"><i class="ion">&#xf2b4;</i></div><div class="tab-label" data-ui="catalogs">Katalozi</div></div>
+        <div class="tab-item"><div class="tab-icon"><i class="ion">&#xf563;</i></div><div class="tab-label" data-ui="search">Traži</div></div>
+        <div class="tab-item active"><div class="tab-icon"><i class="ion check">&#xf21d;</i></div><div class="tab-label" data-ui="lists">Liste</div></div>
+        <div class="tab-item"><div class="tab-icon"><i class="ion">&#xf56c;</i></div><div class="tab-label" data-ui="settings">Postavke</div></div>
       </div>
     </div>
     <div id="statusbar">
@@ -71,7 +71,7 @@
       </div>
     </div>
   </div>
-  <div id="toast"><div class="toast-badge"><svg viewBox="0 0 14 14" width="14" height="14"><polyline points="3,7.4 6,10.2 11,4.2" fill="none" stroke="#FFFDF8" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="toast-text"><div class="toast-title">Dodano u listu</div><div class="toast-detail"></div></div></div>
+  <div id="toast"><div class="toast-badge"><svg viewBox="0 0 14 14" width="14" height="14"><polyline points="3,7.4 6,10.2 11,4.2" fill="none" stroke="#FFFDF8" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="toast-text"><div class="toast-title" data-ui="added">Dodano u listu</div><div class="toast-detail"></div></div></div>
   </div>
 
   <div id="caption"><span></span></div>

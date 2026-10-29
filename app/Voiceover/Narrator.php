@@ -24,6 +24,7 @@ final class Narrator
         private readonly ScriptBuilder $builder,
         private readonly ScriptGuard $guard,
         private readonly SpokenCroatian $spoken,
+        private readonly SpokenGerman $german,
         private readonly Phonetizer $phonetizer,
         private readonly Synthesizer $synthesizer,
     ) {}
@@ -104,7 +105,10 @@ final class Narrator
             throw new VoiceoverException('Tekst voice-overa nije prošao provjeru: '.implode(' ', $violations), 'script_rejected');
         }
 
-        $spoken = array_map(fn (string $text): string => $this->spoken->speak($text, $settings->pronunciations), $script->texts());
+        // The numbers are said in the brand's language: "1,99 €" is "jedan euro devedeset devet" or "ein Euro neunundneunzig".
+        $croatian = $brand->languageCode() === 'hr';
+        $speller = $croatian ? $this->spoken : $this->german;
+        $spoken = array_map(fn (string $text): string => $speller->speak($text, $settings->pronunciations), $script->texts());
 
         if (array_all($spoken, fn (string $text): bool => $text === '')) {
             return null;
@@ -114,7 +118,8 @@ final class Narrator
         // the list says gets no IPA). When a model is asked for more (an experiment), it is asked for the whole video at once: one
         // request, and a model that sees the roundup writes the same name the same way on every slide. Nothing is spoken (or paid
         // for) until this has answered.
-        $spoken = $this->phonetizer->prepare($spoken, $settings->ipaStyle(), $settings->words, $settings->autoIpa(), SpokenCroatian::pronounced($settings->pronunciations));
+        // A model writing IPA on its own is an experiment for Croatian only; the brand's own list applies in any language.
+        $spoken = $this->phonetizer->prepare($spoken, $settings->ipaStyle(), $settings->words, $croatian && $settings->autoIpa(), SpokenCroatian::pronounced($settings->pronunciations));
 
         $clips = [];
 

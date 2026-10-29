@@ -62,7 +62,7 @@
         <div class="cmp-win">
           <div class="cmp-win__top">
             <div class="cmp-win__who">
-              <div class="cmp-ribbon">NAJJEFTINIJE</div>
+              <div class="cmp-ribbon">{{ $brand['words']['cheapest'] ?? 'NAJJEFTINIJE' }}</div>
               <div class="cmp-pl cmp-pl--md">@include('templates.partials.provider', ['item' => ['provider' => $first['provider']], 'name' => true])</div>
             </div>
             @if($hero)

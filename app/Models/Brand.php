@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Drafting\DigestSeries;
 use App\Persona\Persona;
+use App\Support\Wording;
 use App\Voiceover\VoiceoverSettings;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,6 +32,7 @@ use Illuminate\Support\Facades\Storage;
  * @property array<array-key, array<string, mixed>>|null $digests
  * @property array<string, mixed>|null $persona
  * @property string $timezone
+ * @property string $language
  */
 final class Brand extends Model
 {
@@ -42,7 +44,7 @@ final class Brand extends Model
     public const AUDIO_DISK = 'public';
 
     protected $fillable = [
-        'slug', 'name', 'site_url', 'logo_path', 'colors', 'voice', 'posting_windows', 'daily_post_limit', 'auto_lineup', 'lineup_priority', 'audio_tracks', 'voiceover', 'digests', 'persona', 'timezone',
+        'slug', 'name', 'site_url', 'logo_path', 'colors', 'voice', 'posting_windows', 'daily_post_limit', 'auto_lineup', 'lineup_priority', 'audio_tracks', 'voiceover', 'digests', 'persona', 'timezone', 'language',
     ];
 
     public function sources(): HasMany
@@ -73,6 +75,15 @@ final class Brand extends Model
     public function topicIdeas(): HasMany
     {
         return $this->hasMany(TopicIdea::class);
+    }
+
+    /**
+     * The language the brand's channels speak, one of Wording::LANGUAGES. Anything else (an empty or unknown value)
+     * is Croatian, the language every brand spoke before it had a choice.
+     */
+    public function languageCode(): string
+    {
+        return Wording::language($this->language ?? null);
     }
 
     /**

@@ -42,7 +42,7 @@
     @if(!empty($brand['activation']))
       <div class="activation">{{ $brand['activation'] }}</div>
     @else
-      <div class="share">Spremi objavu i pošalji je prijatelju <span class="emoji">📤</span></div>
+      <div class="share">{{ $brand['words']['share'] ?? 'Spremi objavu i pošalji je prijatelju' }} <span class="emoji">📤</span></div>
     @endif
   </div>
 @endsection

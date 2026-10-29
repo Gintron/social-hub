@@ -217,6 +217,10 @@ Stranica zna što je njezin sadržaj, hub ne mora. Nekoliko primjera preslikavan
    najčešća greška: preglednik je razriješi, ali hub i Meta dohvaćaju sliku sa svojih strojeva.
 4. `updated_at` prisutan i parsabilan.
 5. Prva slika dohvatljiva (HEAD/GET vraća 200 i `image/*`).
+6. `brand` jednak slugu brenda izvora; drugačiji je upozorenje. **Pri sinkronizaciji** feed koji se predstavlja
+   kao *drugi brend ovog huba* odbija se cijeli (ništa se ne uvozi): stranica s više tržišta na istoj adresi
+   (Listo: `?country=hr` → `uselisto`, `?country=at` → `uselisto-at`) javlja brend tržišta, pa izvor s krivim
+   filtrom ne može prenijeti ponude na kanale drugog tržišta.
 
 ## Verzioniranje
 

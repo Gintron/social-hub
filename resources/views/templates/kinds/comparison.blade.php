@@ -54,7 +54,7 @@
         @foreach($rows as $index => $row)
           <div class="row {{ $index === 0 ? 'first' : '' }}">
             @if($index === 0)
-              <div class="row__tag">NAJJEFTINIJE</div>
+              <div class="row__tag">{{ $brand['words']['cheapest'] ?? 'NAJJEFTINIJE' }}</div>
             @endif
             <div class="row__bar" style="width: calc({{ $bars[$index] ?? 100 }}% + 4px);">
               <div class="row__rank">{{ $index + 1 }}.</div>

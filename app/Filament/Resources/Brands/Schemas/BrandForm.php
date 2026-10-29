@@ -10,6 +10,7 @@ use App\Enums\ContentKind;
 use App\Filament\Support\VoiceoverPanel;
 use App\Models\Brand;
 use App\Rendering\VideoRenderer;
+use App\Support\Wording;
 use App\Voiceover\Ipa;
 use App\Voiceover\VoiceoverException;
 use App\Voiceover\VoiceoverSettings;
@@ -56,7 +57,10 @@ final class BrandForm
                                     ->helperText('Isti slug mora vraćati i Social Feed (polje brand).'),
                                 TextInput::make('site_url')->label('Web adresa')->url()->maxLength(255),
                                 Select::make('timezone')->label('Vremenska zona')->required()->default('Europe/Zagreb')
-                                    ->options(['Europe/Zagreb' => 'Europe/Zagreb', 'UTC' => 'UTC', 'Europe/Berlin' => 'Europe/Berlin']),
+                                    ->options(['Europe/Zagreb' => 'Europe/Zagreb', 'Europe/Vienna' => 'Europe/Vienna', 'UTC' => 'UTC', 'Europe/Berlin' => 'Europe/Berlin']),
+                                Select::make('language')->label('Jezik kanala')->required()->default(Wording::DEFAULT)
+                                    ->options(['hr' => 'Hrvatski', 'de' => 'Njemački'])
+                                    ->helperText('Jezik riječi koje hub sam dodaje: opisi, video novog kataloga, glas. Tekst stavke piše izvor.'),
                                 FileUpload::make('logo_path')->label('Logo')->image()->disk('public')->directory('brands')
                                     ->visibility('public')->maxSize(2048)->columnSpanFull(),
                             ])->columns(2),

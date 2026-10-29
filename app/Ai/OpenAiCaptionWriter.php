@@ -7,6 +7,7 @@ namespace App\Ai;
 use App\Ai\Schemas\CaptionSet;
 use App\Models\Brand;
 use App\Models\ContentItem;
+use App\Support\Wording;
 
 /**
  * Captions from OpenAI, held to a JSON schema and a system prompt that carries the brand's voice. The
@@ -49,7 +50,7 @@ final class OpenAiCaptionWriter implements CaptionWriter
 
         $lines = [
             "Pišeš objave za društvene mreže za brend „{$brand->name}\" ({$brand->site_url}).",
-            'Odgovaraš isključivo na hrvatskom jeziku.',
+            Wording::get($brand, 'ai.language'),
             '',
             'TON I STIL',
             '- '.($voice['tone'] ?? 'jasan, prijateljski, bez pretjerivanja i bez marketinškog patosa'),

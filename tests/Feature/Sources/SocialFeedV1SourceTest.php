@@ -8,6 +8,7 @@ use App\Enums\AuthType;
 use App\Models\Brand;
 use App\Models\Source;
 use App\Sources\Exceptions\FeedValidationException;
+use App\Sources\Exceptions\SourceException;
 use App\Sources\Exceptions\SourceRequestException;
 use App\Sources\SocialFeedV1Source;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -216,6 +217,29 @@ final class SocialFeedV1SourceTest extends TestCase
         app(SocialFeedV1Source::class)->test($source);
 
         Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'country=hr'));
+    }
+
+    public function test_a_feed_of_another_brand_of_this_hub_is_not_imported(): void
+    {
+        // Listo answers ?country=at as `uselisto-at`: a source of the Croatian brand with that query must import nothing.
+        Brand::factory()->create(['slug' => 'uselisto-at']);
+        Http::fake([self::URL.'*' => Http::response(FeedPayload::page([FeedPayload::item('deal:1')], brand: 'uselisto-at'))]);
+
+        try {
+            iterator_to_array(app(SocialFeedV1Source::class)->fetch($this->source(), null), false);
+            $this->fail('A feed of another brand was imported.');
+        } catch (SourceException $e) {
+            $this->assertStringContainsString("brand 'uselisto-at'", $e->getMessage());
+        }
+    }
+
+    public function test_a_feed_that_calls_itself_by_a_name_the_hub_does_not_know_is_imported(): void
+    {
+        Http::fake([self::URL.'*' => Http::response(FeedPayload::page([FeedPayload::item('job:1')], brand: 'studentski'))]);
+
+        $items = iterator_to_array(app(SocialFeedV1Source::class)->fetch($this->source(), null), false);
+
+        $this->assertCount(1, $items);
     }
 
     private function source(array $overrides = []): Source

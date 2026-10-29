@@ -64,7 +64,7 @@ final class CatalogVideoRenderer
             throw new RuntimeException("Zvučni zapis ne postoji: {$audioPath}");
         }
 
-        $lines = CatalogCopy::voiceLines($demo, $where, $this->cta($brand));
+        $lines = CatalogCopy::voiceLines($demo, $where, CatalogCopy::cta($brand), $brand->languageCode());
 
         if ($narration !== null && count($narration->clips) !== count($lines)) {
             throw new RuntimeException('Voice-over treba jedan redak po rečenici videa ('.count($lines).').');
@@ -396,12 +396,5 @@ final class CatalogVideoRenderer
         if (! $process->isSuccessful()) {
             throw new RuntimeException($failure.': '.mb_substr(mb_trim($process->getErrorOutput() ?: $process->getOutput()), 0, 500));
         }
-    }
-
-    private function cta(Brand $brand): string
-    {
-        $cta = mb_trim((string) data_get($brand->voice, 'cta', ''));
-
-        return $cta === '' ? 'Preuzmi '.$brand->name : $cta;
     }
 }

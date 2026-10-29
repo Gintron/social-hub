@@ -13,6 +13,7 @@ use App\Models\Brand;
 use App\Models\ContentItem;
 use App\Rendering\TemplateData;
 use App\Support\Utf16;
+use App\Support\Wording;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -128,7 +129,7 @@ final class CaptionBuilder
         }
 
         if (filled($item->url)) {
-            $sections[] = '👇 '.self::bold($item->cta['label'] ?? $this->footerLabel($item->kind)).' u prvom komentaru';
+            $sections[] = '👇 '.self::bold($item->cta['label'] ?? $this->footerLabel($item->kind, $brand)).' '.Wording::get($brand, 'caption.first_comment');
         }
 
         $fixed = array_slice($this->hashtags($item, $brand, fixedOnly: true), 0, 3);
@@ -237,7 +238,7 @@ final class CaptionBuilder
         if ($platform === Platform::YouTube) {
             // A description keeps its link, so the brand's page goes in; #Shorts marks the upload.
             if (filled($brand->site_url)) {
-                $sections[] = 'Sve ponude: '.$brand->site_url;
+                $sections[] = Wording::get($brand, 'caption.all_offers').': '.$brand->site_url;
             }
 
             $sections[] = implode(' ', ['#Shorts', ...array_slice($this->hashtags($items->first(), $brand), 0, self::SHORT_HASHTAGS)]);
@@ -249,7 +250,7 @@ final class CaptionBuilder
             $host = TemplateData::displayUrl($brand->site_url) ?? '';
             $sections[] = filled(data_get($brand->voice, 'activation'))
                 ? $this->socialCta($brand, $host)
-                : "💾 Spremi popis i pošalji ga osobi s kojom kupuješ\n🔗 Link u biu → {$host}";
+                : '💾 '.Wording::get($brand, 'caption.save_list')."\n🔗 ".Wording::get($brand, 'caption.link_in_bio')." → {$host}";
 
             $tags = array_slice($this->hashtags($items->first(), $brand), 0, self::FEW_HASHTAGS);
             if ($tags !== []) {
@@ -258,8 +259,8 @@ final class CaptionBuilder
         } elseif (filled($brand->site_url)) {
             // A Page gets the link as its first comment; a group post is pasted whole by a human.
             $sections[] = $platform === Platform::FacebookPage
-                ? '👇 '.self::bold('Sve ponude').' u prvom komentaru'
-                : self::bold('Sve ponude').":\n".$brand->site_url;
+                ? '👇 '.self::bold(Wording::get($brand, 'caption.all_offers')).' '.Wording::get($brand, 'caption.first_comment')
+                : self::bold(Wording::get($brand, 'caption.all_offers')).":\n".$brand->site_url;
         }
 
         return self::tidy(implode("\n\n", $sections));
@@ -289,7 +290,7 @@ final class CaptionBuilder
             $sections[] = (string) $item->body_text;
         }
 
-        $sections[] = self::bold($this->footerLabel($item->kind)).":\n".$item->url;
+        $sections[] = self::bold($this->footerLabel($item->kind, $brand)).":\n".$item->url;
 
         return self::tidy(implode("\n\n", $sections));
     }
@@ -330,7 +331,7 @@ final class CaptionBuilder
         $host = TemplateData::displayUrl($item->url) ?? TemplateData::displayUrl($brand->site_url) ?? '';
         $sections[] = filled(data_get($brand->voice, 'activation'))
             ? $this->socialCta($brand, $host)
-            : '🔗 Link u biu → '.$host."\n📤 Pošalji prijatelju kojem ovo treba";
+            : '🔗 '.Wording::get($brand, 'caption.link_in_bio').' → '.$host."\n📤 ".Wording::get($brand, 'caption.share_friend');
 
         $hashtags = array_slice($this->hashtags($item, $brand), 0, self::FEW_HASHTAGS);
         if ($hashtags !== []) {
@@ -481,7 +482,7 @@ final class CaptionBuilder
         $activation = mb_trim((string) data_get($brand->voice, 'activation', ''));
         $cta = $activation !== '' ? mb_trim((string) data_get($brand->voice, 'cta', ''))."\n".$activation."\n" : '';
 
-        return mb_trim($cta.'🔗 Link u biu → '.$host);
+        return mb_trim($cta.'🔗 '.Wording::get($brand, 'caption.link_in_bio').' → '.$host);
     }
 
     /**
@@ -600,14 +601,14 @@ final class CaptionBuilder
         return is_string($emoji) && $emoji !== '' ? $emoji : TemplateData::defaultEmoji($item->kind);
     }
 
-    private function footerLabel(ContentKind $kind): string
+    private function footerLabel(ContentKind $kind, Brand $brand): string
     {
-        return match ($kind) {
-            ContentKind::Job => 'Detalji o poslu',
-            ContentKind::Deal => 'Detalji o akciji',
-            ContentKind::Event => 'Detalji o događaju',
-            ContentKind::Comparison => 'Usporedi sve ponude',
-            default => 'Više',
-        };
+        return Wording::get($brand, match ($kind) {
+            ContentKind::Job => 'footer.job',
+            ContentKind::Deal => 'footer.deal',
+            ContentKind::Event => 'footer.event',
+            ContentKind::Comparison => 'footer.comparison',
+            default => 'footer.other',
+        });
     }
 }
