@@ -109,6 +109,23 @@ final class SuggestTopicsTest extends TestCase
         $this->assertSame(['Cancel one subscription today'], $ideas->pluck('title')->all());
     }
 
+    public function test_a_day_whose_answer_held_nothing_new_is_not_asked_again(): void
+    {
+        $brand = Brand::factory()->persona()->create();
+        TopicIdea::factory()->for($brand)->create(['title' => 'Wait 24 hours', 'for_date' => '2026-10-20']);
+        Http::fake(['api.openai.com/*' => Http::response(FakeOpenAi::answer(['topics' => [$this->topic('Wait 24 hours')]]))]);
+
+        $this->assertCount(0, app(SuggestTopics::class)->execute($brand));
+        $this->assertCount(0, app(SuggestTopics::class)->execute($brand));
+
+        Http::assertSentCount(1);
+
+        // The next day is a new day.
+        CarbonImmutable::setTestNow('2026-10-29 08:00:00 Europe/Zagreb');
+        app(SuggestTopics::class)->execute($brand);
+        Http::assertSentCount(2);
+    }
+
     public function test_a_brand_that_is_not_a_described_character_is_not_asked_about(): void
     {
         Http::fake();

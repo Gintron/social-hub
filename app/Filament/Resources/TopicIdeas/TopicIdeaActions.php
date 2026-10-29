@@ -20,6 +20,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 
 /**
@@ -28,6 +29,9 @@ use InvalidArgumentException;
  */
 final class TopicIdeaActions
 {
+    /** Set for a few minutes after a person asks for topics, so the list keeps refreshing until they come. */
+    public const TOPICS_REQUESTED = 'persona-topics-requested';
+
     public static function choose(): Action
     {
         return Action::make('choose')
@@ -134,6 +138,7 @@ final class TopicIdeaActions
                     ->helperText('Isključeno: samo ako lik danas još nema tema.'),
             ])
             ->action(function (array $data): void {
+                Cache::put(self::TOPICS_REQUESTED, true, now()->addMinutes(5));
                 SuggestTopicsJob::dispatch((int) $data['brand_id'], (bool) ($data['more'] ?? false));
 
                 Notification::make()->title('Teme stižu')->body('Model ih piše minutu-dvije; popis se sam osvježava.')->success()->send();

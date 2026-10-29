@@ -18,11 +18,12 @@ use App\Models\ContentItem;
 final class CaptionValidator
 {
     /**
-     * Amounts and percentages, the numbers that turn a wrong post into a false advertisement.
+     * Amounts and percentages, the numbers that turn a wrong post into a false advertisement. Dollars and pounds too:
+     * an AI character writes in English, and "$500" is as much a claim as "500 €".
      */
     private const MONEY_PATTERNS = [
-        '/(\d[\d\s.,]*)\s*(?:€|eur\b|kn\b|kuna\b)/iu',
-        '/(?:€|eur)\s*(\d[\d\s.,]*)/iu',
+        '/(\d[\d\s.,]*)\s*(?:€|eur\b|kn\b|kuna\b|usd\b|gbp\b|\$|£)/iu',
+        '/(?:€|eur|usd|gbp|\$|£)\s*(\d[\d\s.,]*)/iu',
         '/(\d[\d\s.,]*)\s*%/u',
     ];
 

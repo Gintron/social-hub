@@ -174,6 +174,23 @@ final class TopicIdeaPanelTest extends TestCase
             ->assertActionVisible('open_post');
     }
 
+    public function test_the_list_refreshes_only_while_something_is_on_its_way(): void
+    {
+        Queue::fake();
+        $brand = Brand::factory()->persona()->create();
+        $idea = TopicIdea::factory()->for($brand)->create();
+
+        Livewire::test(ListTopicIdeas::class)->assertDontSeeHtml('wire:poll');
+
+        $idea->forceFill(['status' => TopicStatus::Writing])->save();
+        Livewire::test(ListTopicIdeas::class)->assertSeeHtml('wire:poll.10s');
+
+        $idea->forceFill(['status' => TopicStatus::Proposed])->save();
+        Livewire::test(ListTopicIdeas::class)
+            ->callAction('suggest', ['brand_id' => $brand->id, 'more' => true]);
+        Livewire::test(ListTopicIdeas::class)->assertSeeHtml('wire:poll.10s');
+    }
+
     public function test_a_topic_without_a_script_has_nothing_to_save(): void
     {
         $idea = TopicIdea::factory()->create(['status' => TopicStatus::Failed, 'script_error' => 'OpenAI 429: no credit']);

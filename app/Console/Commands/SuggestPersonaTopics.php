@@ -9,6 +9,7 @@ use App\Ai\OpenAiException;
 use App\Models\Brand;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use InvalidArgumentException;
 
 /**
@@ -48,7 +49,7 @@ final class SuggestPersonaTopics extends Command
 
             try {
                 $ideas = $topics->execute($brand, more: (bool) $this->option('more'));
-            } catch (InvalidArgumentException|OpenAiException $e) {
+            } catch (InvalidArgumentException|OpenAiException|LockTimeoutException $e) {
                 $this->error("{$brand->name}: {$e->getMessage()}");
                 $failed = true;
 

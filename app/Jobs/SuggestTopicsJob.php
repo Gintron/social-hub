@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Actions\SuggestTopics;
 use App\Ai\OpenAiException;
 use App\Models\Brand;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -44,7 +45,7 @@ final class SuggestTopicsJob implements ShouldBeUnique, ShouldQueue
 
         try {
             $topics->execute($brand, more: $this->more);
-        } catch (InvalidArgumentException|OpenAiException $e) {
+        } catch (InvalidArgumentException|OpenAiException|LockTimeoutException $e) {
             Log::warning('AI lik: teme nisu predložene', ['brand' => $brand->slug, 'error' => $e->getMessage()]);
         }
     }

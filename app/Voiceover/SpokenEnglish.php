@@ -119,6 +119,14 @@ final class SpokenEnglish
         return mb_trim((string) preg_replace('/\s{2,}/u', ' ', $text));
     }
 
+    /**
+     * What the years rule below reads as a year: four digits, 1100–2099.
+     */
+    private static function isYear(string $raw): bool
+    {
+        return preg_match('/^(1[1-9]\d\d|20\d\d)$/', $raw) === 1;
+    }
+
     private static function belowThousand(int $number): string
     {
         $parts = [];
@@ -282,7 +290,7 @@ final class SpokenEnglish
     }
 
     /**
-     * "5-10" → "five to ten", "24/7" → "twenty-four seven".
+     * "5-10" → "five to ten", "2020-2025" → "twenty twenty to twenty twenty-five", "24/7" → "twenty-four seven".
      */
     private function ranges(string $text): string
     {
@@ -290,7 +298,9 @@ final class SpokenEnglish
 
         return (string) preg_replace_callback(
             '/(?<![\p{N}.,])('.self::NUMBER.')\s?[-–]\s?('.self::NUMBER.')(?![\p{N}])/u',
-            fn (array $m): string => self::decimal($m[1]).' to '.self::decimal($m[2]),
+            fn (array $m): string => self::isYear($m[1]) && self::isYear($m[2])
+                ? self::year((int) $m[1]).' to '.self::year((int) $m[2])
+                : self::decimal($m[1]).' to '.self::decimal($m[2]),
             $text,
         );
     }

@@ -24,9 +24,10 @@ final class ScriptGuard
      * @param  list<string>  $trusted  Text the brand wrote itself and the video repeats — a roundup's headline
      *                                 ("Akcije do 50 % popusta"). It is on the cover slide and in the caption as
      *                                 it is; it is not a claim the voice makes about an offer.
+     * @param  int|null  $characterLimit  How long the script may be; null is a slideshow's `elevenlabs.max_characters_per_video`.
      * @return list<string> Empty when the script may be spoken.
      */
-    public function check(Script $script, iterable $items, bool $amounts = true, array $trusted = []): array
+    public function check(Script $script, iterable $items, bool $amounts = true, array $trusted = [], ?int $characterLimit = null): array
     {
         $items = is_array($items) ? $items : iterator_to_array($items, false);
         $trusted = array_values(array_filter(array_map('mb_trim', $trusted), fn (string $text): bool => $text !== ''));
@@ -49,7 +50,7 @@ final class ScriptGuard
             }
         }
 
-        $limit = (int) config('elevenlabs.max_characters_per_video', 1200);
+        $limit = $characterLimit ?? (int) config('elevenlabs.max_characters_per_video', 1200);
 
         if ($script->characters() > $limit) {
             $violations[] = "Tekst voice-overa ima {$script->characters()} znakova, dopušteno je {$limit}.";

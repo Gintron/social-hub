@@ -24,8 +24,17 @@ final class ShortComposer
 
     public const FPS = 30;
 
+    /** Changes when what compose() makes changes, so a video made by an older version is not reused. */
+    public const VERSION = 1;
+
     /** A breath between two lines of the same shot. */
     public const GAP_SECONDS = 0.18;
+
+    /**
+     * How hard x264 works. A short is encoded inside one queue job (180 s on the worker); `veryfast` at CRF 21 is about
+     * three times quicker than `medium` and looks the same on a phone.
+     */
+    private const PRESET = 'veryfast';
 
     /** At most this many words are on screen at once. */
     private const WORDS_PER_CAPTION = 4;
@@ -143,7 +152,7 @@ final class ShortComposer
             $this->run([...$arguments,
                 '-filter_complex', implode(';', $parts),
                 '-map', '[out]', '-map', '[aout]',
-                '-c:v', 'libx264', '-preset', 'medium', '-crf', '21', '-pix_fmt', 'yuv420p', '-r', (string) self::FPS,
+                '-c:v', 'libx264', '-preset', self::PRESET, '-crf', '21', '-pix_fmt', 'yuv420p', '-r', (string) self::FPS,
                 '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
                 '-t', sprintf('%.3f', $total),
                 '-movflags', '+faststart',

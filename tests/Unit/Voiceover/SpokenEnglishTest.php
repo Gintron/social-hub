@@ -31,6 +31,7 @@ final class SpokenEnglishTest extends TestCase
         yield 'ordinals' => ['The 1st, 2nd, 3rd and 21st day', 'The first, second, third and twenty-first day'];
         yield 'years' => ['In 2026 and 2005, like the 1990s', 'In twenty twenty-six and two thousand five, like the nineteen nineties'];
         yield 'ranges' => ['Wait 24-48 hours.', 'Wait twenty-four to forty-eight hours.'];
+        yield 'a range of years' => ['Prices rose from 2020-2025.', 'Prices rose from twenty twenty to twenty twenty-five.'];
         yield 'numbers' => ['Wait 24 hours, 3.5 times, 1,000,000 people', 'Wait twenty-four hours, three point five times, one million people'];
         yield 'emoji and hashtags' => ['Try it 💪 #money', 'Try it money'];
         yield 'twenty-four seven' => ['Shops are open 24/7 & online.', 'Shops are open twenty-four seven and online.'];

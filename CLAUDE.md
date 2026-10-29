@@ -230,7 +230,8 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Voice-over je dodatak videu, nikad njegov uvjet.** Glas (ElevenLabs, `App\Voiceover\*`, `docs/voiceover.md`)
   stvara `Narrator` u `RenderVideoJob`. Ako ne uspije (nema ključa, plan potrošen, redak odbijen) video se
   renderira bez njega, razlog ide u `media_assets.params.voiceover` (vidi ga urednik na kanalu) i jedan mail
-  adminu po uzroku. Ne uvoditi put u kojem objava čeka glas.
+  adminu po uzroku. Ne uvoditi put u kojem objava čeka glas. Jedina iznimka je short AI lika (`App\Persona\ShortVoice`): ondje glas
+  pomiče usne lika, pa bez njega nema videa — `ShortProducer` tada ne plaća fal i tema dobiva razlog.
 - **Glas govori samo ono što piše u podacima stavke.** `ScriptBuilder` piše iz `Highlights`/`price`/`facts` (istog
   što crta slajd), `ScriptGuard` primjenjuje pravila `CaptionValidator` (iznos, postotak, poveznica) i na redak koji
   je urednik izmijenio, prije nego što se išta plati. Nova provjera ide ondje, ne u tekst upute.

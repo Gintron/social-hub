@@ -12,7 +12,7 @@ Hub ne zna ništa o području lika (novac, kuhanje, fitness…): to piše čovje
    priča, jezik (zadano engleski), izgled i ambijent (opis i slika), koliko tema dnevno i u koliko sati.
 2. **Svako jutro** (`hub:suggest-topics`, satno u :05, radi kad dođe `suggest_at` po lokalnom vremenu brenda) OpenAI
    predloži teme za taj dan (`App\Actions\SuggestTopics` → `App\Persona\TopicSuggester`). Jednom dnevno: drugi prolaz isti
-   dan ne pita ponovno. Teme koje je lik imao u zadnjih 60 dana (`hub.persona.recent_days`, i odbačene) idu uz pitanje, a
+   dan ne pita ponovno, ni kad odgovor nije donio nijednu novu temu. Teme koje je lik imao u zadnjih 60 dana (`hub.persona.recent_days`, i odbačene) idu uz pitanje, a
    odgovor koji ipak ponovi naslov odbacuje se u kodu.
 3. **Sadržaj → Teme AI likova**: „Odaberi“ (`ChooseTopic`) piše skriptu u pozadini (`WriteTopicScriptJob`). „Predloži teme“
    traži još jednu seriju odmah (`SuggestTopicsJob`).
@@ -38,9 +38,10 @@ objave koje skripta ne kaže zaustavljaju video prije plaćanja.
 Na stranici odobrene skripte **Napravi video** (`ProduceShort` → `ProduceShortJob`, red `render`) pokazuje procjenu
 trajanja i cijene na falu i, nakon potvrde, radi short u pozadini (`App\Persona\ShortProducer`):
 
-1. **Provjere prije ikakvog plaćanja**: tekst objave ne smije reći iznos, postotak ni poveznicu koje skripta ne kaže
-   (`CaptionValidator`); lik ima barem jedan aktivan kanal koji prima video; postoji slika lika ako skripta ima kadrove u
-   kojima lik govori; procjena nije iznad `fal.max_cost_per_video`.
+1. **Provjere prije ikakvog plaćanja**: tekst objave ne smije reći iznos (€, $, £, kn), postotak ni poveznicu koje skripta
+   ne kaže (`CaptionValidator`); izgovoreni redci prolaze `ScriptGuard` (nijedna web adresa naglas, duljina do
+   `hub.persona.max_characters`); lik ima barem jedan aktivan kanal koji prima video; postoji slika lika ako skripta ima
+   kadrove u kojima lik govori; procjena nije iznad `fal.max_cost_per_video`.
 2. **Glas** (`ShortVoice`): svaki redak je jedan isječak iz ElevenLabsa, glasom brenda (kartica Voice-over). Brojeve, iznose,
    postotke, vremena i godine ispisuje hub (`SpokenEnglish` za engleski, `SpokenCroatian` za hrvatski), nikad model.
    Popis izgovora i IPA riječi brenda vrijede kao i za ostale videe. Redak izgovoren prije ne plaća se ponovno.
@@ -56,8 +57,10 @@ trajanja i cijene na falu i, nakon potvrde, radi short u pozadini (`App\Persona\
 
 **Ništa se ne plaća dvaput.** Svaki zahtjev falu zapisuje se u `topic_ideas.production` čim je poslan. Worker zaustavlja
 posao nakon 180 s, a fal radi minutama, pa posao ne čeka: napravi što može, pita fal je li gotov i vraća se za
-`fal.poll_seconds` (najdulje `fal.max_wait_minutes` od zahtjeva). Kad se video traži ponovno (nakon greške ili izmjene
-jednog retka), kadar čiji se tekst, opis, glas, model i slika lika nisu promijenili ne radi se ponovno.
+`fal.poll_seconds` (najdulje `fal.max_wait_minutes` od zahtjeva). Preuzimanje kadrova i spajanje videa nikad nisu u istom
+prolazu (spajanje ima svoj, uz `veryfast` x264), a glas kadra i gotov video se spremaju i ne rade se ponovno. Kad se video
+traži ponovno (nakon greške ili izmjene jednog retka), kadar čiji se tekst, opis, glas, model i slika lika nisu
+promijenili ne radi se ponovno. Zahtjev od kojeg je fal sam odustao briše se, pa idući pokušaj šalje novi.
 
 Razlog neuspjeha piše na stranici teme („Video nije uspio“); „Pokušaj video ponovno“ koristi sve što je već plaćeno.
 

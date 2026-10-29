@@ -135,14 +135,19 @@ final class ShortProducer
 
         $shots = [];
 
-        foreach ($runs as $i => $run) {
+        foreach ($runs as $run) {
             $lineClips = array_map(fn (int $line): NarrationClip => $clips[$line], $run['lines']);
-            $audio = "{$folder}/voice-{$i}.mp3";
-            $seconds = $this->composer->voice($lineClips, $this->path($audio));
             $key = $this->key($run, $script, $lineClips, $persona, $image);
+            $kept = $previous[$key] ?? [];
+            $audio = "{$folder}/voice-".mb_substr($key, 0, 16).'.mp3';
+
+            // The job comes back every half minute while fal works; a shot's voice is put together once.
+            $seconds = ($kept['audio'] ?? null) === $audio && isset($kept['seconds']) && is_file($this->path($audio))
+                ? (float) $kept['seconds']
+                : $this->composer->voice($lineClips, $this->path($audio));
 
             $shots[] = [
-                ...array_intersect_key($previous[$key] ?? [], array_flip(['request', 'video'])),
+                ...array_intersect_key($kept, array_flip(['request', 'video'])),
                 'key' => $key,
                 'shot' => $run['shot'],
                 'lines' => $run['lines'],
@@ -152,6 +157,13 @@ final class ShortProducer
             ];
         }
 
+        $music = $brand->audioTrackPath('auto', $idea->id);
+        $outputKey = hash('sha256', json_encode([array_column($shots, 'key'), $music, ShortComposer::VERSION], JSON_THROW_ON_ERROR));
+        $made = (array) (($idea->production ?? [])['output'] ?? []);
+        $output = ($made['key'] ?? null) === $outputKey && is_file($this->path((string) ($made['video'] ?? ''))) && is_file($this->path((string) ($made['cover'] ?? '')))
+            ? $made
+            : null;
+
         $cost = self::cost($shots);
         $ceiling = (float) config('fal.max_cost_per_video', 8.0);
 
@@ -159,7 +171,7 @@ final class ShortProducer
             throw new InvalidArgumentException(sprintf('Video bi na falu stajao oko %.2f $, a granica je %.2f $; skrati skriptu ili smanji međukadrove.', $cost, $ceiling));
         }
 
-        $this->save($idea, $shots, $cost);
+        $this->save($idea, $shots, $cost, $output);
 
         // Every request goes out before any is waited for: fal makes them side by side.
         foreach ($shots as $i => $shot) {
@@ -168,10 +180,11 @@ final class ShortProducer
             }
 
             $shots[$i]['request'] = $this->submit($shot, $script, $persona, $image);
-            $this->save($idea, $shots, $cost);
+            $this->save($idea, $shots, $cost, $output);
         }
 
         $waiting = false;
+        $downloaded = false;
 
         foreach ($shots as $i => $shot) {
             if ($this->hasVideo($shot)) {
@@ -184,7 +197,7 @@ final class ShortProducer
                 // A request fal gave up on is not asked about again; the next try (a person's) makes a new one.
                 if (! $e->retryable) {
                     unset($shots[$i]['request']);
-                    $this->save($idea, $shots, $cost);
+                    $this->save($idea, $shots, $cost, $output);
                 }
 
                 throw $e;
@@ -200,40 +213,45 @@ final class ShortProducer
 
             if (! is_string($url) || $url === '') {
                 unset($shots[$i]['request']);
-                $this->save($idea, $shots, $cost);
+                $this->save($idea, $shots, $cost, $output);
 
                 throw new FalException('fal je završio bez videa.', 'failed');
             }
 
-            $video = "{$folder}/shot-{$i}-".mb_substr($shot['key'], 0, 12).'.mp4';
+            $video = "{$folder}/shot-".mb_substr($shot['key'], 0, 16).'.mp4';
             $this->fal->download($url, $this->path($video));
             $shots[$i]['video'] = $video;
-            $this->save($idea, $shots, $cost);
+            $downloaded = true;
+            $this->save($idea, $shots, $cost, $output);
         }
 
-        if ($waiting) {
+        // The video is put together in a run of its own: downloads and an encode in one run could outlast the 180 s the
+        // worker gives a job, and a killed run would start the encode over every time.
+        if ($waiting || $downloaded) {
             return null;
         }
 
-        $output = "{$folder}/short-".now()->format('YmdHis').'.mp4';
-        $cover = "{$folder}/cover.jpg";
+        if ($output === null) {
+            $output = ['key' => $outputKey, 'video' => "{$folder}/short-".mb_substr($outputKey, 0, 16).'.mp4', 'cover' => "{$folder}/cover-".mb_substr($outputKey, 0, 16).'.jpg'];
 
-        $this->composer->compose(
-            array_map(fn (array $shot): array => ['video' => $this->path($shot['video']), 'audio' => $this->path($shot['audio']), 'seconds' => (float) $shot['seconds']], $shots),
-            ShortComposer::captions(array_column($script->lines, 'text'), $this->lineStarts($shots), array_merge(...array_column($shots, 'clips'))),
-            $brand->audioTrackPath('auto', $idea->id),
-            $brand->voiceoverSettings()->musicGainDb(),
-            $this->path($output),
-        );
-        $this->composer->cover($this->path($output), $this->path($cover));
+            $this->composer->compose(
+                array_map(fn (array $shot): array => ['video' => $this->path($shot['video']), 'audio' => $this->path($shot['audio']), 'seconds' => (float) $shot['seconds']], $shots),
+                ShortComposer::captions(array_column($script->lines, 'text'), $this->lineStarts($shots), array_merge(...array_column($shots, 'clips'))),
+                $music,
+                $brand->voiceoverSettings()->musicGainDb(),
+                $this->path($output['video']),
+            );
+            $this->composer->cover($this->path($output['video']), $this->path($output['cover']));
+            $this->save($idea, $shots, $cost, $output);
+        }
 
         return $this->posts->execute(
             brand: $brand,
-            videoPath: $this->path($output),
+            videoPath: $this->path($output['video']),
             title: $script->title,
             channels: $channels,
             url: (string) $brand->site_url,
-            coverPath: $this->path($cover),
+            coverPath: $this->path($output['cover']),
             aiGenerated: true,
             scheduledAt: $this->schedule->nextSlot($brand, CarbonImmutable::now()->addHour()),
             status: DraftStatus::PendingApproval,
@@ -411,10 +429,11 @@ final class ShortProducer
 
     /**
      * @param  list<array<string, mixed>>  $shots
+     * @param  array{key: string, video: string, cover: string}|null  $output  The finished video, once it is made.
      */
-    private function save(TopicIdea $idea, array $shots, float $cost): void
+    private function save(TopicIdea $idea, array $shots, float $cost, ?array $output): void
     {
-        $idea->forceFill(['production' => ['shots' => $shots, 'estimated_cost' => $cost]])->save();
+        $idea->forceFill(['production' => array_filter(['shots' => $shots, 'estimated_cost' => $cost, 'output' => $output], fn (mixed $value): bool => $value !== null)])->save();
     }
 
     private function path(string $relative): string

@@ -10,6 +10,7 @@ use App\Models\Brand;
 use App\Models\TopicIdea;
 use App\Persona\TopicSuggester;
 use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
@@ -27,6 +28,7 @@ final class SuggestTopics
      *
      * @throws InvalidArgumentException When the brand is not a character described enough to write from.
      * @throws OpenAiException
+     * @throws LockTimeoutException When another ask for the same character took longer than `hub.persona.lock_wait_seconds`.
      */
     public function execute(Brand $brand, ?CarbonImmutable $day = null, bool $more = false): Collection
     {
@@ -38,11 +40,14 @@ final class SuggestTopics
 
         $day = ($day ?? CarbonImmutable::now($brand->timezone ?: 'Europe/Zagreb'))->startOfDay();
 
+        $asked = "persona-topics-asked:{$brand->id}:{$day->toDateString()}";
+
         // The morning run and a person in the panel may ask at the same moment; one of them asks OpenAI.
-        return Cache::lock("persona-topics:{$brand->id}", 180)->block(150, function () use ($brand, $persona, $day, $more): Collection {
+        return Cache::lock("persona-topics:{$brand->id}", 180)->block((int) config('hub.persona.lock_wait_seconds', 150), function () use ($brand, $persona, $day, $more, $asked): Collection {
             $existing = $brand->topicIdeas()->whereDate('for_date', $day->toDateString())->orderBy('id')->get();
 
-            if (! $more && $existing->isNotEmpty()) {
+            // A day whose answer held nothing new is asked, too: the hourly run would otherwise pay for it every hour.
+            if (! $more && ($existing->isNotEmpty() || Cache::has($asked))) {
                 return $existing;
             }
 
@@ -54,6 +59,7 @@ final class SuggestTopics
                 ->all();
 
             $answer = $this->suggester->suggest($persona, $day, $recent, $persona->topicsPerDay);
+            Cache::put($asked, true, $day->endOfDay());
 
             return collect($answer['topics'])->map(fn (array $topic): TopicIdea => $brand->topicIdeas()->create([
                 ...$topic,

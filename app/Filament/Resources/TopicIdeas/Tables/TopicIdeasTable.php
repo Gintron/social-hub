@@ -14,6 +14,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 
 final class TopicIdeasTable
 {
@@ -21,8 +22,9 @@ final class TopicIdeasTable
     {
         return $table
             ->defaultSort(fn (Builder $query): Builder => $query->orderByDesc('for_date')->orderBy('id'))
-            // Topics arrive and scripts are written in the background; the list shows them when they come.
-            ->poll('15s')
+            // Topics arrive, scripts are written and videos made in the background; the list follows them while that
+            // happens, and stops asking when nothing does.
+            ->poll(fn (): ?string => self::busy() ? '10s' : null)
             ->emptyStateIcon(Heroicon::OutlinedLightBulb)
             ->emptyStateHeading('Još nema tema')
             ->emptyStateDescription('Teme stižu svako jutro za brendove koji su AI lik (Brendovi → AI lik). Možeš ih tražiti i sada: „Predloži teme“.')
@@ -49,5 +51,14 @@ final class TopicIdeasTable
                 TopicIdeaActions::reject(),
                 EditAction::make()->label('Otvori')->iconButton()->tooltip('Tema i skripta'),
             ]);
+    }
+
+    /**
+     * Something is on its way: a script being written, a video being made, or topics a person asked for a moment ago.
+     */
+    public static function busy(): bool
+    {
+        return Cache::has(TopicIdeaActions::TOPICS_REQUESTED)
+            || TopicIdea::query()->whereIn('status', [TopicStatus::Writing, TopicStatus::Producing])->exists();
     }
 }

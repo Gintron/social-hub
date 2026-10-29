@@ -8,6 +8,7 @@ use App\Actions\ProduceShort;
 use App\Enums\DraftStatus;
 use App\Enums\Platform;
 use App\Enums\TopicStatus;
+use App\Jobs\ProduceShortJob;
 use App\Models\Brand;
 use App\Models\PostDraft;
 use App\Models\SocialAccount;
@@ -63,10 +64,9 @@ final class ProduceShortTest extends TestCase
     public function test_an_approved_script_becomes_a_vertical_video_in_a_post_waiting_for_approval(): void
     {
         $idea = $this->approvedIdea();
+        $idea->forceFill(['script' => [...$idea->script, 'caption' => 'Spend $5 less. The 24-hour rule.']])->save();
 
-        app(ProduceShort::class)->execute($idea);
-
-        $idea->refresh();
+        $this->make($idea);
         $this->assertSame(TopicStatus::Produced, $idea->status, (string) $idea->production_error);
 
         // Talking, scene, talking: three pictures, the scene a vertical clip without its own sound.
@@ -88,8 +88,8 @@ final class ProduceShortTest extends TestCase
 
         $youtube = $draft->variants->firstWhere('platform', Platform::YouTube);
         $tiktok = $draft->variants->firstWhere('platform', Platform::TikTok);
-        $this->assertSame("Wait a day before you buy\nThe 24-hour rule.\n\n#money #habits #shorts", $youtube->caption);
-        $this->assertSame("The 24-hour rule.\n\n#money #habits", $tiktok->caption);
+        $this->assertSame("Wait a day before you buy\nSpend $5 less. The 24-hour rule.\n\n#money #habits #shorts", $youtube->caption);
+        $this->assertSame("Spend $5 less. The 24-hour rule.\n\n#money #habits", $tiktok->caption);
         $this->assertTrue($tiktok->aiGenerated());
         $this->assertSame('video', $tiktok->settings['format']);
 
@@ -120,10 +120,35 @@ final class ProduceShortTest extends TestCase
         $this->assertCount(3, $this->submitted, 'the same requests are asked about, none is made again');
     }
 
+    public function test_the_video_is_put_together_in_a_run_of_its_own_and_the_voice_once(): void
+    {
+        $idea = $this->approvedIdea();
+
+        // The first run asks fal and takes what it made; the encode waits for the next run.
+        app(ProduceShort::class)->execute($idea);
+
+        $idea->refresh();
+        $this->assertSame(TopicStatus::Producing, $idea->status);
+        $this->assertCount(3, array_filter(array_column($idea->production['shots'], 'video')));
+        $this->assertArrayNotHasKey('output', $idea->production);
+
+        $voice = Storage::disk('local')->path($idea->production['shots'][0]['audio']);
+        touch($voice, time() - 600);
+        clearstatcache();
+        $before = filemtime($voice);
+
+        $this->make($idea);
+
+        clearstatcache();
+        $this->assertSame(TopicStatus::Produced, $idea->status, (string) $idea->production_error);
+        $this->assertSame($before, filemtime($voice), 'the voice of a shot is not put together again');
+        $this->assertCount(3, $this->submitted);
+    }
+
     public function test_a_shot_that_did_not_change_is_reused_when_the_video_is_asked_for_again(): void
     {
         $idea = $this->approvedIdea();
-        app(ProduceShort::class)->execute($idea);
+        $this->make($idea);
         $this->assertCount(3, $this->submitted);
 
         $idea->refresh()->forceFill(['status' => TopicStatus::VideoFailed])->save();
@@ -131,9 +156,9 @@ final class ProduceShortTest extends TestCase
         $script['lines'][2]['text'] = 'What did you skip this week? Tell me.';
         $idea->forceFill(['script' => $script])->save();
 
-        app(ProduceShort::class)->execute($idea);
+        $this->make($idea);
 
-        $this->assertSame(TopicStatus::Produced, $idea->refresh()->status, (string) $idea->production_error);
+        $this->assertSame(TopicStatus::Produced, $idea->status, (string) $idea->production_error);
         $this->assertCount(4, $this->submitted, 'only the changed shot is made again');
     }
 
@@ -150,9 +175,9 @@ final class ProduceShortTest extends TestCase
         $this->assertArrayNotHasKey('request', $idea->production['shots'][0]);
 
         $this->resultStatus = 200;
-        app(ProduceShort::class)->execute($idea);
+        $this->make($idea);
 
-        $this->assertSame(TopicStatus::Produced, $idea->refresh()->status, (string) $idea->production_error);
+        $this->assertSame(TopicStatus::Produced, $idea->status, (string) $idea->production_error);
         $this->assertCount(4, $this->submitted, 'only the shot fal gave up on is asked for again');
     }
 
@@ -160,6 +185,12 @@ final class ProduceShortTest extends TestCase
     {
         $cases = [
             'the caption says what the script does not' => fn (TopicIdea $idea) => $idea->forceFill(['script' => [...$idea->script, 'caption' => 'Save 40% now.']])->save(),
+            'the caption says a dollar amount the script does not' => fn (TopicIdea $idea) => $idea->forceFill(['script' => [...$idea->script, 'caption' => 'Save $500 a month.']])->save(),
+            'a line would read a web address aloud' => function (TopicIdea $idea): void {
+                $script = $idea->script;
+                $script['lines'][0]['text'] = 'Go to https://example.com now.';
+                $idea->forceFill(['script' => $script])->save();
+            },
             'the character has no picture' => fn (TopicIdea $idea) => $idea->brand->forceFill(['persona' => [...$idea->brand->persona, 'appearance_image' => null]])->save(),
             'no channel takes a video' => fn (TopicIdea $idea) => SocialAccount::query()->where('brand_id', $idea->brand_id)->delete(),
             'the estimate is over the ceiling' => fn () => config()->set('fal.max_cost_per_video', 0.10),
@@ -188,6 +219,23 @@ final class ProduceShortTest extends TestCase
         $this->assertGreaterThan(0, $estimate['seconds']);
         // The scene is billed for at least three seconds even when its line is shorter.
         $this->assertGreaterThanOrEqual(round(3 * 0.084, 2), $estimate['cost']);
+    }
+
+    /**
+     * Ask for the video (unless it is already being made) and run the job the way the worker would: again and again
+     * while it comes back, a few times at most.
+     */
+    private function make(TopicIdea $idea): TopicIdea
+    {
+        if ($idea->status->canProduce()) {
+            app(ProduceShort::class)->execute($idea);
+        }
+
+        for ($run = 0; $run < 5 && $idea->refresh()->status === TopicStatus::Producing; $run++) {
+            (new ProduceShortJob($idea->id))->handle(app(ShortProducer::class));
+        }
+
+        return $idea->refresh();
     }
 
     private function approvedIdea(): TopicIdea
