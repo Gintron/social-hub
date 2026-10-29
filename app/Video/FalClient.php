@@ -55,6 +55,26 @@ final class FalClient
     }
 
     /**
+     * A request answered while it is waited for — for what takes seconds (a picture), where a person is watching the
+     * page. Video goes through submit() and check().
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     *
+     * @throws FalException
+     */
+    public function run(string $model, array $input, int $timeout = 120): array
+    {
+        $response = $this->send(fn (): Response => $this->request()->timeout($timeout)->post(mb_rtrim((string) config('fal.run_url', 'https://fal.run'), '/').'/'.$model, $input));
+
+        if ($response->failed()) {
+            throw $this->error($response, "fal ({$model}) nije napravio sliku");
+        }
+
+        return (array) $response->json();
+    }
+
+    /**
      * Asks once whether a submitted request is done: its result (the model's output, e.g. `video.url`) when it is, null
      * while fal is still at it. Waiting is the caller's — a queued job comes back later rather than holding the worker.
      *

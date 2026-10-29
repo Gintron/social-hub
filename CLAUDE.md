@@ -182,6 +182,8 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   `release`-om. Sve što može odbiti (tekst objave kroz `CaptionValidator` prema skripti, kanali, slika lika, gornja cijena)
   provjerava se prije prvog plaćenog poziva. Brojeve engleskom glasu ispisuje `SpokenEnglish`, kao `SpokenCroatian` hrvatskom.
   Gotov short ide kroz `CreateVideoPost` i čeka odobrenje; tekst objave je iz skripte koju je čovjek odobrio.
+  Novi lik nastaje u hubu, bez drugih alata (`PersonaTab`): profil iz ideje (OpenAI), slika lika (fal, i to je jedini
+  drugi posao fala uz video) i glas (izbor ili ElevenLabs Voice Design). Alati pune obrazac; sprema čovjek.
 
 - **Gotov video iz drugog alata ide kroz `App\Actions\CreateVideoPost` / `hub:video-post`** (`docs/own-video.md`), ne kroz
   ad hoc zapise u bazi: isti nacrt, ista čuvanja (istek, poveznica, „sadržaj se promijenio"), izvor „Gotovi videi" koji nitko ne

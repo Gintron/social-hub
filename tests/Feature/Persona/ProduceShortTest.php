@@ -218,7 +218,7 @@ final class ProduceShortTest extends TestCase
 
         $this->assertGreaterThan(0, $estimate['seconds']);
         // The scene is billed for at least three seconds even when its line is shorter.
-        $this->assertGreaterThanOrEqual(round(3 * 0.084, 2), $estimate['cost']);
+        $this->assertGreaterThanOrEqual(round(3 * (float) config('fal.price_per_second.broll'), 2), $estimate['cost']);
     }
 
     /**

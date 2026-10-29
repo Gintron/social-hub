@@ -94,4 +94,10 @@ return [
     'models' => [
         'eleven_v4' => 'v4 — jedini model koji hub koristi',
     ],
+
+    /*
+     * The model that makes a new voice from a description (an AI character's voice, Brendovi → AI lik). It makes three
+     * previews; one becomes a voice in the account only when a person keeps it.
+     */
+    'design_model' => env('ELEVENLABS_DESIGN_MODEL', 'eleven_ttv_v3'),
 ];

@@ -90,6 +90,78 @@ final class ElevenLabsClient
     }
 
     /**
+     * Three voices made from a description (Voice Design), each with a short sample saying a text the model writes to suit
+     * it. Nothing is in the account yet: a preview becomes a voice only through createVoice().
+     *
+     * @return list<array{generated_voice_id: string, audio: string, seconds: float}> The audio is MP3 bytes.
+     *
+     * @throws VoiceoverException
+     */
+    public function designVoice(string $description): array
+    {
+        $response = $this->send(fn (): Response => $this->request()->acceptJson()->post('/v1/text-to-voice/design?output_format=mp3_44100_128', [
+            'voice_description' => $description,
+            'model_id' => (string) config('elevenlabs.design_model', 'eleven_ttv_v3'),
+            'auto_generate_text' => true,
+        ]));
+
+        if ($response->failed()) {
+            throw $this->error($response);
+        }
+
+        $previews = [];
+
+        foreach ((array) $response->json('previews', []) as $preview) {
+            $audio = is_array($preview) ? base64_decode((string) ($preview['audio_base_64'] ?? ''), true) : false;
+
+            if (! is_array($preview) || blank($preview['generated_voice_id'] ?? null) || $audio === false || $audio === '') {
+                continue;
+            }
+
+            $previews[] = [
+                'generated_voice_id' => (string) $preview['generated_voice_id'],
+                'audio' => $audio,
+                'seconds' => (float) ($preview['duration_secs'] ?? 0),
+            ];
+        }
+
+        if ($previews === []) {
+            throw new VoiceoverException('ElevenLabs nije vratio nijedan prijedlog glasa.', 'empty_audio', retryable: true);
+        }
+
+        return $previews;
+    }
+
+    /**
+     * Keeps a designed voice in the account, where the brand's voice list finds it; returns its voice id.
+     *
+     * @throws VoiceoverException
+     */
+    public function createVoice(string $generatedVoiceId, string $name, string $description): string
+    {
+        $response = $this->send(fn (): Response => $this->request()->acceptJson()->post('/v1/text-to-voice', [
+            'voice_name' => mb_substr($name, 0, 100),
+            'voice_description' => mb_substr($description, 0, 1000),
+            'generated_voice_id' => $generatedVoiceId,
+        ]));
+
+        if ($response->failed()) {
+            throw $this->error($response);
+        }
+
+        $voiceId = (string) $response->json('voice_id', '');
+
+        if ($voiceId === '') {
+            throw new VoiceoverException('ElevenLabs nije vratio ID novog glasa.', 'error');
+        }
+
+        // The panel's list is cached for a quarter of an hour; the new voice belongs in it now.
+        $this->voices(fresh: true);
+
+        return $voiceId;
+    }
+
+    /**
      * Characters used and allowed this period, for the doctor and the panel.
      *
      * @return array{character_count: int, character_limit: int, next_character_count_reset_unix: int|null, tier: string|null, status: string|null}

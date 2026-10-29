@@ -9,7 +9,6 @@ use App\Drafting\DigestSeries;
 use App\Enums\ContentKind;
 use App\Filament\Support\VoiceoverPanel;
 use App\Models\Brand;
-use App\Persona\Persona;
 use App\Rendering\VideoRenderer;
 use App\Voiceover\Ipa;
 use App\Voiceover\VoiceoverException;
@@ -383,51 +382,7 @@ final class BrandForm
                             ]),
                     ]),
 
-                    Tab::make('AI lik')->icon(Heroicon::OutlinedUserCircle)->schema([
-                        Section::make('AI lik')
-                            ->description('Brend može biti AI lik koji vodi svoje kanale i priča o jednom području. Svako jutro AI predloži nekoliko tema za taj dan; ti odabereš jednu, AI napiše skriptu, a ti je pročitaš i odobriš. Ništa se ne objavljuje samo. Glas lika je onaj iz kartice Voice-over.')
-                            ->schema([
-                                Toggle::make('persona.enabled')->label('Ovaj brend je AI lik')->live()->columnSpanFull(),
-                                TextInput::make('persona.name')->label('Ime lika')->maxLength(80)->placeholder('Mia')
-                                    ->helperText('Prazno = naziv brenda.'),
-                                Select::make('persona.language')->label('Jezik tema i skripti')
-                                    ->options(Persona::LANGUAGES)->default(Persona::DEFAULT_LANGUAGE)->selectablePlaceholder(false),
-                                Textarea::make('persona.description')->label('Tko je lik')->rows(3)->columnSpanFull()
-                                    ->placeholder('Smirena savjetnica za novac u tridesetima koja objašnjava osobne financije bez žargona.')
-                                    ->required(fn (Get $get): bool => (bool) $get('persona.enabled')),
-                                Textarea::make('persona.goal')->label('Cilj kanala')->rows(2)->columnSpanFull()
-                                    ->placeholder('Pomoći mladima da manje troše na impuls i skupe prvu rezervu.')
-                                    ->required(fn (Get $get): bool => (bool) $get('persona.enabled')),
-                                TextInput::make('persona.audience')->label('Publika')->maxLength(200)->placeholder('18–30, prvi posao'),
-                                TextInput::make('persona.tone')->label('Ton')->maxLength(200)->placeholder('topao, izravan, malo duhovit'),
-                                Textarea::make('persona.avoid')->label('O čemu lik nikad ne priča')->rows(2)->columnSpanFull()
-                                    ->placeholder('Kripto, preporuke dionica, politika.'),
-                            ])->columns(2),
-
-                        Section::make('Izgled i ambijent')
-                            ->description('Isti lik u istom prostoru u svakom videu. Slike su referenca za video model (sljedeća faza); opis ide i u upute za skriptu.')
-                            ->visible(fn (Get $get): bool => (bool) $get('persona.enabled'))
-                            ->schema([
-                                Textarea::make('persona.appearance')->label('Izgled lika')->rows(2)
-                                    ->placeholder('Kratka tamna kosa, okrugle naočale, senf džemper.'),
-                                FileUpload::make('persona.appearance_image')->label('Slika lika')->image()->disk('public')
-                                    ->directory('brands/persona')->visibility('public')->maxSize(8192),
-                                Textarea::make('persona.ambience')->label('Ambijent')->rows(2)
-                                    ->placeholder('Svijetla mala kuhinja s biljkama na prozoru, jutarnje svjetlo.'),
-                                FileUpload::make('persona.ambience_image')->label('Slika ambijenta')->image()->disk('public')
-                                    ->directory('brands/persona')->visibility('public')->maxSize(8192),
-                            ])->columns(2),
-
-                        Section::make('Teme')
-                            ->visible(fn (Get $get): bool => (bool) $get('persona.enabled'))
-                            ->schema([
-                                TextInput::make('persona.topics_per_day')->label('Tema dnevno')->numeric()
-                                    ->minValue(1)->maxValue(Persona::MAX_TOPICS_PER_DAY)->default(Persona::DEFAULT_TOPICS_PER_DAY),
-                                TimePicker::make('persona.suggest_at')->label('Prijedlozi stižu u')->seconds(false)
-                                    ->default(Persona::DEFAULT_SUGGEST_AT)
-                                    ->helperText('Lokalno vrijeme brenda. Teme se predlažu jednom dnevno; više ih možeš tražiti na ekranu Teme.'),
-                            ])->columns(2),
-                    ]),
+                    PersonaTab::make(),
                 ])->persistTabInQueryString('postavke')->columnSpanFull(),
             ]);
     }

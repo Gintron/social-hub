@@ -12,6 +12,7 @@ use App\Voiceover\Ipa;
 use App\Voiceover\IpaSuggester;
 use App\Voiceover\Phonetizer;
 use App\Voiceover\SpokenCroatian;
+use App\Voiceover\SpokenEnglish;
 use App\Voiceover\Synthesizer;
 use App\Voiceover\VoiceoverException;
 use App\Voiceover\VoiceoverSettings;
@@ -88,11 +89,12 @@ final class VoiceoverPanel
      *
      * @param  array<string, mixed>  $state  The form's `voiceover` values.
      * @param  bool  $withoutIpa  Speak it as if no word had an IPA, to hear what the IPA changes.
+     * @param  string  $language  How numbers are spelled out: `hr` (SpokenCroatian) or `en` (SpokenEnglish, an AI character's).
      * @return array{clip: Voiceover, spoken: string}
      *
      * @throws VoiceoverException
      */
-    public static function sample(array $state, string $text, ?Brand $brand = null, bool $withoutIpa = false): array
+    public static function sample(array $state, string $text, ?Brand $brand = null, bool $withoutIpa = false, string $language = 'hr'): array
     {
         $settings = VoiceoverSettings::fromArray($state);
 
@@ -104,7 +106,9 @@ final class VoiceoverPanel
             throw new VoiceoverException("Glas se ne može preslušati: {$reason}.", 'not_configured');
         }
 
-        $spoken = app(SpokenCroatian::class)->speak($text, $settings->pronunciations);
+        $spoken = $language === 'en'
+            ? app(SpokenEnglish::class)->speak($text, $settings->pronunciations)
+            : app(SpokenCroatian::class)->speak($text, $settings->pronunciations);
 
         if ($spoken === '') {
             throw new VoiceoverException('Nema što izgovoriti.', 'empty_script');

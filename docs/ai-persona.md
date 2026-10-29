@@ -6,6 +6,23 @@ običan brend: ima iste račune, glas (kartica Voice-over), termine objave i dne
 
 Hub ne zna ništa o području lika (novac, kuhanje, fitness…): to piše čovjek u opisu lika, u panelu. Nema koda po liku.
 
+## Novi lik, sve u hubu
+
+Na brendu, kartica **AI lik** (`App\Filament\Resources\Brands\Schemas\PersonaTab`), od ideje do lika bez drugih alata:
+
+- **Opiši lika iz ideje** (`PersonaDrafter`, OpenAI): iz rečenice-dvije popuni ime, tko je, cilj, publiku, ton, o čemu
+  nikad ne priča, izgled, ambijent i opis glasa (zadnja tri na engleskom, idu modelima za sliku i glas). Lik je izmišljen,
+  nikad nalik stvarnoj ili poznatoj osobi.
+- **Napravi slike lika** (`CharacterImages`, fal `fal.models.image`, zadano Seedream v5 Pro): `fal.image_candidates`
+  (4) uspravnih portreta iz izgleda i ambijenta, ~0,07 $ po slici; odabereš jednu i ona postaje slika lika (ona po kojoj
+  fal pomiče usne). **Doradi sliku lika** (`fal.models.image_edit`): ista osoba i prostor, promijeni se samo ono što
+  napišeš (2 prijedloga). Prijedlozi ostaju u `storage/app/public/brands/persona/candidates`.
+- **Glas lika**: trenutni glas, **Preslušaj glas lika** na jeziku lika (brojeve ispisuje `SpokenEnglish`/`SpokenCroatian`),
+  i **Napravi glas iz opisa** (`VoiceDesigner`, ElevenLabs Voice Design, `elevenlabs.design_model`): tri prijedloga s
+  uzorkom, **Zadrži odabrani glas** ga sprema u ElevenLabs račun i postavlja kao glas brenda.
+
+Što alati naprave puni obrazac; ništa se ne sprema dok se ne spremi brend, osim zadržanog glasa (on je u ElevenLabsu).
+
 ## Tok
 
 1. **Brendovi → AI lik**: uključi „Ovaj brend je AI lik“ i opiši ga: tko je, cilj kanala, publika, ton, o čemu nikad ne
@@ -73,8 +90,9 @@ su falove objavljene cijene i služe za procjenu; fal ne javlja cijenu zahtjeva.
   za tekstove objava.
 - `config/hub.php` → `persona.recent_days`, `persona.max_seconds` (koliko skripta smije trajati izgovorena, zadano 60),
   `persona.words_per_second` (za procjenu trajanja), `persona.max_characters` (najviše znakova glasa po shortu, 1200).
-- `config/fal.php` → `FAL_KEY`, modeli (`FAL_TALKING_MODEL`, `FAL_BROLL_MODEL`), cijene po sekundi, `FAL_MAX_COST_PER_VIDEO`,
-  `FAL_POLL_SECONDS`, `FAL_MAX_WAIT_MINUTES`.
+- `config/fal.php` → `FAL_KEY`, modeli (`FAL_TALKING_MODEL`, `FAL_BROLL_MODEL`, `FAL_IMAGE_MODEL`, `FAL_IMAGE_EDIT_MODEL`),
+  `FAL_IMAGE_CANDIDATES`, cijene po sekundi, `FAL_MAX_COST_PER_VIDEO`, `FAL_POLL_SECONDS`, `FAL_MAX_WAIT_MINUTES`.
+- `config/elevenlabs.php` → `design_model` (`ELEVENLABS_DESIGN_MODEL`, zadano `eleven_ttv_v3`) za glas iz opisa.
 
 ```bash
 ./vendor/bin/sail artisan hub:suggest-topics --brand=mia
