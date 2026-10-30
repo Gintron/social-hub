@@ -167,6 +167,40 @@ final class MetaSharedGrantTest extends TestCase
         $this->assertSame(0, SocialAccount::query()->where('external_id', 'page-x')->count());
     }
 
+    public function test_a_first_connect_finds_a_page_the_accounts_list_leaves_out_through_the_token_it_was_granted(): void
+    {
+        $this->pageOf($this->listo, 'page-l', 'old-l');
+        $listoIg = $this->instagramOf($this->listo, 'ig-l', 'old-l');
+        $newBrand = Brand::factory()->create(['name' => 'Riječ za danas']);
+
+        // A Page owned by a business portfolio: /me/accounts is empty, but the token was granted all three.
+        $this->fakeGraph(grant: [
+            'page-l' => ['token' => 'tok-l', 'ig' => 'ig-l'],
+            'page-n' => ['token' => 'tok-n', 'ig' => 'ig-n'],
+        ], hidden: ['page-l', 'page-n']);
+
+        $this->connect($newBrand);
+
+        $page = SocialAccount::query()->where('external_id', 'page-n')->firstOrFail();
+        $this->assertSame($newBrand->id, $page->brand_id);
+        $this->assertSame('tok-n', $page->access_token);
+        $this->assertSame($newBrand->id, SocialAccount::query()->where('external_id', 'ig-n')->firstOrFail()->brand_id);
+        // The sibling Page rides on the same grant and stays with its own brand.
+        $this->assertSame($this->listo->id, SocialAccount::query()->where('external_id', 'page-l')->firstOrFail()->brand_id);
+        $this->assertSame('tok-l', $listoIg->refresh()->access_token);
+    }
+
+    public function test_a_token_whose_granted_pages_cannot_be_read_connects_what_the_list_gives(): void
+    {
+        $newBrand = Brand::factory()->create(['name' => 'Riječ za danas']);
+
+        $this->fakeGraph(grant: ['page-n' => ['token' => 'tok-n', 'ig' => null]], debugFails: true);
+
+        $this->connect($newBrand);
+
+        $this->assertSame($newBrand->id, SocialAccount::query()->where('external_id', 'page-n')->firstOrFail()->brand_id);
+    }
+
     private function connect(Brand $brand): void
     {
         $this->withSession(['meta_oauth' => ['state' => 'st-1', 'brand_id' => $brand->id]])
@@ -210,10 +244,11 @@ final class MetaSharedGrantTest extends TestCase
      * @param  array<string, array{token: string, ig: string|null}>  $grant
      * @param  list<string>  $dead  tokens Graph refuses as if the permission had been withdrawn
      * @param  list<string>  $unreachable  tokens whose check ends in a Graph outage
+     * @param  list<string>  $hidden  Pages of the grant that /me/accounts leaves out (owned by a business portfolio)
      */
-    private function fakeGraph(array $grant, array $dead = [], array $unreachable = []): void
+    private function fakeGraph(array $grant, array $dead = [], array $unreachable = [], array $hidden = [], bool $debugFails = false): void
     {
-        Http::fake(function (Request $request) use ($grant, $dead, $unreachable) {
+        Http::fake(function (Request $request) use ($grant, $dead, $unreachable, $hidden, $debugFails) {
             $url = $request->url();
             $token = (string) ($request->data()['access_token'] ?? '');
 
@@ -221,8 +256,17 @@ final class MetaSharedGrantTest extends TestCase
                 return Http::response(['access_token' => 'user-token', 'expires_in' => 5184000]);
             }
 
+            if (str_contains($url, 'debug_token')) {
+                return $debugFails
+                    ? Http::response(['error' => ['message' => 'An unknown error has occurred.', 'code' => 1]], 500)
+                    : Http::response(['data' => ['is_valid' => true, 'granular_scopes' => [
+                        ['scope' => 'pages_show_list', 'target_ids' => array_keys($grant)],
+                        ['scope' => 'instagram_basic', 'target_ids' => ['not-a-page']],
+                    ]]]);
+            }
+
             if (str_contains($url, 'me/accounts')) {
-                return Http::response(['data' => collect($grant)->map(fn (array $page, string $id): array => [
+                return Http::response(['data' => collect($grant)->except($hidden)->map(fn (array $page, string $id): array => [
                     'id' => $id,
                     'name' => 'Page '.$id,
                     'access_token' => $page['token'],
@@ -251,7 +295,12 @@ final class MetaSharedGrantTest extends TestCase
 
             if ($token === 'user-token') {
                 return array_key_exists($id, $grant)
-                    ? Http::response(['id' => $id, 'name' => 'Page '.$id, 'access_token' => $grant[$id]['token']])
+                    ? Http::response([
+                        'id' => $id,
+                        'name' => 'Page '.$id,
+                        'access_token' => $grant[$id]['token'],
+                        ...($grant[$id]['ig'] !== null ? ['instagram_business_account' => ['id' => $grant[$id]['ig'], 'username' => 'user_'.$grant[$id]['ig'], 'name' => $grant[$id]['ig']]] : []),
+                    ])
                     : Http::response(['error' => ['message' => 'Unsupported get request.', 'type' => 'GraphMethodException', 'code' => 100]], 400);
             }
 

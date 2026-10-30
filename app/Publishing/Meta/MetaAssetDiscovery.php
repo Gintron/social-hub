@@ -9,6 +9,7 @@ use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\SocialAccount;
 use App\Publishing\Exceptions\TokenInvalidException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -74,11 +75,13 @@ final class MetaAssetDiscovery
 
         // Facebook Login for Business can grant a token granular access to a Page owned by a
         // business portfolio while omitting that Page from /me/accounts. On reconnect we already
-        // know the Pages that exist, so ask Graph for them directly. A user token that was not
-        // actually granted that asset still fails safely here.
+        // know the Pages that exist, so ask Graph for them directly — and so the first connect of a
+        // new brand finds its Page too, the token itself lists the Pages it was granted
+        // (debug_token → granular_scopes). A user token that was not actually granted that asset
+        // still fails safely here.
         $directPages = collect();
 
-        foreach ($ownPageIds->merge($siblingPageIds)->unique() as $pageId) {
+        foreach ($ownPageIds->merge($siblingPageIds)->merge($this->grantedPageIds($userToken))->unique() as $pageId) {
             if ($returnedPages->has($pageId)) {
                 continue;
             }
@@ -194,6 +197,42 @@ final class MetaAssetDiscovery
         }
 
         return new DiscoveryResult($accounts, $this->lostAccess($accounts));
+    }
+
+    /**
+     * Ids of the Pages the consent dialog granted this token, read from the token itself. Needed when
+     * /me/accounts answers with an empty list (a Page owned by a business portfolio): without it only
+     * Pages the hub already knows could ever be found, never the Page of a brand that has none yet.
+     * Never fails the login: an answer Graph does not give just means no extra Pages to try.
+     *
+     * @return Collection<int, string>
+     */
+    private function grantedPageIds(string $userToken): Collection
+    {
+        $appId = (string) config('meta.app_id');
+        $appSecret = (string) config('meta.app_secret');
+
+        if ($appId === '' || $appSecret === '') {
+            return collect();
+        }
+
+        try {
+            $response = $this->graph->get('debug_token', ['input_token' => $userToken], $appId.'|'.$appSecret, 'discover.debug_token');
+        } catch (Throwable $e) {
+            Log::warning('meta.discover_debug_token_failed', ['error' => mb_substr($e->getMessage(), 0, 300)]);
+
+            return collect();
+        }
+
+        // Only the scopes that are about Pages: the Instagram ones list Instagram account ids, which
+        // are not Pages and would only make a pointless lookup.
+        return collect($response['data']['granular_scopes'] ?? [])
+            ->filter(fn (mixed $scope): bool => is_array($scope) && str_starts_with((string) ($scope['scope'] ?? ''), 'pages_'))
+            ->flatMap(fn (array $scope): array => (array) ($scope['target_ids'] ?? []))
+            ->map(fn (mixed $id): string => (string) $id)
+            ->filter()
+            ->unique()
+            ->values();
     }
 
     /**
