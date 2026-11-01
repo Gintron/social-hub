@@ -249,6 +249,52 @@ final class PublishFlowTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_a_person_publishing_content_that_ran_out_is_not_stopped_by_it(): void
+    {
+        Notification::fake();
+        Http::fake([
+            'graph.facebook.com/v23.0/*/photos' => Http::response(['id' => '111', 'post_id' => '999_111']),
+            'graph.facebook.com/v23.0/999_111/comments' => Http::response(['id' => '999_111_1']),
+            'example.test/*' => Http::response('', 200),
+        ]);
+        [$brand, $item] = $this->brandWithItem(['expires_at' => now()->subHour()]);
+        $page = SocialAccount::factory()->for($brand)->create(['external_id' => '999', 'access_token' => 'page-token']);
+        $draft = app(CreateDraft::class)->execute($item, [$page], render: false);
+        $variant = $draft->variants->first();
+        $variant->media()->attach($this->asset($brand, $draft)->id, ['position' => 0]);
+
+        app(ApproveDraft::class)->execute($draft, null);
+        // The schedule or the agent: the expiry still stops it, and the variant stays skipped.
+        app(DispatchDraftPublishing::class)->execute($draft->refresh());
+        $this->assertSame(VariantStatus::Skipped, $variant->refresh()->status);
+        $this->assertSame('content_expired', $variant->error_code);
+
+        // A person pressing publish on the skipped draft: queued again, and the expiry is not asked.
+        $queued = app(DispatchDraftPublishing::class)->execute($draft->refresh(), anyway: true);
+
+        $this->assertSame(1, $queued);
+        $variant->refresh();
+        $this->assertSame(VariantStatus::Published, $variant->status);
+        $this->assertSame('999_111', $variant->external_post_id);
+        $this->assertNull($variant->error_code);
+        $this->assertSame(DraftStatus::Published, $draft->refresh()->status);
+    }
+
+    public function test_publishing_anyway_only_lifts_the_expiry_not_other_skips(): void
+    {
+        Http::fake();
+        [$brand, $item] = $this->brandWithItem(['expires_at' => now()->subHour()]);
+        $page = SocialAccount::factory()->for($brand)->create();
+        $draft = app(CreateDraft::class)->execute($item, [$page], render: false);
+        $variant = $draft->variants->first();
+
+        app(ApproveDraft::class)->execute($draft, null);
+        $variant->forceFill(['status' => VariantStatus::Skipped, 'error_code' => 'dead_link'])->save();
+
+        $this->assertSame(0, app(DispatchDraftPublishing::class)->execute($draft->refresh(), anyway: true));
+        $this->assertSame('dead_link', $variant->refresh()->error_code);
+    }
+
     public function test_a_source_that_silently_dropped_the_item_is_caught_at_publish_time(): void
     {
         // expires_at still looks fine — the source archived it without ever telling the hub.

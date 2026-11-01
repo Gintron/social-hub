@@ -113,7 +113,7 @@ final class EditPostDraft extends EditRecord
                             app(ApproveDraft::class)->execute($draft, auth()->id());
                         }
 
-                        $queued = app(DispatchDraftPublishing::class)->execute($draft->refresh());
+                        $queued = app(DispatchDraftPublishing::class)->execute($draft->refresh(), anyway: true);
 
                         return "Spremljeno; {$queued} kanal(a) u redu za objavu.";
                     });
@@ -250,6 +250,13 @@ final class EditPostDraft extends EditRecord
         if ($problems->isNotEmpty()) {
             $parts[] = '<strong>Nije spremno:</strong><br>'.$problems->implode('<br>')
                 .'<br>'.e('Kanal kojem se medij još renderira pričeka ga; ostali padnu s tim razlogom.');
+        }
+
+        $expired = $this->draft()->contentItems->first(fn (ContentItem $item): bool => $item->isExpired());
+
+        if ($expired !== null) {
+            $parts[] = '<strong>Stavka je istekla</strong> ('.e($expired->expires_at?->timezone('Europe/Zagreb')->format('d.m.Y H:i')).'). '
+                .e('Objavit će se svejedno, jer je tu odluku donio ti.');
         }
 
         if ($variants->contains(fn (PostVariant $variant): bool => $variant->platform === Platform::TikTok && $variant->setting('delivery') !== 'inbox')) {

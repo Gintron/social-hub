@@ -94,7 +94,8 @@ final class PublishVariantJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $expired = $draft?->contentItems->first(fn ($item): bool => $item->isExpired());
+        // A person who pressed "publish" on content that ran out has decided (DispatchDraftPublishing, `anyway`).
+        $expired = $variant->setting('publish_anyway') === true ? null : $draft?->contentItems->first(fn ($item): bool => $item->isExpired());
         if ($expired !== null) {
             $variant->forceFill([
                 'status' => VariantStatus::Skipped,
