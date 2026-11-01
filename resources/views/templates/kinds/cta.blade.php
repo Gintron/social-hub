@@ -33,8 +33,10 @@
     @if(!empty($brand['pitch']))
       <div class="pitch">{{ $brand['pitch'] }}</div>
     @endif
-    @if($brand['site'] ?? $item['url_display'] ?? null)
-      <div class="where">🔗 {{ $brand['site'] ?? $item['url_display'] }}</div>
+    {{-- A quote's own address is the page of that verse, not a place to send people: without a site of the brand's own, no address. --}}
+    @php($where = $brand['site'] ?? (($item['kind'] ?? null) === 'quote' ? null : ($item['url_display'] ?? null)))
+    @if($where)
+      <div class="where">🔗 {{ $where }}</div>
     @endif
     @if(!empty($brand['cta_note']))
       <div class="note">{{ $brand['cta_note'] }}</div>

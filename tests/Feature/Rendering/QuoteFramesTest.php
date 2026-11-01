@@ -70,6 +70,20 @@ final class QuoteFramesTest extends TestCase
         $this->assertStringNotContainsString('<div class="rule">', $card);
     }
 
+    public function test_the_end_card_of_a_quote_names_the_brands_site_or_no_address_at_all(): void
+    {
+        $item = $this->quote(['url' => 'https://rijec.test/hr/2026-10-13']);
+
+        $this->assertStringContainsString('<div class="where">🔗 rijec.test</div>', $this->html('kinds/cta-story', $item));
+
+        // No site of its own: the verse's page is not an address to send anyone to.
+        $item->brand->update(['site_url' => null]);
+
+        $end = $this->html('kinds/cta-story', $item->fresh());
+        $this->assertStringNotContainsString('class="where"', $end);
+        $this->assertStringNotContainsString('2026-10-13', $end);
+    }
+
     public function test_the_text_is_escaped_not_interpreted(): void
     {
         $card = $this->html('kinds/quote-story', $this->quote(['title' => '<script>alert(1)</script> Blago']));
