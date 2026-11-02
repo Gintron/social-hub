@@ -62,7 +62,7 @@ final class ContentItemActions
             ])
             ->action(function (array $data, ContentItem $record, $livewire): void {
                 $accounts = SocialAccount::query()->whereIn('id', $data['accounts'] ?? [])->get();
-                $scheduledAt = filled($data['scheduled_at'] ?? null) ? CarbonImmutable::parse((string) $data['scheduled_at'], 'Europe/Zagreb')->utc() : null;
+                $scheduledAt = filled($data['scheduled_at'] ?? null) ? CarbonImmutable::parse((string) $data['scheduled_at'], (string) config('app.timezone'))->utc() : null;
 
                 try {
                     $draft = app(CreateDraft::class)->execute(

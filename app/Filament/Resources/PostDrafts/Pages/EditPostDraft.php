@@ -90,7 +90,8 @@ final class EditPostDraft extends EditRecord
                 ->action(function (array $data): void {
                     $this->save(shouldRedirect: false, shouldSendSavedNotification: false);
 
-                    $at = CarbonImmutable::parse((string) $data['scheduled_at'], 'Europe/Zagreb')->utc();
+                    // The picker shows Zagreb time and hands over the moment in the app's timezone (UTC): read it as that.
+                    $at = CarbonImmutable::parse((string) $data['scheduled_at'], (string) config('app.timezone'))->utc();
                     $this->run(fn () => app(ScheduleDraft::class)->execute($this->draft(), $at, auth()->id()), 'Spremljeno i zakazano za '.$at->timezone('Europe/Zagreb')->format('d.m.Y H:i').'.');
                 }),
 

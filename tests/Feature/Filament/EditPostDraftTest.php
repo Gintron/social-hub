@@ -52,6 +52,17 @@ final class EditPostDraftTest extends TestCase
         Queue::assertPushed(PublishVariantJob::class, fn (PublishVariantJob $job): bool => $job->variantId === $variant->id);
     }
 
+    public function test_a_time_picked_in_zagreb_is_scheduled_at_that_moment_not_an_hour_earlier(): void
+    {
+        $draft = $this->draft();
+
+        // 18:30 on the screen, in November: 17:30 UTC. The picker already converts; the action read it as Zagreb again.
+        Livewire::test(EditPostDraft::class, ['record' => $draft->getRouteKey()])
+            ->callAction('schedule', ['scheduled_at' => '2026-11-03 18:30:00']);
+
+        $this->assertSame('2026-11-03 17:30:00', $draft->refresh()->scheduled_at->utc()->format('Y-m-d H:i:s'));
+    }
+
     public function test_changing_one_channels_format_renders_for_that_channel_only(): void
     {
         $draft = $this->draft(withTikTok: true);
