@@ -35,6 +35,16 @@ final class RestrictedGoodsCheckTest extends TestCase
         yield 'by volume only' => ['Destilat 40 % vol. 0,7 l'];
         yield 'by volume with a zero digit' => ['Destilat 40,0 % vol. 0,7 l'];
         yield 'liqueur with a zero digit' => ['Likeri 20,0 % vol'];
+        yield 'german wine' => ['Grüner Veltliner Wein 0,75 l'];
+        yield 'german compound wine' => ['Rotwein Zweigelt 0,75 l'];
+        yield 'german beer' => ['Stiegl Goldbräu Bier 0,5 l'];
+        yield 'german compound beer' => ['Weißbier Dose 0,5 l'];
+        yield 'german sparkling' => ['Sekt Trocken 0,75 l'];
+        yield 'german spirit' => ['Obstler 40 % Vol. Schnaps'];
+        yield 'german liqueur' => ['Eierlikör 0,5 l'];
+        yield 'brand of an austrian beer' => ['Zipfer Märzen 6er-Tray'];
+        yield 'german volume only' => ['Edelbrand 38 Vol.-% 0,7 l'];
+        yield 'german named as alcohol' => ['Enthält Alkohol'];
     }
 
     /**
@@ -51,6 +61,14 @@ final class RestrictedGoodsCheckTest extends TestCase
         yield 'a name' => ['Vinko Kovač, konobar'];
         yield 'a word inside a word' => ['Pivovara Medvedgrad, izlet'];
         yield 'a percentage that is not a volume' => ['Mlijeko 3,2 % masti'];
+        yield 'german alcohol-free beer' => ['Alkoholfreies Bier 0,5 l'];
+        yield 'german beer, alcohol-free after the noun' => ['Weißbier alkoholfrei 0,5 l'];
+        yield 'german alcohol-free sparkling' => ['Alkoholfreier Sekt 0,75 l'];
+        yield 'german without alcohol' => ['Apfelsaft ohne Alkohol 1 l'];
+        yield 'german zero volume' => ['Radler 0,0 Vol.-% 0,5 l'];
+        yield 'german grapes' => ['Weintrauben weiß 500 g'];
+        yield 'german wine vinegar' => ['Weinessig 0,5 l'];
+        yield 'german beer ham' => ['Bierschinken 100 g'];
     }
 
     #[DataProvider('drinks')]

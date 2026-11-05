@@ -34,6 +34,20 @@ return [
             'ožujsko', 'karlovačko', 'jägermeister', 'heineken', 'corona', 'tuborg', 'stella artois', 'carlsberg',
             'jim beam', 'jack daniel*', 'johnnie walker', 'jameson', 'smirnoff', 'absolut', 'bacardi',
             'captain morgan', 'chivas', 'ballantine*',
+            // German (Listo Österreich). Compounds are listed by their start because a term only takes endings, not
+            // beginnings: "Rotwein" is not caught by "wein". "Weintrauben" (grapes) and "Weinessig" (vinegar) stay out
+            // on purpose, so plain "wein" has no `*`.
+            'wein', 'weine', 'weins',
+            'rotwein*', 'weißwein*', 'weisswein*', 'roséwein*', 'rosewein*', 'schaumwein*', 'qualitätswein*',
+            'glühwein*', 'gluehwein*', 'apfelwein*', 'weinbrand*', 'jagertee', 'sekt', 'sekte', 'sektes', 'henkell', 'söhnlein', 'schlumberger', 'mionetto', 'champagner*', 'spumante',
+            'cremant', 'crémant', 'cider', 'cidre',
+            'bier*', 'weißbier*', 'weissbier*', 'weizenbier*', 'märzenbier*', 'kellerbier*', 'craftbier*', 'bockbier*',
+            'dunkelbier*', 'pils', 'pilsner*', 'zwickl*',
+            'schnaps*', 'spirituosen', 'likör*', 'obstler*', 'brandy', 'cognac', 'wodka*', 'whisky*', 'whiskey*',
+            'amaretto', 'baileys', 'eierlikör*', 'averna', 'fernet*', 'ouzo', 'sambuca', 'kahlua', 'kahlúa', 'malibu', 'lillet',
+            'stiegl', 'gösser', 'zipfer', 'puntigamer', 'ottakringer', 'schwechater', 'murauer', 'hirter', 'villacher',
+            'paulaner', 'erdinger', 'weihenstephaner', 'franziskaner', 'budweiser', 'bitburger', 'krombacher', 'warsteiner',
+            'beck\'s', 'becks', 'desperados', 'guinness', 'peroni', 'hochprozentig*',
         ],
 
         // Removed before the words are read. "bezalkoholno pivo" is a drink with no alcohol: the phrase goes, its noun
@@ -42,9 +56,15 @@ return [
         'exceptions' => [
             '(?:bezalkohol|nealkohol)\p{L}*(?:\s+(?:pivo|piva|pivu|pivom|pivima|vino|vina|vinu|vinom|vinima|pjenu\p{L}*)(?!\p{L}))?',
             '(?<![\p{N}.,])0[,.]0\s*%(?:\s*vol(?!\p{L}))?',
+            '(?<![\p{N}.,])0[,.]0\s*vol\.?\s*-?\s*%',
+            // German: "alkoholfreies Bier", "Weißbier alkoholfrei", "ohne Alkohol" are no drinks of the kind; a "Bierschinken" is a ham.
+            'alkoholfrei\p{L}*(?:\s+(?:\p{L}*(?:bier|wein|sekt|cider|cidre)|schaumwein|punsch)\p{L}*)?',
+            '(?:\p{L}*bier|\p{L}*wein|\p{L}*sekt)\s+alkoholfrei\p{L}*',
+            'ohne\s+alkohol',
+            'bier(?:schinken|wurst|senf|rettich|brot)\p{L}*',
         ],
 
-        // Alcohol by volume: "11,5 % vol", "12% vol.".
-        'volume' => '\d+(?:[,.]\d+)?\s*%\s*vol(?!\p{L})',
+        // Alcohol by volume: "11,5 % vol", "12% vol.", and the German "12 Vol.-%".
+        'volume' => '(?:\d+(?:[,.]\d+)?\s*%\s*vol(?!\p{L})|\d+(?:[,.]\d+)?\s*vol\.?\s*-?\s*%)',
     ],
 ];
