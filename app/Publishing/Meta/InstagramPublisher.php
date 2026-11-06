@@ -15,6 +15,7 @@ use App\Publishing\Exceptions\PublishException;
 use App\Publishing\Exceptions\RateLimitedException;
 use App\Publishing\Exceptions\TransientPublishException;
 use App\Publishing\PublishResult;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
@@ -41,6 +42,11 @@ final class InstagramPublisher implements Publisher
      * Video containers are transcoded, not just fetched, so they need a far longer leash.
      */
     private const VIDEO_POLL_TIMEOUT_SECONDS = 600;
+
+    /**
+     * `settings` key written just before `media_publish` and cleared once Instagram answers.
+     */
+    private const PUBLISH_MARKER = 'ig_publish';
 
     public function __construct(
         private readonly GraphClient $graph,
@@ -70,6 +76,14 @@ final class InstagramPublisher implements Publisher
         $caption = $this->preflight->caption($variant);
         $isReel = $variant->format() === ContentFormat::Video;
 
+        // A previous attempt may have asked Instagram to publish and lost the answer: the post can already be live.
+        $fingerprint = sha1($caption.'|'.$media->pluck('id')->implode(','));
+        $resume = $this->reconcile($graph, $igUserId, $token, $variant, $caption, $fingerprint);
+
+        if (isset($resume['media'])) {
+            return $this->adopt($graph, $variant, $token, $resume['media']);
+        }
+
         if ($isReel) {
             $this->preflight->video($media);
         } else {
@@ -78,7 +92,7 @@ final class InstagramPublisher implements Publisher
 
         $this->assertQuota($graph, $igUserId, $token, $variant);
 
-        $creationId = match (true) {
+        $creationId = $resume['container'] ?? match (true) {
             $isReel => $this->reelContainer($graph, $igUserId, $token, $media->first(), $caption, $variant),
             $media->count() === 1 => $this->singleContainer($graph, $igUserId, $token, $media->first(), $caption),
             default => $this->carouselContainer($graph, $igUserId, $token, $media, $caption),
@@ -86,17 +100,119 @@ final class InstagramPublisher implements Publisher
 
         $this->awaitContainer($graph, $creationId, $token, $isReel ? self::VIDEO_POLL_TIMEOUT_SECONDS : self::POLL_TIMEOUT_SECONDS);
 
-        $published = $graph->post("{$igUserId}/media_publish", ['creation_id' => $creationId], $token, 'ig.publish');
+        // From here on a lost answer (timeout) does not mean the post is not live. Remember the container, so the
+        // retry looks before it builds a second one.
+        $variant->putSettings([self::PUBLISH_MARKER => ['container' => $creationId, 'at' => $resume['at'] ?? now()->toIso8601String(), 'fingerprint' => $fingerprint]]);
+
+        try {
+            $published = $graph->post("{$igUserId}/media_publish", ['creation_id' => $creationId], $token, 'ig.publish');
+        } catch (PublishException $e) {
+            // A container that was already sent once and is refused now was most likely published by that first call,
+            // and the media list simply had not caught up when it was read.
+            $live = isset($resume['container']) ? $this->recentMatch($graph, $igUserId, $token, $caption, CarbonImmutable::parse($resume['at'])) : null;
+
+            if ($live === null) {
+                throw $e;
+            }
+
+            return $this->adopt($graph, $variant, $token, $live);
+        }
         $mediaId = $published['id'] ?? null;
 
         if (blank($mediaId)) {
             throw new TransientPublishException('Instagram nije vratio id objave: '.json_encode($published), 'ig_no_media_id');
         }
 
+        $variant->forgetSetting(self::PUBLISH_MARKER);
+
         $permalink = $this->permalink($graph, (string) $mediaId, $token);
         $this->firstComment($graph, $variant, (string) $mediaId, $token);
 
         return new PublishResult((string) $mediaId, $permalink, $published);
+    }
+
+    /**
+     * What a lost `media_publish` answer left behind: the post itself, or a container that is still ready to publish.
+     *
+     * `media_publish` can time out after Instagram has already accepted it (2026-11-05: a Reel went out twice, the retry
+     * built a second container). So when the marker is there, the account's latest media is read for the same caption
+     * published since the attempt. A container Instagram reports as PUBLISHED with no such media to adopt is not
+     * retried: a person has to look, because another attempt would be a second post. A marker made for another caption
+     * or other media is dropped, and so is one whose container is no longer FINISHED.
+     *
+     * @return array{media?: array{id: string, permalink: ?string}, container?: string, at?: string}|null
+     */
+    private function reconcile(GraphClient $graph, string $igUserId, string $token, PostVariant $variant, string $caption, string $fingerprint): ?array
+    {
+        $marker = $variant->setting(self::PUBLISH_MARKER);
+
+        if (! is_array($marker) || blank($marker['container'] ?? null)) {
+            return null;
+        }
+
+        if (($marker['fingerprint'] ?? null) !== $fingerprint) {
+            $variant->forgetSetting(self::PUBLISH_MARKER);
+
+            return null;
+        }
+
+        $at = (string) ($marker['at'] ?? now()->toIso8601String());
+        $live = $this->recentMatch($graph, $igUserId, $token, $caption, CarbonImmutable::parse($at));
+
+        if ($live !== null) {
+            return ['media' => $live];
+        }
+
+        $status = ($graph->get((string) $marker['container'], ['fields' => 'status_code,status'], $token, 'ig.container_status')['status_code'] ?? '');
+
+        if ($status === 'PUBLISHED') {
+            throw new PermanentPublishException(
+                'Instagram javlja da je spremnik objavljen, ali objava nije pronađena među zadnjim medijima računa. Provjeri profil prije ponovne objave.',
+                'ig_publish_unconfirmed',
+            );
+        }
+
+        if ($status === 'FINISHED') {
+            return ['container' => (string) $marker['container'], 'at' => $at];
+        }
+
+        $variant->forgetSetting(self::PUBLISH_MARKER);
+
+        return null;
+    }
+
+    /**
+     * The account's latest media published since `$since` whose caption starts the same way (Instagram may reflow
+     * whitespace or shorten what it returns).
+     *
+     * @return array{id: string, permalink: ?string}|null
+     */
+    private function recentMatch(GraphClient $graph, string $igUserId, string $token, string $caption, CarbonImmutable $since): ?array
+    {
+        $normalise = static fn (string $text): string => mb_substr((string) preg_replace('/\s+/u', ' ', mb_trim($text)), 0, 100);
+        $recent = $graph->get("{$igUserId}/media", ['fields' => 'id,caption,timestamp,permalink', 'limit' => 15], $token, 'ig.recent_media');
+        $since = $since->subMinutes(2);
+
+        foreach ($recent['data'] ?? [] as $media) {
+            if ($normalise((string) ($media['caption'] ?? '')) === $normalise($caption)
+                && filled($media['id'] ?? null)
+                && CarbonImmutable::parse((string) ($media['timestamp'] ?? '1970-01-01'))->greaterThanOrEqualTo($since)) {
+                return ['id' => (string) $media['id'], 'permalink' => $media['permalink'] ?? null];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{id: string, permalink: ?string}  $live
+     */
+    private function adopt(GraphClient $graph, PostVariant $variant, string $token, array $live): PublishResult
+    {
+        $variant->forgetSetting(self::PUBLISH_MARKER);
+        $this->firstComment($graph, $variant, $live['id'], $token);
+
+        return new PublishResult($live['id'], $live['permalink'] ?? $this->permalink($graph, $live['id'], $token), ['recovered' => true]);
     }
 
     /**

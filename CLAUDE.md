@@ -55,6 +55,11 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
 - **Instagram objavljuje u dva koraka i asinkrono**: spremnik se mora čekati (`status_code`) prije
   `media_publish`; carousel dodatno čeka svaki slajd prije nego ih roditelj referencira. Polling koristi
   `Illuminate\Support\Sleep` da bi testovi mogli `Sleep::fake()`.
+- **Izgubljen odgovor `media_publish` nije neuspjeh.** Instagram je 05. 11. 2026. objavio Reel čiji je poziv istekao (cURL 28), a
+  ponovni pokušaj je napravio novi spremnik i objavio ga drugi put. Zato `InstagramPublisher` prije `media_publish` upiše
+  `settings.ig_publish` (spremnik, vrijeme, hash teksta i medija), a pri ponovnom pokušaju prvo traži objavu među zadnjim medijima
+  računa (isti početak teksta, nakon pokušaja) i preuzme je; inače koristi isti spremnik. Spremnik koji je `PUBLISHED` bez
+  pronađene objave ide u `Failed` (`ig_publish_unconfirmed`), ne u novi pokušaj. Ne brisati marker kao „zaostalo stanje“.
 - **Nakon objave ništa ne smije srušiti varijantu**: permalink i prvi komentar hvataju iznimku i samo
   logiraju — objava je već javna.
 - **Link objave na Facebook stranici ide u prvi komentar, ne u tekst** (Facebook objavu s vanjskim

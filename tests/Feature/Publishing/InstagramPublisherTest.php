@@ -17,8 +17,10 @@ use App\Models\SocialAccount;
 use App\Models\Source;
 use App\Publishing\Exceptions\PermanentPublishException;
 use App\Publishing\Exceptions\RateLimitedException;
+use App\Publishing\Exceptions\TransientPublishException;
 use App\Publishing\Meta\InstagramPublisher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -250,18 +252,129 @@ final class InstagramPublisherTest extends TestCase
      *
      * @param  list<string>  $containerStatuses
      */
-    private function fakeGraph(array $containerStatuses = ['FINISHED'], int $quotaUsage = 3, bool $commentFails = false): void
+    public function test_a_timed_out_publish_that_went_live_is_adopted_not_posted_twice(): void
+    {
+        $this->fakeGraph(publishes: ['timeout'], listings: ['live']);
+        [$variant] = $this->variantWithMedia();
+
+        $this->publishExpectingRetry($variant);
+        $this->assertSame('container-1', $variant->fresh()->setting('ig_publish.container'));
+
+        $result = app(InstagramPublisher::class)->publish($variant->fresh());
+
+        $this->assertSame('live-1', $result->externalId);
+        $this->assertSame(1, $this->sentCount('POST', '/media'), 'The retry must not build a second container.');
+        $this->assertSame(1, PublishLog::query()->where('event', 'ig.publish')->count(), 'The retry must not publish again.');
+        $this->assertNull($variant->fresh()->setting('ig_publish'));
+    }
+
+    public function test_a_timed_out_publish_that_did_not_go_live_reuses_its_container(): void
+    {
+        $this->fakeGraph(publishes: ['timeout', 'ok'], listings: ['empty']);
+        [$variant] = $this->variantWithMedia();
+
+        $this->publishExpectingRetry($variant);
+        $result = app(InstagramPublisher::class)->publish($variant->fresh());
+
+        $this->assertSame('media-1', $result->externalId);
+        $this->assertSame(1, $this->sentCount('POST', '/media'));
+        $this->assertSame(2, PublishLog::query()->where('event', 'ig.publish')->count());
+    }
+
+    public function test_a_refused_second_publish_of_a_reused_container_adopts_the_post_that_appeared_meanwhile(): void
+    {
+        $this->fakeGraph(publishes: ['timeout', 'refused'], listings: ['empty', 'live']);
+        [$variant] = $this->variantWithMedia();
+
+        $this->publishExpectingRetry($variant);
+        $result = app(InstagramPublisher::class)->publish($variant->fresh());
+
+        $this->assertSame('live-1', $result->externalId);
+        $this->assertSame(1, $this->sentCount('POST', '/media'));
+    }
+
+    public function test_a_marker_for_a_caption_that_has_since_changed_is_dropped(): void
+    {
+        $this->fakeGraph(publishes: ['timeout', 'ok'], listings: ['empty']);
+        [$variant] = $this->variantWithMedia();
+
+        $this->publishExpectingRetry($variant);
+        $variant->fresh()->update(['caption' => 'Potpuno nov tekst objave']);
+
+        $result = app(InstagramPublisher::class)->publish($variant->fresh());
+
+        $this->assertSame('media-1', $result->externalId);
+        $this->assertSame(2, $this->sentCount('POST', '/media'), 'A new caption needs a new container.');
+    }
+
+    public function test_an_expired_container_is_replaced_on_retry(): void
+    {
+        $this->fakeGraph(containerStatuses: ['FINISHED', 'EXPIRED', 'FINISHED'], publishes: ['timeout', 'ok'], listings: ['empty']);
+        [$variant] = $this->variantWithMedia();
+
+        $this->publishExpectingRetry($variant);
+        $result = app(InstagramPublisher::class)->publish($variant->fresh());
+
+        $this->assertSame('media-1', $result->externalId);
+        $this->assertSame(2, $this->sentCount('POST', '/media'));
+    }
+
+    public function test_a_carousel_retry_reuses_its_parent_container(): void
+    {
+        $this->fakeGraph(publishes: ['timeout', 'ok'], listings: ['empty']);
+        [$variant] = $this->variantWithMedia(slides: 3);
+
+        $this->publishExpectingRetry($variant);
+        $result = app(InstagramPublisher::class)->publish($variant->fresh());
+
+        $this->assertSame('media-1', $result->externalId);
+        $this->assertSame(4, $this->sentCount('POST', '/media'), 'Three slides and one parent, once.');
+    }
+
+    private function publishExpectingRetry(PostVariant $variant): void
+    {
+        try {
+            app(InstagramPublisher::class)->publish($variant);
+            $this->fail('The first attempt should not succeed.');
+        } catch (TransientPublishException) {
+            // the variant is retried
+        }
+    }
+
+    private function sentCount(string $method, string $pathEnd): int
+    {
+        return Http::recorded(fn (Request $r): bool => $r->method() === $method
+            && str_ends_with((string) parse_url($r->url(), PHP_URL_PATH), $pathEnd))->count();
+    }
+
+    /**
+     * @param  list<string>  $publishes  outcome of each media_publish call: ok, timeout or refused (the last one repeats)
+     * @param  list<string>  $listings  answer to each read of the account's latest media: empty or live (the last one repeats)
+     */
+    private function fakeGraph(array $containerStatuses = ['FINISHED'], int $quotaUsage = 3, bool $commentFails = false, array $publishes = ['ok'], array $listings = ['empty']): void
     {
         $statuses = $containerStatuses;
         $childSeq = 0;
+        $containerSeq = 0;
+        $caption = '';
+        $publishSeq = $publishes;
+        $listSeq = $listings;
 
-        Http::fake(function (Request $request) use (&$statuses, &$childSeq, $quotaUsage, $commentFails) {
+        Http::fake(function (Request $request) use (&$statuses, &$childSeq, &$containerSeq, &$caption, &$publishSeq, &$listSeq, $quotaUsage, $commentFails) {
             $path = (string) parse_url($request->url(), PHP_URL_PATH);
             $data = $request->data();
 
             if ($request->method() === 'POST') {
                 if (str_ends_with($path, '/media_publish')) {
-                    return Http::response(['id' => 'media-1']);
+                    $outcome = count($publishSeq) > 1 ? array_shift($publishSeq) : $publishSeq[0];
+
+                    if ($outcome === 'timeout') {
+                        throw new ConnectionException('cURL error 28: Operation timed out');
+                    }
+
+                    return $outcome === 'refused'
+                        ? Http::response(['error' => ['message' => 'Media ID is not available', 'code' => 9007, 'error_subcode' => 2207027]], 400)
+                        : Http::response(['id' => 'media-1']);
                 }
 
                 if (str_ends_with($path, '/comments')) {
@@ -275,7 +388,9 @@ final class InstagramPublisherTest extends TestCase
                         return Http::response(['id' => 'child-'.(++$childSeq)]);
                     }
 
-                    return Http::response(['id' => 'container-1']);
+                    $caption = $data['caption'] ?? $caption;
+
+                    return Http::response(['id' => 'container-'.(++$containerSeq)]);
                 }
             }
 
@@ -285,6 +400,14 @@ final class InstagramPublisherTest extends TestCase
 
             $query = [];
             parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            if (str_ends_with($path, '/media') && str_contains((string) ($query['fields'] ?? ''), 'timestamp')) {
+                $listing = count($listSeq) > 1 ? array_shift($listSeq) : $listSeq[0];
+
+                return Http::response(['data' => $listing === 'live'
+                    ? [['id' => 'live-1', 'caption' => $caption, 'timestamp' => now()->toIso8601String(), 'permalink' => 'https://www.instagram.com/reel/LIVE/']]
+                    : []]);
+            }
 
             if (str_contains((string) ($query['fields'] ?? ''), 'status_code')) {
                 $status = count($statuses) > 1 ? array_shift($statuses) : $statuses[0];
