@@ -61,14 +61,17 @@ php artisan queue:restart
 # Opcache na ovom serveru ne provjerava datoteke: bez reloada PHP-FPM vrti stari kod dok CLI
 # (migracije, red) vrti novi. 25. 09. 2026. migracija je upisala novi status nacrta, a panel ga
 # sa starim enumom nije znao pročitati — 500 na svakoj stranici koja ga dotakne.
-echo "" | sudo -S service php8.4-fpm reload
+# Hub na produkciji vrti PHP 8.5 (nginx: fastcgi_pass unix:/run/php/php8.5-fpm.sock), ne 8.4: reloadati treba php8.5-fpm.
+# Provjera: grep fastcgi_pass /etc/nginx/sites-available/hub.<domena>. Reload krivog servisa ostavlja panel na starom kodu
+# (14. 11. 2026.: nova vrsta stavke u bazi + stari enum = 500 na popisu objava).
+echo "" | sudo -S service php8.5-fpm reload
 ```
 
 `optimize` sprema konfiguraciju u `bootstrap/cache/config.php`, a FPM na serveru ima
 `opcache.validate_timestamps=0`. Zato **svaka** promjena u Environmentu traži reload PHP-FPM-a —
 inače site vrti staru konfiguraciju, a CLI novu, pa `hub:doctor` bude zelen dok panel tvrdi da
 varijabla nije postavljena. Deploy reloada FPM sam; kad mijenjaš samo Environment, pokreni deploy
-ili `echo "" | sudo -S service php8.4-fpm reload`.
+ili `echo "" | sudo -S service php8.5-fpm reload` (PHP verzija koju site stvarno koristi, vidi gore).
 
 `storage/app/public/media` drži renderirane slike; **ne smije** biti u nečemu što deploy briše.
 
