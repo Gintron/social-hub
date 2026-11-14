@@ -37,11 +37,49 @@ final class RecipeCopyTest extends TestCase
     public function test_the_voice_says_the_same_in_german_with_the_shop_after_bei(): void
     {
         $item = $this->recipeItem(market: 'at');
+        // The question: the card says the number itself (after "4 Zutaten im Angebot." it goes on from it, see below).
+        $item->brand->voice = [...$item->brand->voice, 'recipe_hook' => 'question'];
         $lines = RecipeCopy::voiceLines($item, $item->brand);
 
+        $this->assertSame('Was kochen diese Woche?', $lines['hook']);
         $this->assertSame('4 von 6 Zutaten sind bei Eurospar im Angebot.', $lines['card']);
         $this->assertSame('Rezept und Einkaufsliste findest du in der App Listo. Den Link findest du im Kommentar.', $lines['closing']);
-        $this->assertContains($lines['hook'], ['Was kochen diese Woche?', '4 Zutaten im Angebot.', 'Aus dem Prospekt auf den Teller.']);
+    }
+
+    public function test_the_app_has_its_own_name_when_the_brand_is_named_for_a_market(): void
+    {
+        $item = $this->recipeItem(market: 'at');
+        $item->brand->name = 'Listo Österreich';
+
+        // Without a name of its own the app is called what the brand is called.
+        $this->assertSame('Rezept und Einkaufsliste findest du in der App Listo Österreich. Den Link findest du im Kommentar.', RecipeCopy::voiceLines($item, $item->brand)['closing']);
+
+        $item->brand->voice = [...$item->brand->voice, 'app_name' => 'Listo'];
+        $this->assertSame('Rezept und Einkaufsliste findest du in der App Listo. Den Link findest du im Kommentar.', RecipeCopy::voiceLines($item, $item->brand)['closing']);
+        $this->assertSame('Rezept und Einkaufsliste findest du in der App Listo.', RecipeCopy::view($item, $item->brand)['cta_line']);
+        $this->assertStringContainsString('in der App Listo. Den Link', RecipeCopy::captionParts($item, $item->brand)['link']);
+        $this->assertStringNotContainsString('Österreich', RecipeCopy::captionParts($item, $item->brand)['link']);
+    }
+
+    public function test_after_a_hook_that_says_the_number_the_card_goes_on_from_it(): void
+    {
+        $hr = $this->recipeItem();
+        $hr->brand->voice = [...$hr->brand->voice, 'recipe_hook' => 'figure'];
+        $lines = RecipeCopy::voiceLines($hr, $hr->brand);
+
+        $this->assertSame('4 sastojka na akciji.', $lines['hook']);
+        $this->assertSame('To je 4 od 7 sastojaka, sve u trgovini Ribola.', $lines['card']);
+
+        $at = $this->recipeItem(market: 'at');
+        $at->brand->voice = [...$at->brand->voice, 'recipe_hook' => 'figure'];
+        $german = RecipeCopy::voiceLines($at, $at->brand);
+
+        $this->assertSame('4 Zutaten im Angebot.', $german['hook']);
+        $this->assertSame('Das sind 4 von 6 Zutaten, alle bei Eurospar.', $german['card']);
+
+        // Any other hook leaves the card as it was: the number has not been said yet.
+        $hr->brand->voice = [...$hr->brand->voice, 'recipe_hook' => 'question'];
+        $this->assertSame('4 od 7 sastojaka je na akciji u trgovini Ribola.', RecipeCopy::voiceLines($hr, $hr->brand)['card']);
     }
 
     public function test_a_channel_that_has_its_link_in_the_description_says_so(): void
@@ -223,6 +261,7 @@ final class RecipeCopyTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\d/', $croatian);
 
         $at = $this->recipeItem(market: 'at');
+        $at->brand->voice = [...$at->brand->voice, 'recipe_hook' => 'question'];
         $german = app(SpokenGerman::class)->speak(RecipeCopy::voiceLines($at, $at->brand)['card'], []);
 
         $this->assertStringContainsString('vier von sechs Zutaten sind bei Eurospar im Angebot.', $german);

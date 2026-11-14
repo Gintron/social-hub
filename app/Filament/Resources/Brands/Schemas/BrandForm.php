@@ -106,6 +106,10 @@ final class BrandForm
                                 Select::make('voice.video_style')->label('Ritam videa')
                                     ->options(['standard' => 'Blagi prijelazi', 'direct' => 'Izravni rezovi, kraći uvod'])
                                     ->helperText('Izravni rezovi: uvod do 2,5 s, ponude ostaju čitljive, završni poziv najmanje 3,5 s.'),
+                                TextInput::make('voice.app_name')->label('Ime aplikacije u tekstu i glasu')
+                                    ->placeholder('Isto kao ime brenda')
+                                    ->helperText('Kako se aplikacija zove u rečenici „Recept i popis su u aplikaciji …“. Brend za drugo tržište ima ime tržišta („Listo Österreich“), a aplikacija se zove Listo.')
+                                    ->maxLength(40),
                                 TextInput::make('voice.pitch')->label('Rečenica o brendu')
                                     ->placeholder('Svi letci na jednom mjestu: dodirni proizvod i on je na listi, s cijenom.')
                                     ->helperText('Što brend radi, u jednoj rečenici. Ide na završni slajd i u TikTok i Instagram tekst, gdje poveznica nije klikabilna i gledatelj inače vidi samo ponudu, a ne razlog da dođe. Bez iznosa: tekst smije navesti samo iznose iz podataka stavke.')

@@ -115,11 +115,22 @@ final class RecipeCopy
             'ai' => $info->aiImage,
             'ai_label' => Wording::get($language, 'recipe.ai_label'),
             'ai_note' => Wording::get($language, 'recipe.ai_note'),
-            'cta_line' => Wording::get($language, 'recipe.cta.line', ['brand' => $brand->name]),
+            'cta_line' => Wording::get($language, 'recipe.cta.line', ['brand' => self::appName($brand)]),
             'cta_get' => CatalogCopy::cta($brand),
             'link_sentence' => self::linkSentence($where, $language),
             'footer' => Wording::get($language, 'recipe.card.footer'),
         ];
+    }
+
+    /**
+     * The app's name as a sentence says it: the brand's `voice.app_name`, else the brand's name. A brand made for a market is named
+     * for it ("Listo Österreich"), and the app is not: nobody searches a store for that.
+     */
+    public static function appName(Brand $brand): string
+    {
+        $name = mb_trim((string) data_get($brand->voice, 'app_name', ''));
+
+        return $name !== '' ? $name : $brand->name;
     }
 
     /**
@@ -152,7 +163,8 @@ final class RecipeCopy
         $info = RecipeInfo::fromItem($item);
         $language = $brand->languageCode();
 
-        $hook = match (self::hookStyle($item, $brand)) {
+        $style = self::hookStyle($item, $brand);
+        $hook = match ($style) {
             self::HOOK_FIGURE => self::onSaleCount($info, $language).'.',
             self::HOOK_TIME => self::timePhrase($info, $language).'.',
             self::HOOK_LEAFLET => Wording::get($language, 'recipe.hook.leaflet').'.',
@@ -161,13 +173,14 @@ final class RecipeCopy
 
         // Short on purpose: the title, the sum and the saving are on the screen, and a voice that reads them keeps a still card for ten
         // seconds. It says what is not obvious from the picture: how much of the dish is on sale, and where.
-        $card = Wording::get($language, 'voice.recipe.on_sale', [
+        // After a hook that has already said the number ("Fünf Zutaten im Angebot.") the card goes on from it instead of saying it again.
+        $card = Wording::get($language, $style === self::HOOK_FIGURE ? 'voice.recipe.on_sale_after_count' : 'voice.recipe.on_sale', [
             'on' => $info->ingredientsOnSale,
             'total' => $info->ingredientsTotal,
             'shop' => self::shop($info, $language, spoken: true),
         ]);
 
-        $closing = Wording::get($language, 'recipe.cta.line', ['brand' => $brand->name]).' '.self::linkSentence($where, $language);
+        $closing = Wording::get($language, 'recipe.cta.line', ['brand' => self::appName($brand)]).' '.self::linkSentence($where, $language);
 
         return ['hook' => $hook, 'card' => $card, 'closing' => $closing];
     }
@@ -196,7 +209,7 @@ final class RecipeCopy
                 'sum' => RecipeInfo::money($info->totalCents),
             ]),
             'saving' => $saving === null ? null : Wording::get($language, 'recipe.caption.saving', ['amount' => RecipeInfo::money($saving)]),
-            'link' => Wording::get($language, 'recipe.cta.line', ['brand' => $brand->name]).' '.self::linkSentence($where, $language),
+            'link' => Wording::get($language, 'recipe.cta.line', ['brand' => self::appName($brand)]).' '.self::linkSentence($where, $language),
             'ai' => $info->aiImage ? Wording::get($language, 'recipe.ai_note') : null,
         ];
     }
