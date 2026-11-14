@@ -37,11 +37,11 @@ final class RecipeVariant
         $page = $info->pageUrl ?? $item->url;
 
         if ($where === CatalogCopy::WHERE_COMMENT && $info->appUrl !== null && (bool) config("catalog_video.link_typed.{$platform->value}", false)) {
-            $path = config("catalog_video.link_typed_path.{$platform->value}");
-            $address = CatalogCopy::typeable($info->appUrl, is_string($path) ? $path : null);
+            $path = CatalogCopy::typedPath($platform, $brand);
+            $address = CatalogCopy::typeable($info->appUrl, $path);
             $settings['first_comment'] = RecipeCopy::comment($address, $brand);
 
-            return ['link_url' => is_string($path) ? 'https://'.$address : $info->appUrl, 'settings' => $settings];
+            return ['link_url' => $path !== null ? 'https://'.$address : $info->appUrl, 'settings' => $settings];
         }
 
         $tracked = self::tracked($info, $platform, $page);

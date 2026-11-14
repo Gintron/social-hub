@@ -61,6 +61,21 @@ final class RecipeDraftTest extends TestCase
         }
     }
 
+    public function test_a_brand_for_another_market_says_the_address_of_its_market(): void
+    {
+        $brand = $this->recipeBrand('at', ['voice' => ['cta' => 'Hol dir Listo', 'link_typed_paths' => ['ig_business' => '/at/instagram/']]]);
+        $item = $this->recipeItem($brand, market: 'at');
+        $draft = app(CreateDraft::class)->execute($item, $this->recipeAccounts($brand, [Platform::InstagramBusiness, Platform::TikTok]), render: false);
+
+        // Instagram: the market's address (it opens the market's page and carries the market's campaign); the slashes around it are not part of it.
+        $instagram = $draft->variants->firstWhere('platform', Platform::InstagramBusiness);
+        $this->assertSame('👉 Rezept und Einkaufsliste: uselisto.com/at/instagram', $instagram->setting('first_comment'));
+        $this->assertSame('https://uselisto.com/at/instagram', $instagram->link_url);
+
+        // A channel the brand has no address of its own for keeps the config's.
+        $this->assertSame('👉 Rezept und Einkaufsliste: uselisto.com/tiktok', $draft->variants->firstWhere('platform', Platform::TikTok)->setting('first_comment'));
+    }
+
     public function test_a_youtube_short_has_its_link_in_the_description_and_no_comment_to_leave(): void
     {
         $youtube = $this->draft([Platform::YouTube])->variants->first();

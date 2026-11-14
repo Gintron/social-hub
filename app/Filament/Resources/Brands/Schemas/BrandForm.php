@@ -110,6 +110,13 @@ final class BrandForm
                                     ->placeholder('Isto kao ime brenda')
                                     ->helperText('Kako se aplikacija zove u rečenici „Recept i popis su u aplikaciji …“. Brend za drugo tržište ima ime tržišta („Listo Österreich“), a aplikacija se zove Listo.')
                                     ->maxLength(40),
+                                TextInput::make('voice.link_typed_paths.ig_business')->label('Kratka adresa u Instagram komentaru')
+                                    ->placeholder('Zadano: instagram')
+                                    ->helperText('Što komentar kaže iza naziva stranice, npr. „at/instagram“ za uselisto.com/at/instagram. U Instagram komentaru se ništa ne može dodirnuti, pa se adresa prepisuje; brend za drugo tržište treba adresu tržišta, jer ona otvara stranicu tržišta.')
+                                    ->maxLength(60),
+                                TextInput::make('voice.link_typed_paths.tiktok')->label('Kratka adresa u TikTok komentaru')
+                                    ->placeholder('Zadano: tiktok')
+                                    ->maxLength(60),
                                 TextInput::make('voice.pitch')->label('Rečenica o brendu')
                                     ->placeholder('Svi letci na jednom mjestu: dodirni proizvod i on je na listi, s cijenom.')
                                     ->helperText('Što brend radi, u jednoj rečenici. Ide na završni slajd i u TikTok i Instagram tekst, gdje poveznica nije klikabilna i gledatelj inače vidi samo ponudu, a ne razlog da dođe. Bez iznosa: tekst smije navesti samo iznose iz podataka stavke.')

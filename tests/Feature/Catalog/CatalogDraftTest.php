@@ -72,6 +72,15 @@ final class CatalogDraftTest extends TestCase
         }
     }
 
+    public function test_a_brand_for_another_market_says_the_address_of_its_market_in_its_leaflet_comment_too(): void
+    {
+        $brand = Brand::factory()->create(['slug' => 'uselisto', 'name' => 'Listo', 'voice' => ['cta' => 'Preuzmi Listo', 'link_typed_paths' => ['ig_business' => 'at/instagram']]]);
+        $draft = app(CreateDraft::class)->execute($this->catalogItem($brand), $this->catalogAccounts($brand), render: false);
+
+        $this->assertSame('👉 Preuzmi Listo: uselisto.com/at/instagram', $draft->variants->firstWhere('platform', Platform::InstagramBusiness)->setting('first_comment'));
+        $this->assertSame('👉 Preuzmi Listo: uselisto.com/tiktok', $draft->variants->firstWhere('platform', Platform::TikTok)->setting('first_comment'));
+    }
+
     public function test_a_typed_channel_without_a_short_address_of_its_own_says_the_address_of_the_source(): void
     {
         config()->set('catalog_video.link_typed_path.tiktok', null);

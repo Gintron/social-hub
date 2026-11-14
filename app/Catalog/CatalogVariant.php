@@ -57,11 +57,11 @@ final class CatalogVariant
         if ($where === CatalogCopy::WHERE_COMMENT && $demo->appUrl !== null && (bool) config("catalog_video.link_typed.{$platform->value}", false)) {
             // The channel's own short address where the site has one: it carries the channel, so a registration can still be
             // told to come from TikTok or from Instagram, which a query on the address would have done and nobody copies.
-            $path = config("catalog_video.link_typed_path.{$platform->value}");
-            $address = CatalogCopy::typeable($demo->appUrl, is_string($path) ? $path : null);
+            $path = CatalogCopy::typedPath($platform, $brand);
+            $address = CatalogCopy::typeable($demo->appUrl, $path);
             $settings['first_comment'] = CatalogCopy::comment($demo, $address, $brand);
 
-            return ['link_url' => is_string($path) ? 'https://'.$address : $demo->appUrl, 'settings' => $settings];
+            return ['link_url' => $path !== null ? 'https://'.$address : $demo->appUrl, 'settings' => $settings];
         }
 
         if ($tracked !== null) {

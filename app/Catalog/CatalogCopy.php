@@ -152,6 +152,25 @@ final class CatalogCopy
     }
 
     /**
+     * The short address a channel's comment says (`uselisto.com/instagram`): the brand's own for that channel
+     * (`voice.link_typed_paths.ig_business` = `at/instagram`: a brand for another market has the market's address, which opens the
+     * market's page and carries the market's campaign), else the config's (`catalog_video.link_typed_path`). Null: the source's own
+     * address as it is.
+     */
+    public static function typedPath(Platform $platform, ?Brand $brand = null): ?string
+    {
+        $own = $brand === null ? '' : mb_trim((string) data_get($brand->voice, "link_typed_paths.{$platform->value}", ''), " \t\n\r\0\x0B/");
+
+        if ($own !== '') {
+            return $own;
+        }
+
+        $path = config("catalog_video.link_typed_path.{$platform->value}");
+
+        return is_string($path) && $path !== '' ? $path : null;
+    }
+
+    /**
      * An address as somebody types it: no scheme, no `www.`, no query and no trailing slash
      * (`https://www.uselisto.com/app?x=1` → `uselisto.com/app`). With a `$path` the site's own address of that path is
      * said instead (`uselisto.com/tiktok`), which is how a channel is told apart when nothing but the address is copied.
