@@ -69,6 +69,29 @@ final class RecipeFramesTest extends TestCase
         $this->assertStringNotContainsString('rc-chip"><span>', $html);
     }
 
+    public function test_a_long_name_is_set_smaller_instead_of_being_cut(): void
+    {
+        $size = function (string $title): int {
+            $feed = $this->recipeFeedItem(0, 'at');
+            $feed['id'] = 'recipe:t-'.md5($title);
+            $feed['title'] = $title;
+            $item = $this->recipeItem($this->recipeBrand('at', ['slug' => 'at-'.md5($title)]), $feed, market: 'at');
+
+            preg_match('/\.rd \.rc-title \{ font-size: (\d+)px; -webkit-line-clamp: (\d)/', $this->html($item->brand, $item, 'kinds/recipe-story'), $m);
+
+            return (int) $m[1] * 10 + (int) $m[2];
+        };
+
+        $short = $size('Trofie mit Garnelen');
+        $compound = $size('Thunfisch mit warmem Tomaten-Gemüse');
+        $long = $size('Gebackene Hühnerbrust mit cremigem Spinat und Erdäpfelpüree');
+
+        $this->assertSame(842, $short, 'a short name keeps the full size and two lines');
+        $this->assertLessThan($short, $compound);
+        $this->assertSame(712, $compound, '35 characters: 84 × 0.84, two lines');
+        $this->assertSame(523, $long, 'over 52 characters: 84 × 0.62, three lines');
+    }
+
     public function test_the_ingredients_stand_under_the_name_when_the_brand_asks_for_them(): void
     {
         $item = $this->recipeItem();

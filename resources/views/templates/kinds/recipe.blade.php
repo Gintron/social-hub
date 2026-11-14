@@ -17,7 +17,18 @@
         $square => $chips === [] ? 520 : 360,
         default => $chips === [] ? 700 : 540,
     };
-    $titleSize = $story ? 84 : ($square ? 58 : 72);
+    // A name is never cut with an ellipsis: the longer it is, the smaller it is set (German compounds are long: "Thunfisch mit warmem
+    // Tomaten-Gemüse" does not fit two lines at the size of "Trofie s kozicama"), and a very long one gets a third line.
+    $baseSize = $story ? 84 : ($square ? 58 : 72);
+    $length = mb_strlen((string) $item['title']);
+    $scale = match (true) {
+        $length <= 26 => 1.0,
+        $length <= 38 => 0.84,
+        $length <= 52 => 0.72,
+        default => 0.62,
+    };
+    $titleSize = (int) round($baseSize * $scale);
+    $titleLines = $length > 52 ? 3 : 2;
     $pad = $story ? 64 : 56;
 @endphp
 
@@ -27,7 +38,7 @@
   .rd__photo { position: relative; flex: 0 0 {{ $photoHeight }}px; background: {{ $brand['surface'] }} center/cover no-repeat; }
   .rd__photo .rc-plaque { right: auto; left: 32px; bottom: -34px; font-size: {{ $square ? 38 : 46 }}px; }
   .rd__body { flex: 1; min-height: 0; padding: {{ $square ? 52 : 66 }}px {{ $pad }}px 0; display: flex; flex-direction: column; gap: {{ $square ? 14 : 20 }}px; }
-  .rd .rc-title { font-size: {{ $titleSize }}px; -webkit-line-clamp: 2; color: {{ $brand['text'] }}; }
+  .rd .rc-title { font-size: {{ $titleSize }}px; -webkit-line-clamp: {{ $titleLines }}; color: {{ $brand['text'] }}; hyphens: auto; }
   .rd__meta { font-size: {{ $square ? 28 : 34 }}px; font-weight: 700; color: {{ $brand['muted'] }}; }
   .rd .rc-tile { padding: {{ $square ? '14px 20px' : '20px 24px' }}; }
   .rd .rc-tile .v { font-size: {{ $square ? 44 : 54 }}px; }
