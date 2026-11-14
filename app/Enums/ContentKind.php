@@ -20,6 +20,8 @@ enum ContentKind: string implements HasColor, HasLabel
     case Catalog = 'catalog';
     // Citat: `title` je sam tekst, `subtitle` čiji je ili odakle (referenca). Bez cijene i činjenica; hub ne zna jezik ni izvor.
     case Quote = 'quote';
+    // Jelo iz akcija: `raw.recipe` nosi broj sastojaka na akciji, zbroj i uštedu; nikad proizvod iz letka (docs/social-feed-v1.md § Recept).
+    case Recipe = 'recipe';
 
     public function label(): string
     {
@@ -32,6 +34,7 @@ enum ContentKind: string implements HasColor, HasLabel
             self::Comparison => 'Usporedba',
             self::Catalog => 'Katalog (letak)',
             self::Quote => 'Citat',
+            self::Recipe => 'Recept',
         };
     }
 
@@ -51,6 +54,7 @@ enum ContentKind: string implements HasColor, HasLabel
             self::Comparison => 'danger',
             self::Catalog => 'info',
             self::Quote => 'primary',
+            self::Recipe => 'success',
         };
     }
 }

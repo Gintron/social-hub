@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Rendering;
 
+use App\Catalog\CatalogCopy;
 use App\Drafting\Highlights;
 use App\Enums\ContentKind;
 use App\Models\Brand;
 use App\Models\ContentItem;
+use App\Recipe\RecipeCopy;
+use App\Recipe\RecipeInfo;
 use App\Support\Wording;
 
 /**
@@ -85,6 +88,7 @@ final class TemplateData
             ContentKind::Comparison => '⚖️',
             ContentKind::Catalog => '📖',
             ContentKind::Quote => '💬',
+            ContentKind::Recipe => '🍽️',
         };
     }
 
@@ -191,6 +195,11 @@ final class TemplateData
                 'price_parts' => self::priceParts($figure['value'] ?? null),
             ],
             'job_display' => $item->kind === ContentKind::Job ? self::jobDisplay($item, $figure) : null,
+            // A dish's words, in the brand's language: the question, the numbers as the card prints them, the label of the picture.
+            // `link_in` is where the channel says the link is (RenderVideoJob passes it for a video's end card).
+            'recipe' => $item->kind === ContentKind::Recipe
+                ? RecipeCopy::view($item, $brand, CatalogCopy::knownPlace($overrides['link_in'] ?? null) ?? CatalogCopy::WHERE_COMMENT)
+                : null,
             'cta_label' => $item->cta['label'] ?? null,
             'rows' => $comparison ? $this->rows($item, $facts) : [],
         ], $overrides);
@@ -236,6 +245,22 @@ final class TemplateData
             'expires_at' => null,
             'badge' => $deepest > 0 ? Wording::get($brand, 'digest.badge', ['percent' => $deepest]) : null,
             'offer_cards' => $items->every(fn (ContentItem $item): bool => $item->kind === ContentKind::Deal) ? $offers : [],
+            // A roundup of dishes: up to four pictures with the shop, the line over them and the label of the pictures.
+            'recipe_cards' => $items->every(fn (ContentItem $item): bool => $item->kind === ContentKind::Recipe)
+                ? $items->take(4)->map(fn (ContentItem $item): array => [
+                    'title' => self::excerpt($item->title, 58),
+                    'image' => $this->images->dataUri($item->imageUrl('primary')),
+                    'chain' => mb_trim((string) $item->subtitle),
+                ])->values()->all()
+                : [],
+            'recipe_cover' => $items->every(fn (ContentItem $item): bool => $item->kind === ContentKind::Recipe)
+                ? [
+                    'count' => RecipeCopy::coverCount($items->count(), $brand->languageCode()),
+                    'swipe' => Wording::get($brand, 'recipe.cover.swipe'),
+                    'ai' => $items->contains(fn (ContentItem $item): bool => RecipeInfo::tryFromItem($item)?->aiImage ?? false),
+                    'ai_label' => Wording::get($brand, 'recipe.ai_label'),
+                ]
+                : null,
             'job_cards' => $items->every(fn (ContentItem $item): bool => $item->kind === ContentKind::Job)
                 ? $items->take(3)->map(fn (ContentItem $item): array => self::jobDisplay($item, Highlights::figure($item)))->values()->all()
                 : [],

@@ -93,7 +93,7 @@ final class TemplateRegistry
     public function isClosing(?string $key): bool
     {
         return $key !== null
-            && (str_starts_with($key, 'kinds/cta-') || str_starts_with($key, 'kinds/job-cta-'))
+            && (str_starts_with($key, 'kinds/cta-') || str_starts_with($key, 'kinds/job-cta-') || str_starts_with($key, 'kinds/recipe-cta-'))
             && is_array(config("templates.{$key}"));
     }
 

@@ -131,6 +131,14 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   izvor koji daje prozor [danas, sutra] s `priority` što pada s datumom i `expires_at` = kraj dana. Pazi:
   `isPostableAt()` za vrste bez `min_days_valid` ne mjeri `expires_at` prema terminu, samo prema sada — nacrt
   napravljen nakon prozora objave dobije termin sutra i `PublishVariantJob` ga preskoči kao istekao.
+- **Recept je opća vrsta, bez proizvoda iz letka** (`kind=recipe`, `raw.recipe`, `App\Recipe\*`, `docs/listo-recipes.md`): jelo, koliko je
+  sastojaka na akciji, zbroj i ušteda; nikad naziv, marka, cijena ni slika ponude, jer to na webu vidi samo korisnik s pristupom, a objava je javna.
+  Zbroj je jedno pakiranje svakog sastojka na akciji, **ne cijena jela**, pa udica nikad ne počinje zbrojem, a ušteda se ističe tek od 1 € i
+  uvijek „prema letku“. Slika je AI ilustracija: oznaka je na svakom slajdu, u tekstu i kao platformska oznaka u svakom formatu
+  (`PostVariant::showsAiDish()`, i na Instagram slici i roditelju carousela). Sve riječi piše `RecipeCopy` na jeziku brenda (`Wording`), brojeve glasu
+  `SpokenCroatian`/`SpokenGerman`. Poveznica je stranica jela (po kanalu kao kod letka: FB komentar s oznakom, IG/TikTok upisiva adresa, YouTube opis;
+  video kaže mjesto, pa se renderira po mjestu). Jelo mora vrijediti još 3 dana nakon objave, a izvor ga ograničava na 8 dana od skupine.
+  Udica je postavka brenda (`voice.recipe_hook`), ne kod. `hub:recipe-source` pravi izvor i pravila isključena i s odobrenjem.
 - **Dnevni limit brenda** (`brands.daily_post_limit`, `App\Support\DailyPostLimit`): koliko objava automatika smije
   staviti na jedan lokalni dan brenda, **zajedno** — pojedinačne stavke svih izvora i pregledi. `daily_cap` pravila
   to ne može obećati (po kanalu je, a pregledi mu ne podliježu). Broje se nacrti koji izlaze ili su izašli

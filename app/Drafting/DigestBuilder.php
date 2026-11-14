@@ -319,7 +319,8 @@ final class DigestBuilder
             ContentKind::Job => 'digest.job',
             ContentKind::Event => 'digest.event',
             ContentKind::Comparison => 'digest.comparison',
+            ContentKind::Recipe => 'digest.recipe',
             default => 'digest.other',
-        }, ['count' => $count]);
+        }, ['count' => $count, 'recipes' => Wording::plural($brand, $count, 'recipes')]);
     }
 }

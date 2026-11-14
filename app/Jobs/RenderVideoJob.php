@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Catalog\CatalogCopy;
 use App\Enums\ContentFormat;
+use App\Enums\ContentKind;
 use App\Models\MediaAsset;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
@@ -63,6 +65,12 @@ final class RenderVideoJob implements ShouldQueue
     public ?array $script = null;
 
     /**
+     * Where the link is, as the channel has it (CatalogCopy::PLACES). Only a recipe's end card and last sentence say it, so only
+     * a recipe is rendered once per place; every other video is the one it always was.
+     */
+    public string $where = CatalogCopy::WHERE_COMMENT;
+
+    /**
      * @param  list<int>  $variantIds
      * @param  string  $audio  `auto`, `none`, or an index into the brand's library (Brand::audioTrackPath).
      * @param  list<string>|null  $script
@@ -76,9 +84,11 @@ final class RenderVideoJob implements ShouldQueue
         public readonly bool $motion = true,
         bool $voiceover = false,
         ?array $script = null,
+        string $where = CatalogCopy::WHERE_COMMENT,
     ) {
         $this->voiceover = $voiceover;
         $this->script = $script;
+        $this->where = CatalogCopy::knownPlace($where) ?? CatalogCopy::WHERE_COMMENT;
         $this->onQueue('render');
     }
 
@@ -116,6 +126,11 @@ final class RenderVideoJob implements ShouldQueue
                 minimumSeconds: array_map(fn (Scene $scene): ?float => $scene->readingSeconds(), $scenes),
             );
 
+            // A recipe's video says where its link is, so a channel that says another place needs another file (PrepareVariantMedia).
+            if ($draft->contentItems->first()?->kind === ContentKind::Recipe) {
+                $asset->update(['params' => [...($asset->params ?? []), 'link_in' => $this->where]]);
+            }
+
             if ($voiceFailure !== null) {
                 $asset->update(['params' => [...($asset->params ?? []), 'voiceover' => [
                     'status' => 'failed',
@@ -149,7 +164,7 @@ final class RenderVideoJob implements ShouldQueue
         }
 
         try {
-            return [$narrator->narrate($draft, $scenes, $this->script), null];
+            return [$narrator->narrate($draft, $scenes, $this->script, $this->where), null];
         } catch (Throwable $error) {
             $e = $error instanceof VoiceoverException ? $error : new VoiceoverException($error->getMessage(), 'error', previous: $error);
 
@@ -178,7 +193,7 @@ final class RenderVideoJob implements ShouldQueue
 
         return collect($scenes)->map(function (Scene $scene) use ($draft, $brand, $images, $data, &$items, &$cover): MediaAsset {
             $view = $scene->item !== null
-                ? ($items[$scene->item->id] ??= $data->forItem($scene->item, $brand))
+                ? ($items[$scene->item->id] ??= $data->forItem($scene->item, $brand, ['link_in' => $this->where]))
                 : ($cover ??= $data->forDigest($draft->contentItems, $brand, (string) $draft->title, $brand->name));
 
             return $images->render($brand, $scene->templateKey, $view, $draft);

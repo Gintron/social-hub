@@ -31,6 +31,9 @@ return [
         'comparison' => 3,
         // Letak koji istječe za dan-dva ne bi imao što pokazati kupcu koji video vidi s kašnjenjem.
         'catalog' => 3,
+        // A dish is "from the offers" only while its ingredients are on sale: a post that sends someone shopping for it the day the
+        // first of them ends is a recipe they cannot make at that price. The source's `expires_at` is the earliest offer.
+        'recipe' => 3,
     ],
 
     /*

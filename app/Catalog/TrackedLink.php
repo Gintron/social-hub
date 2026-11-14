@@ -32,6 +32,16 @@ final class TrackedLink
     }
 
     /**
+     * The same tracking on any address and campaign, for a post that is not a leaflet video (a recipe points to its own page).
+     *
+     * @return array{url: string, source: string, medium: string, campaign: string}|null Null when the channel is not a measured one or there is no address or campaign.
+     */
+    public static function forUrl(?string $address, ?string $campaign, Platform $platform, string $medium = self::MEDIUM): ?array
+    {
+        return self::compose($address, $campaign, $platform, $medium);
+    }
+
+    /**
      * The link of the same video as an ad (`utm_medium=paid`), for the platform's own promotion tool.
      *
      * @return array{url: string, source: string, medium: string, campaign: string}|null
@@ -58,21 +68,29 @@ final class TrackedLink
      */
     private static function build(CatalogDemo $demo, Platform $platform, string $medium): ?array
     {
+        return self::compose($demo->appUrl, $demo->campaign, $platform, $medium);
+    }
+
+    /**
+     * @return array{url: string, source: string, medium: string, campaign: string}|null
+     */
+    private static function compose(?string $address, ?string $campaign, Platform $platform, string $medium): ?array
+    {
         $source = self::source($platform);
 
-        if ($source === null || $demo->appUrl === null || $demo->campaign === null) {
+        if ($source === null || blank($address) || blank($campaign)) {
             return null;
         }
 
         $query = http_build_query([
             'utm_source' => $source,
             'utm_medium' => $medium,
-            'utm_campaign' => $demo->campaign,
+            'utm_campaign' => $campaign,
         ], '', '&', PHP_QUERY_RFC3986);
 
         // The address may already carry a query of its own.
-        $url = $demo->appUrl.(str_contains($demo->appUrl, '?') ? '&' : '?').$query;
+        $url = $address.(str_contains($address, '?') ? '&' : '?').$query;
 
-        return ['url' => $url, 'source' => $source, 'medium' => $medium, 'campaign' => $demo->campaign];
+        return ['url' => $url, 'source' => $source, 'medium' => $medium, 'campaign' => $campaign];
     }
 }

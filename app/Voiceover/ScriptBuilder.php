@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Voiceover;
 
+use App\Catalog\CatalogCopy;
 use App\Drafting\Highlights;
 use App\Enums\ContentKind;
 use App\Models\Brand;
 use App\Models\ContentItem;
+use App\Recipe\RecipeCopy;
+use App\Recipe\RecipeInfo;
 use App\Rendering\Scene;
 use App\Rendering\TemplateData;
 use App\Support\Wording;
@@ -39,18 +42,25 @@ final class ScriptBuilder
      * @param  list<Scene>  $scenes  The slides of the video (ScenePlanner).
      * @param  Collection<int, ContentItem>  $items  Every item of the draft.
      * @param  string|null  $headline  The roundup's headline (the draft's title).
+     * @param  string  $where  Where the link is, as the channel has it (CatalogCopy::PLACES): a recipe's end says so.
      */
-    public function build(Brand $brand, array $scenes, Collection $items, ?string $headline = null): Script
+    public function build(Brand $brand, array $scenes, Collection $items, ?string $headline = null, string $where = CatalogCopy::WHERE_COMMENT): Script
     {
         $withHook = array_any($scenes, fn (Scene $scene): bool => $scene->role === Scene::HOOK);
         $sharedShop = $this->sharedShop($items);
         $language = $brand->languageCode();
 
         return new Script(array_map(
-            fn (Scene $scene): ScriptLine => new ScriptLine($scene->role, $this->limit(match ($scene->role) {
-                Scene::COVER => $this->cover($items, $headline, $language),
-                Scene::CLOSING => $this->closing($brand),
-                Scene::HOOK => $scene->item === null ? '' : $this->headline($scene->item, $language, showShop: true),
+            fn (Scene $scene): ScriptLine => new ScriptLine($scene->role, $this->limit(match (true) {
+                // A dish says its own three sentences: the question or the number, the dish and what is on sale, and the end.
+                $this->isRecipe($scene->item) => RecipeCopy::voiceLines($scene->item, $brand, $where)[match ($scene->role) {
+                    Scene::HOOK => 'hook',
+                    Scene::CLOSING => 'closing',
+                    default => 'card',
+                }],
+                $scene->role === Scene::COVER => $this->cover($items, $headline, $language),
+                $scene->role === Scene::CLOSING => $this->closing($brand),
+                $scene->role === Scene::HOOK => $scene->item === null ? '' : $this->headline($scene->item, $language, showShop: true),
                 default => $scene->item === null
                     ? ''
                     // After a hook a card adds to it; with none (a roundup, one plain slide) it has to say it all.
@@ -98,6 +108,14 @@ final class ScriptBuilder
         return $sentences !== []
             ? implode(' ', $sentences)
             : $this->sentence((string) data_get($brand->voice, 'pitch', ''));
+    }
+
+    /**
+     * A recipe the hub can speak for: one whose block holds up. Anything else is told like every other item.
+     */
+    private function isRecipe(?ContentItem $item): bool
+    {
+        return $item !== null && $item->kind === ContentKind::Recipe && RecipeInfo::tryFromItem($item) !== null;
     }
 
     /**

@@ -121,6 +121,17 @@ final class PrepareVariantMedia
                 continue;
             }
 
+            // A dish's video says where its link is on the end card and in the voice, as a leaflet's does: a channel that says
+            // "u opisu" needs another file than one that says "u komentaru". Everything else about it is the slideshow.
+            if ($format === ContentFormat::Video && $item->kind === ContentKind::Recipe) {
+                $voice = array_key_exists('voiceover', $video) ? (bool) $video['voiceover'] : $variant->wantsVoiceover();
+                $where = $variant->linkIn();
+                $asset = $fresh ? null : $this->latestVideo($draft, $voice, $where);
+                $asset !== null ? $this->attach($variant, [$asset]) : $groups['recipe:'.($voice ? 'voice' : 'plain').':'.$where][] = $variant;
+
+                continue;
+            }
+
             if ($format === ContentFormat::Video) {
                 // The video with a voice and the one without are different files; a channel gets the one it asks for.
                 $voice = array_key_exists('voiceover', $video) ? (bool) $video['voiceover'] : $variant->wantsVoiceover();
@@ -203,6 +214,17 @@ final class PrepareVariantMedia
                 where: CatalogCopy::knownPlace(array_pad(explode(':', $argument, 2), 2, '')[1]) ?? CatalogCopy::WHERE_COMMENT,
                 audio: (string) ($video['audio'] ?? 'auto'),
             ),
+            // The group is `recipe:{voice|plain}:{where}`, like the leaflet's.
+            'recipe' => new RenderVideoJob(
+                $draft->id,
+                $ids,
+                (float) ($video['seconds'] ?? VideoRenderer::DEFAULT_SECONDS_PER_SLIDE),
+                audio: (string) ($video['audio'] ?? 'auto'),
+                motion: (bool) ($video['motion'] ?? true),
+                voiceover: str_starts_with($argument, 'voice'),
+                script: is_array($video['script'] ?? null) ? array_values(array_map('strval', $video['script'])) : null,
+                where: CatalogCopy::knownPlace(array_pad(explode(':', $argument, 2), 2, '')[1]) ?? CatalogCopy::WHERE_COMMENT,
+            ),
             'video' => new RenderVideoJob(
                 $draft->id,
                 $ids,
@@ -253,13 +275,14 @@ final class PrepareVariantMedia
      * The newest video of the draft that has a voice (or has none). One whose voice failed is a silent
      * video and counts as one, so a channel that wants a voice renders again instead of reusing it.
      */
-    private function latestVideo(PostDraft $draft, bool $voice): ?MediaAsset
+    private function latestVideo(PostDraft $draft, bool $voice, ?string $where = null): ?MediaAsset
     {
         return $draft->mediaAssets()
             ->where('template_key', VideoRenderer::TEMPLATE_KEY)
             ->latest('id')
             ->get()
-            ->first(fn (MediaAsset $asset): bool => (data_get($asset->params, 'voiceover.status') === 'ok') === $voice);
+            ->first(fn (MediaAsset $asset): bool => (data_get($asset->params, 'voiceover.status') === 'ok') === $voice
+                && ($where === null || data_get($asset->params, 'link_in', CatalogCopy::WHERE_COMMENT) === $where));
     }
 
     /**

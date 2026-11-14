@@ -12,6 +12,8 @@ return [
     'job' => ['job-hook', 'job', 'job-cta'],
     'deal' => ['deal-hook', 'deal', 'cta'],
     'comparison' => ['comparison-hook', 'comparison', 'cta'],
+    // Jelo: slika i pitanje (ili broj), kartica s brojkama, pa poziv koji kaže gdje su recept i poveznica (kinds/recipe-*).
+    'recipe' => ['recipe-hook', 'recipe', 'recipe-cta'],
     // Citat nema udicu: tekst je sam svoja udica. Kartica, pa poziv na akciju brenda.
     'quote' => ['quote', 'cta'],
     'default' => ['generic', 'cta'],

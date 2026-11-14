@@ -76,7 +76,7 @@ kriva ovlast → `403`.
 | Polje | Tip | Obavezno | Napomena |
 |---|---|---|---|
 | `id` | string | da | Stabilan i jedinstven unutar izvora. Hub ga koristi za idempotenciju (`unique(source_id, external_id)`). Preporuka: `"<vrsta>:<id>"`. |
-| `kind` | enum | da | `job`, `deal`, `article`, `event`, `generic`, `comparison`, `catalog`, `quote`. Određuje zadani predložak slike i caption builder. |
+| `kind` | enum | da | `job`, `deal`, `article`, `event`, `generic`, `comparison`, `catalog`, `quote`, `recipe`. Određuje zadani predložak slike i caption builder. |
 | `title` | string | da | Do 300 znakova. |
 | `subtitle` | string | ne | Tvrtka / trgovački lanac / autor. |
 | `body_text` | string | ne | **Čisti tekst bez HTML-a.** `\n` za novi red, `• ` za natuknice. Stranica radi HTML→tekst, ne hub. |
@@ -194,6 +194,44 @@ Stranica smije birati proizvode kako hoće, ali dodir mora biti onaj koji njezin
 „dodaj“ (Listo to provjerava istom logikom kao aplikacija, `server/api/catalogTap.ts`). Filteri izvora
 (`query.kind=catalog`, `query.min_products`, `query.max_validity_days`) idu u postavke izvora kao i svi drugi.
 
+## Recept (`kind: recipe`)
+
+„Što kuhati iz akcija“: jelo čiji su sastojci ovaj tjedan na akciji ([`listo-recipes.md`](listo-recipes.md)). Jedna stavka po jelu.
+
+**Stavka smije reći samo ono što stranica jela govori neprijavljenom posjetitelju:** jelo, koliko je sastojaka na akciji, njihov
+zbroj i uštedu, rok i dućan. **Nikad proizvod iz letka**: ni naziv, marku, cijenu, staru cijenu, sliku ni stranicu letka po sastojku.
+Te proizvode vidi samo korisnik s pristupom, a objava je javna. Hub to ne provjerava (ne može znati što je „proizvod“), pa je to
+jamstvo izvora, s negativnim testom na njegovoj strani.
+
+| Polje | Značenje u receptu |
+|---|---|
+| `id` | `recipe:<id jela>`. |
+| `title`, `body_text` | Naslov i sažetak jela, na jeziku tržišta. |
+| `subtitle` | Dućan(i): „Konzum“, „Billa Plus (Wien) · Lidl“ (regionalno izdanje ostaje uz ime). `images[role=logo]` je znak dućana. |
+| `images` | `primary` je **AI ilustracija jela** (800×800), `alt` to kaže. Hub je ne rasteže preko kadra i na svaku sliku stavlja oznaku „AI ilustracija“. |
+| `facts` | `NA AKCIJI` („4 od 7 sastojaka“), `ZBROJ SASTOJAKA NA AKCIJI` („8,96 €“), `UŠTEDA PREMA LETKU` (samo kad postoji), `VRIJEME`. Svaki iznos u tekstu objave mora biti ovdje ili u `raw.recipe` (`CaptionValidator`). |
+| `price`, `badges` | Prazni. Zbroj je zbroj jednog pakiranja svakog sastojka na akciji, **ne cijena jela**, pa nije `price`. |
+| `url`, `cta` | Stranica jela (`/recept/<naslov>-<id>`, AT `/at/rezept/…`). Hub provjerava da je živa prije objave, pa je izvor ne šalje dok stranice recepata nisu uključene za tržište. |
+| `expires_at` | Najraniji rok ponude, a najviše osam dana nakon nastanka skupine (adresa isteklog jela ostaje 200, pa je provjera poveznice ne bi uhvatila). Hub ne objavljuje jelo koje ne vrijedi još **3 dana** nakon objave (`hub.min_days_valid.recipe`). |
+| `restricted` | `["alcohol"]` kad bilo koji sastojak sadrži alkohol; hub takvo jelo ne objavljuje. |
+| `priority` | Više sastojaka na akciji, veća ušteda i jelo do 30 minuta dižu jelo. Dućane ne miješa izvor, nego hub. |
+| `tags` | `recept`, `štokuhati`, slug dućana, `brzo`, `vegetarijansko`: postaju hashtagovi. |
+
+`raw.recipe` (hub ga čita strogo: `App\Recipe\RecipeInfo`, odbija s razlogom):
+
+| Polje | Značenje |
+|---|---|
+| `recipe_id`, `minutes`, `servings` | Identitet i trajanje. |
+| `ingredients_total`, `ingredients_on_sale` | `on_sale` ≥ 2 (jelo s manje nije „iz akcija“) i ≤ `total`. |
+| `total_cents`, `saving_cents`, `currency` | Zbroj i ušteda u centima. Ušteda je prema starim cijenama iz letka (izvor je računa isto kao stranica jela, najmanje 0,20 €); hub je **ističe tek od 1 €**, uvijek kao „prema letku“. |
+| `valid_to`, `chain`, `chains[]` | Rok `YYYY-MM-DD`, slug dućana i njegova imena. |
+| `ai_image` | `true`: slika je AI ilustracija. Izostavljeno se čita kao `true`. |
+| `page_url`, `app_url`, `campaign` | Stranica jela, `https://uselisto.com/app`, `recept-<ISO tjedan>` (AT `recept-at-…`); hub dodaje `utm_source` kanala i `utm_medium=social`. |
+| `highlights[]` | Neobavezno, samo uz `query.highlights=1`: do četiri glavna sastojka na akciji, bez marke i teksta iz letka. Hub ih ne prikazuje osim kad brend traži (`voice.recipe_highlights`). |
+
+Filteri izvora: `query.kind=recipe`, `query.country`, `query.chain`, `query.highlights`. `since` se ne gleda (kao kod kataloga): zbrojevi se
+mijenjaju s ponudama, a cijeli skup je ~100 jela po tržištu.
+
 ## Kako stranica prevodi svoj domen
 
 Stranica zna što je njezin sadržaj, hub ne mora. Nekoliko primjera preslikavanja:
@@ -208,6 +246,7 @@ Stranica zna što je njezin sadržaj, hub ne mora. Nekoliko primjera preslikavan
 | Trgovački lanac | `subtitle` + `images[{role: logo}]` |
 | Vrijedi do (katalog) | `expires_at` |
 | Novi letak lanca | `kind: catalog` + `raw.demo` (vidi gore) |
+| Jelo iz akcija | `kind: recipe` + `raw.recipe` (vidi gore) |
 
 ## Pravila koja hub provjerava pri "Test connection"
 

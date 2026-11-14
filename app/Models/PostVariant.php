@@ -6,8 +6,10 @@ namespace App\Models;
 
 use App\Catalog\CatalogCopy;
 use App\Enums\ContentFormat;
+use App\Enums\ContentKind;
 use App\Enums\Platform;
 use App\Enums\VariantStatus;
+use App\Recipe\RecipeInfo;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -167,6 +169,11 @@ final class PostVariant extends Model
             return $choice;
         }
 
+        // The picture of a dish is drawn by an AI in every format, not only when a synthetic voice is added to it.
+        if ($this->showsAiDish()) {
+            return true;
+        }
+
         if ($this->format() !== ContentFormat::Video) {
             return false;
         }
@@ -174,6 +181,19 @@ final class PostVariant extends Model
         $media = $this->relationLoaded('media') ? $this->media : $this->media()->get();
 
         return $media->contains(fn (MediaAsset $asset): bool => $asset->isVideo() && data_get($asset->params, 'voiceover.status') === 'ok');
+    }
+
+    /**
+     * Is the picture this variant posts a dish drawn by an AI (a recipe whose source says so)? Then the post is labelled on every
+     * network that takes the label, in every format: the dish is not a photograph, whatever is added to it.
+     */
+    public function showsAiDish(): bool
+    {
+        $draft = $this->draft;
+        $draft?->loadMissing('contentItems');
+        $item = $draft?->contentItems->first();
+
+        return $item !== null && $item->kind === ContentKind::Recipe && (RecipeInfo::tryFromItem($item)?->aiImage ?? false);
     }
 
     /**

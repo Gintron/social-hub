@@ -11,6 +11,9 @@ use App\Enums\ContentKind;
 use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\ContentItem;
+use App\Recipe\RecipeCopy;
+use App\Recipe\RecipeInfo;
+use App\Recipe\RecipeVariant;
 use App\Rendering\TemplateData;
 use App\Support\Utf16;
 use App\Support\Wording;
@@ -65,6 +68,10 @@ final class CaptionBuilder
 
         if ($item->kind === ContentKind::Quote) {
             return $this->quote($platform, $item, $brand);
+        }
+
+        if ($item->kind === ContentKind::Recipe && ($recipe = $this->recipe($platform, $item, $brand)) !== null) {
+            return $recipe;
         }
 
         return match ($platform) {
@@ -518,6 +525,56 @@ final class CaptionBuilder
             $whole === null ? null : $attributed($whole),
             TemplateData::excerpt($item->body_text, 200),
             $under,
+            implode(' ', array_slice($hashtags, 0, $platform === Platform::FacebookPage ? 3 : self::FEW_HASHTAGS)),
+        ], fn (?string $section): bool => filled($section))));
+    }
+
+    /**
+     * The post around a dish: the question, the dish and what is on sale for it (the numbers the item carries and nothing
+     * else), where the link is, and that the picture is drawn by an AI. Null when the item has no usable `raw.recipe`: the
+     * general caption then says what the item says.
+     *
+     * The wording is the brand's language (RecipeCopy). The link itself is a first comment on a Page, Instagram and TikTok
+     * (RecipeVariant), a line in the text of a group post (pasted by a person) and in the description of a Short.
+     */
+    private function recipe(Platform $platform, ContentItem $item, Brand $brand): ?string
+    {
+        $info = RecipeInfo::tryFromItem($item);
+
+        if ($info === null) {
+            return null;
+        }
+
+        $where = CatalogCopy::where($platform);
+        $parts = RecipeCopy::captionParts($item, $brand, $where);
+        $lead = implode(' ', array_filter(['🍽️ '.$parts['question'], $parts['lead'], $parts['saving']]));
+        $page = $info->pageUrl ?? $item->url;
+
+        if ($platform === Platform::FacebookGroup) {
+            return self::tidy(implode("\n\n", array_filter([$lead, '👉 '.Wording::get($brand, 'recipe.comment').":\n".$page, $parts['ai']])));
+        }
+
+        if ($platform === Platform::YouTube) {
+            [$title, $whole] = $this->youtubeTitle((string) $item->title);
+            $link = RecipeVariant::tracked($info, $platform, $page)['url'] ?? $page;
+
+            return self::tidy(implode("\n\n", array_filter([
+                $title,
+                $whole,
+                $lead,
+                '👇 '.$parts['link'],
+                $parts['ai'],
+                filled($link) ? '🔗 '.$link : null,
+                implode(' ', ['#Shorts', ...array_slice($this->hashtags($item, $brand), 0, self::SHORT_HASHTAGS)]),
+            ])));
+        }
+
+        $hashtags = $platform === Platform::FacebookPage ? $this->hashtags($item, $brand, fixedOnly: true) : $this->hashtags($item, $brand);
+
+        return self::tidy(implode("\n\n", array_filter([
+            $lead,
+            '👇 '.$parts['link'],
+            $parts['ai'],
             implode(' ', array_slice($hashtags, 0, $platform === Platform::FacebookPage ? 3 : self::FEW_HASHTAGS)),
         ], fn (?string $section): bool => filled($section))));
     }

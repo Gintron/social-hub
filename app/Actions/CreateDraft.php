@@ -15,6 +15,7 @@ use App\Models\ContentItem;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
 use App\Models\SocialAccount;
+use App\Recipe\RecipeVariant;
 use App\Rendering\TemplateRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
@@ -92,7 +93,10 @@ final class CreateDraft
 
             foreach ($accounts as $account) {
                 // A new-catalog video points to the app, and to it from this channel: one link per video and channel.
-                $catalog = CatalogVariant::fields($item, $account->platform, $brand);
+                // A recipe does the same for its own page: one link per dish and channel, and the first comment that holds it.
+                $catalog = $item->kind === ContentKind::Recipe
+                    ? RecipeVariant::fields($item, $account->platform, $brand)
+                    : CatalogVariant::fields($item, $account->platform, $brand);
 
                 PostVariant::query()->create([
                     'post_draft_id' => $draft->id,

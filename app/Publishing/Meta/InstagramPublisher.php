@@ -94,8 +94,8 @@ final class InstagramPublisher implements Publisher
 
         $creationId = $resume['container'] ?? match (true) {
             $isReel => $this->reelContainer($graph, $igUserId, $token, $media->first(), $caption, $variant),
-            $media->count() === 1 => $this->singleContainer($graph, $igUserId, $token, $media->first(), $caption),
-            default => $this->carouselContainer($graph, $igUserId, $token, $media, $caption),
+            $media->count() === 1 => $this->singleContainer($graph, $igUserId, $token, $media->first(), $caption, $variant),
+            default => $this->carouselContainer($graph, $igUserId, $token, $media, $caption, $variant),
         };
 
         $this->awaitContainer($graph, $creationId, $token, $isReel ? self::VIDEO_POLL_TIMEOUT_SECONDS : self::POLL_TIMEOUT_SECONDS);
@@ -235,15 +235,26 @@ final class InstagramPublisher implements Publisher
             $payload['cover_url'] = (string) $cover;
         }
 
-        // The label for AI-generated content, set when the container is made (Instagram Platform changelog, 22 Jun 2026).
+        return $this->containerId($this->createContainer($graph, $igUserId, $token, $payload, 'ig.reel', $variant));
+    }
+
+    /**
+     * One container request, with the label for AI-generated content when the variant has one: it is set when the container is made
+     * (Instagram Platform changelog, 22 Jun 2026), on the Reel's, on a single image's and, for a carousel, on the parent's only.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function createContainer(GraphClient $graph, string $igUserId, string $token, array $payload, string $step, PostVariant $variant): array
+    {
         if ($variant->aiGenerated()) {
             $payload['is_ai_generated'] = 'true';
         }
 
         try {
-            return $this->containerId($graph->post("{$igUserId}/media", $payload, $token, 'ig.reel'));
+            return $graph->post("{$igUserId}/media", $payload, $token, $step);
         } catch (PublishException $e) {
-            // The pinned Graph version may not know the parameter yet; the Reel is not held back for it, but the
+            // The pinned Graph version may not know the parameter yet; the post is not held back for it, but the
             // refusal is logged, because a label that was meant to be there is not.
             $unknownParameter = ($e instanceof PermanentPublishException && $e->errorCode === 'invalid_parameter')
                 || str_contains(mb_strtolower($e->getMessage()), 'is_ai_generated');
@@ -255,16 +266,16 @@ final class InstagramPublisher implements Publisher
             Log::warning('hub.ig.ai_label_rejected', ['variant' => $variant->id, 'error' => $e->getMessage()]);
             unset($payload['is_ai_generated']);
 
-            return $this->containerId($graph->post("{$igUserId}/media", $payload, $token, 'ig.reel'));
+            return $graph->post("{$igUserId}/media", $payload, $token, $step);
         }
     }
 
-    private function singleContainer(GraphClient $graph, string $igUserId, string $token, MediaAsset $asset, string $caption): string
+    private function singleContainer(GraphClient $graph, string $igUserId, string $token, MediaAsset $asset, string $caption, PostVariant $variant): string
     {
-        $response = $graph->post("{$igUserId}/media", [
+        $response = $this->createContainer($graph, $igUserId, $token, [
             'image_url' => $asset->publicUrl(),
             'caption' => $caption,
-        ], $token, 'ig.container');
+        ], 'ig.container', $variant);
 
         return $this->containerId($response);
     }
@@ -272,7 +283,7 @@ final class InstagramPublisher implements Publisher
     /**
      * @param  Collection<int, MediaAsset>  $media
      */
-    private function carouselContainer(GraphClient $graph, string $igUserId, string $token, Collection $media, string $caption): string
+    private function carouselContainer(GraphClient $graph, string $igUserId, string $token, Collection $media, string $caption, PostVariant $variant): string
     {
         $children = [];
 
@@ -291,11 +302,12 @@ final class InstagramPublisher implements Publisher
             $this->awaitContainer($graph, $childId, $token);
         }
 
-        $response = $graph->post("{$igUserId}/media", [
+        // The label goes on the parent only: a child is a picture of the carousel, not a post.
+        $response = $this->createContainer($graph, $igUserId, $token, [
             'media_type' => 'CAROUSEL',
             'children' => implode(',', $children),
             'caption' => $caption,
-        ], $token, 'ig.carousel');
+        ], 'ig.carousel', $variant);
 
         return $this->containerId($response);
     }

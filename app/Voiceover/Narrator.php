@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Voiceover;
 
+use App\Catalog\CatalogCopy;
 use App\Models\Brand;
 use App\Models\ContentItem;
 use App\Models\PostDraft;
@@ -35,21 +36,22 @@ final class Narrator
      *
      * @param  list<Scene>  $scenes
      */
-    public function script(PostDraft $draft, array $scenes): Script
+    public function script(PostDraft $draft, array $scenes, string $where = CatalogCopy::WHERE_COMMENT): Script
     {
-        return $this->builder->build($draft->brand, $scenes, $draft->contentItems, $draft->title);
+        return $this->builder->build($draft->brand, $scenes, $draft->contentItems, $draft->title, $where);
     }
 
     /**
      * @param  list<Scene>  $scenes  The slides of the video (ScenePlanner).
      * @param  list<string>|null  $lines  A script a person wrote, one line per slide; null to write it from the items.
+     * @param  string  $where  Where the link is, as the channel has it: a recipe's last line says so.
      * @return Narration|null Null when there is nothing to say.
      *
      * @throws VoiceoverException
      */
-    public function narrate(PostDraft $draft, array $scenes, ?array $lines = null): ?Narration
+    public function narrate(PostDraft $draft, array $scenes, ?array $lines = null, string $where = CatalogCopy::WHERE_COMMENT): ?Narration
     {
-        return $this->narrateItems($draft->brand, $draft->contentItems, $draft->title, $scenes, $lines);
+        return $this->narrateItems($draft->brand, $draft->contentItems, $draft->title, $scenes, $lines, $where);
     }
 
     /**
@@ -61,10 +63,10 @@ final class Narrator
      *
      * @throws VoiceoverException
      */
-    public function narrateItems(Brand $brand, Collection $items, ?string $title, array $scenes, ?array $lines = null): ?Narration
+    public function narrateItems(Brand $brand, Collection $items, ?string $title, array $scenes, ?array $lines = null, string $where = CatalogCopy::WHERE_COMMENT): ?Narration
     {
         $script = $lines === null
-            ? $this->builder->build($brand, $scenes, $items, $title)
+            ? $this->builder->build($brand, $scenes, $items, $title, $where)
             : $this->builder->fromLines($scenes, $lines);
 
         // The headline of a roundup is the brand's own text, on the cover and in the caption as it stands.

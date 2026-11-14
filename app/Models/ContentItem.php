@@ -105,7 +105,7 @@ final class ContentItem extends Model
         $data = $this->only(['title', 'subtitle', 'body_text', 'facts', 'badges', 'price', 'cta', 'url', 'images', 'tags']);
         $data['kind'] = $this->kind->value;
         $data['expires_at'] = $this->expires_at?->utc()->toIso8601String();
-        $data['raw'] = Arr::only($this->raw ?? [], ['emoji', 'rows', 'demo']);
+        $data['raw'] = Arr::only($this->raw ?? [], ['emoji', 'rows', 'demo', 'recipe']);
 
         $canonical = function (mixed $value) use (&$canonical): mixed {
             // The JSON column hands a double back with fewer digits than were written (0.38863460386531523 comes back

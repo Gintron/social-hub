@@ -1,0 +1,414 @@
+{
+  "version": "1",
+  "brand": "uselisto-at",
+  "items": [
+    {
+      "id": "recipe:1f5dcd2fd6",
+      "kind": "recipe",
+      "title": "Hendlfilet mit Spinat und Erdäpfeln",
+      "subtitle": "Eurospar",
+      "body_text": "Gebratene Hendlfilets mit cremigem Spinat und knuspriger Erdäpfelbeilage.",
+      "facts": [
+        {
+          "label": "IM ANGEBOT",
+          "value": "4 von 6 Zutaten"
+        },
+        {
+          "label": "SUMME DER ANGEBOTSZUTATEN",
+          "value": "15,26 €"
+        },
+        {
+          "label": "ERSPARNIS LT. PROSPEKT",
+          "value": "2,70 €"
+        },
+        {
+          "label": "ZEIT",
+          "value": "30 Min."
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Rezept und Liste in Listo",
+        "url": "https://uselisto.com/at/rezept/hendlfilet-mit-spinat-und-erdaepfeln-1f5dcd2fd6"
+      },
+      "url": "https://uselisto.com/at/rezept/hendlfilet-mit-spinat-und-erdaepfeln-1f5dcd2fd6",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/recipes/1f5dcd2fd6.webp",
+          "role": "primary",
+          "alt": "Hendlfilet mit Spinat und Erdäpfeln, KI-Illustration des Gerichts"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/b9e7a02b-2cb1-4fc9-9e1c-ca23ef2cfb54/logo-mvtxj1ma-da12.webp",
+          "role": "logo",
+          "alt": "Eurospar"
+        }
+      ],
+      "priority": 73,
+      "tags": [
+        "rezept",
+        "waskochen",
+        "eurospar",
+        "schnell"
+      ],
+      "published_at": "2026-11-12T08:00:00.000Z",
+      "expires_at": "2026-11-18T23:59:59.000Z",
+      "updated_at": "2026-11-12T08:00:00.000Z",
+      "raw": {
+        "recipe": {
+          "recipe_id": "1f5dcd2fd6",
+          "minutes": 30,
+          "servings": 4,
+          "ingredients_total": 6,
+          "ingredients_on_sale": 4,
+          "total_cents": 1526,
+          "saving_cents": 270,
+          "currency": "EUR",
+          "valid_to": "2026-11-18",
+          "chain": "eurospar",
+          "chains": [
+            "Eurospar"
+          ],
+          "ai_image": true,
+          "page_url": "https://uselisto.com/at/rezept/hendlfilet-mit-spinat-und-erdaepfeln-1f5dcd2fd6",
+          "app_url": "https://uselisto.com/app",
+          "campaign": "recept-at-2026-W46",
+          "highlights": [
+            "Hendl-Filet",
+            "Kartoffelprodukte",
+            "Cremespinat",
+            "Parmigiano Reggiano"
+          ]
+        }
+      }
+    },
+    {
+      "id": "recipe:b723e4c98e",
+      "kind": "recipe",
+      "title": "Lachs mit Zitronenobers und Gurke",
+      "subtitle": "Billa (Wien)",
+      "body_text": "Durchgegarter Lachs mit Zitronenobers und frischem Gurkensalat.",
+      "facts": [
+        {
+          "label": "IM ANGEBOT",
+          "value": "4 von 5 Zutaten"
+        },
+        {
+          "label": "SUMME DER ANGEBOTSZUTATEN",
+          "value": "9,72 €"
+        },
+        {
+          "label": "ERSPARNIS LT. PROSPEKT",
+          "value": "3,26 €"
+        },
+        {
+          "label": "ZEIT",
+          "value": "25 Min."
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Rezept und Liste in Listo",
+        "url": "https://uselisto.com/at/rezept/lachs-mit-zitronenobers-und-gurke-b723e4c98e"
+      },
+      "url": "https://uselisto.com/at/rezept/lachs-mit-zitronenobers-und-gurke-b723e4c98e",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/recipes/b723e4c98e.webp",
+          "role": "primary",
+          "alt": "Lachs mit Zitronenobers und Gurke, KI-Illustration des Gerichts"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/47e37286-eeb1-42e3-bdc5-f570bf06bfbd/logo-mvtxfpdg-b155.webp",
+          "role": "logo",
+          "alt": "Billa (Wien)"
+        }
+      ],
+      "priority": 75,
+      "tags": [
+        "rezept",
+        "waskochen",
+        "billa",
+        "schnell"
+      ],
+      "published_at": "2026-11-12T08:00:00.000Z",
+      "expires_at": "2026-11-20T08:00:00.000Z",
+      "updated_at": "2026-11-12T08:00:00.000Z",
+      "raw": {
+        "recipe": {
+          "recipe_id": "b723e4c98e",
+          "minutes": 25,
+          "servings": 4,
+          "ingredients_total": 5,
+          "ingredients_on_sale": 4,
+          "total_cents": 972,
+          "saving_cents": 326,
+          "currency": "EUR",
+          "valid_to": "2026-12-24",
+          "chain": "billa",
+          "chains": [
+            "Billa (Wien)"
+          ],
+          "ai_image": true,
+          "page_url": "https://uselisto.com/at/rezept/lachs-mit-zitronenobers-und-gurke-b723e4c98e",
+          "app_url": "https://uselisto.com/app",
+          "campaign": "recept-at-2026-W46",
+          "highlights": [
+            "Lachsfilet",
+            "Cremefine zum Kochen",
+            "Zitrone",
+            "Bio-Gurke"
+          ]
+        }
+      }
+    },
+    {
+      "id": "recipe:7677155294",
+      "kind": "recipe",
+      "title": "Hendlfilet mit Zitronen-Tomaten-Pfanne",
+      "subtitle": "Billa Plus (Wien)",
+      "body_text": "Hendlfilet schmort mit Tomaten und Zitrone; Ciabatta wird dazu serviert.",
+      "facts": [
+        {
+          "label": "IM ANGEBOT",
+          "value": "5 von 7 Zutaten"
+        },
+        {
+          "label": "SUMME DER ANGEBOTSZUTATEN",
+          "value": "35,68 €"
+        },
+        {
+          "label": "ERSPARNIS LT. PROSPEKT",
+          "value": "1,26 €"
+        },
+        {
+          "label": "ZEIT",
+          "value": "30 Min."
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Rezept und Liste in Listo",
+        "url": "https://uselisto.com/at/rezept/hendlfilet-mit-zitronen-tomaten-pfanne-7677155294"
+      },
+      "url": "https://uselisto.com/at/rezept/hendlfilet-mit-zitronen-tomaten-pfanne-7677155294",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/recipes/7677155294.webp",
+          "role": "primary",
+          "alt": "Hendlfilet mit Zitronen-Tomaten-Pfanne, KI-Illustration des Gerichts"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/4cb3df3d-6060-47b4-bc2d-2c984076ddc5/logo-mvtxh18z-72aa.webp",
+          "role": "logo",
+          "alt": "Billa Plus (Wien)"
+        }
+      ],
+      "priority": 67,
+      "tags": [
+        "rezept",
+        "waskochen",
+        "billa-plus",
+        "schnell"
+      ],
+      "published_at": "2026-11-12T08:00:00.000Z",
+      "expires_at": "2026-11-18T23:59:59.000Z",
+      "updated_at": "2026-11-12T08:00:00.000Z",
+      "raw": {
+        "recipe": {
+          "recipe_id": "7677155294",
+          "minutes": 30,
+          "servings": 4,
+          "ingredients_total": 7,
+          "ingredients_on_sale": 5,
+          "total_cents": 3568,
+          "saving_cents": 126,
+          "currency": "EUR",
+          "valid_to": "2026-11-18",
+          "chain": "billa-plus",
+          "chains": [
+            "Billa Plus (Wien)"
+          ],
+          "ai_image": true,
+          "page_url": "https://uselisto.com/at/rezept/hendlfilet-mit-zitronen-tomaten-pfanne-7677155294",
+          "app_url": "https://uselisto.com/app",
+          "campaign": "recept-at-2026-W46",
+          "highlights": [
+            "Bio-Hendlfilet",
+            "Tomaten",
+            "Zitronen",
+            "Sommerbutter"
+          ]
+        }
+      }
+    },
+    {
+      "id": "recipe:e4018cb919",
+      "kind": "recipe",
+      "title": "Weißkraut-Erdäpfel-Topf",
+      "subtitle": "Interspar Österreich (Wien)",
+      "body_text": "Ein sämiger Eintopf aus Weißkraut, Erdäpfeln und Karotten.",
+      "facts": [
+        {
+          "label": "IM ANGEBOT",
+          "value": "4 von 7 Zutaten"
+        },
+        {
+          "label": "SUMME DER ANGEBOTSZUTATEN",
+          "value": "6,53 €"
+        },
+        {
+          "label": "ERSPARNIS LT. PROSPEKT",
+          "value": "1,89 €"
+        },
+        {
+          "label": "ZEIT",
+          "value": "45 Min."
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Rezept und Liste in Listo",
+        "url": "https://uselisto.com/at/rezept/weisskraut-erdaepfel-topf-e4018cb919"
+      },
+      "url": "https://uselisto.com/at/rezept/weisskraut-erdaepfel-topf-e4018cb919",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/recipes/e4018cb919.webp",
+          "role": "primary",
+          "alt": "Weißkraut-Erdäpfel-Topf, KI-Illustration des Gerichts"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/174978db-d5d1-4f41-9cb3-cd60254c658d/logo-mvtxjar1-d472.webp",
+          "role": "logo",
+          "alt": "Interspar Österreich (Wien)"
+        }
+      ],
+      "priority": 60,
+      "tags": [
+        "rezept",
+        "waskochen",
+        "interspar",
+        "vegetarisch"
+      ],
+      "published_at": "2026-11-12T08:00:00.000Z",
+      "expires_at": "2026-11-14T23:59:59.000Z",
+      "updated_at": "2026-11-12T08:00:00.000Z",
+      "raw": {
+        "recipe": {
+          "recipe_id": "e4018cb919",
+          "minutes": 45,
+          "servings": 4,
+          "ingredients_total": 7,
+          "ingredients_on_sale": 4,
+          "total_cents": 653,
+          "saving_cents": 189,
+          "currency": "EUR",
+          "valid_to": "2026-11-14",
+          "chain": "interspar",
+          "chains": [
+            "Interspar Österreich (Wien)"
+          ],
+          "ai_image": true,
+          "page_url": "https://uselisto.com/at/rezept/weisskraut-erdaepfel-topf-e4018cb919",
+          "app_url": "https://uselisto.com/app",
+          "campaign": "recept-at-2026-W46",
+          "highlights": [
+            "Weißkraut",
+            "Bio-Salaterdäpfel",
+            "Zwiebeln",
+            "Bio-Karotten"
+          ]
+        }
+      }
+    },
+    {
+      "id": "recipe:be68ffe940",
+      "kind": "recipe",
+      "title": "Hendlfilet in Rahm mit Gemüse",
+      "subtitle": "Spar",
+      "body_text": "Hendlstücke mit Rahm und Gemüse, dazu geröstetes Brot.",
+      "facts": [
+        {
+          "label": "IM ANGEBOT",
+          "value": "5 von 8 Zutaten"
+        },
+        {
+          "label": "SUMME DER ANGEBOTSZUTATEN",
+          "value": "17,06 €"
+        },
+        {
+          "label": "ERSPARNIS LT. PROSPEKT",
+          "value": "1,08 €"
+        },
+        {
+          "label": "ZEIT",
+          "value": "25 Min."
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Rezept und Liste in Listo",
+        "url": "https://uselisto.com/at/rezept/hendlfilet-in-rahm-mit-gemuese-be68ffe940"
+      },
+      "url": "https://uselisto.com/at/rezept/hendlfilet-in-rahm-mit-gemuese-be68ffe940",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/recipes/be68ffe940.webp",
+          "role": "primary",
+          "alt": "Hendlfilet in Rahm mit Gemüse, KI-Illustration des Gerichts"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/83afe639-634e-424c-a0b8-8ac4c21ba661/logo-mvtxhvsl-ecd9.webp",
+          "role": "logo",
+          "alt": "Spar"
+        }
+      ],
+      "priority": 66,
+      "tags": [
+        "rezept",
+        "waskochen",
+        "spar",
+        "schnell"
+      ],
+      "restricted": [
+        "alcohol"
+      ],
+      "published_at": "2026-11-12T08:00:00.000Z",
+      "expires_at": "2026-11-14T23:59:59.000Z",
+      "updated_at": "2026-11-12T08:00:00.000Z",
+      "raw": {
+        "recipe": {
+          "recipe_id": "be68ffe940",
+          "minutes": 25,
+          "servings": 4,
+          "ingredients_total": 8,
+          "ingredients_on_sale": 5,
+          "total_cents": 1706,
+          "saving_cents": 108,
+          "currency": "EUR",
+          "valid_to": "2026-11-14",
+          "chain": "spar",
+          "chains": [
+            "Spar Österreich"
+          ],
+          "ai_image": true,
+          "page_url": "https://uselisto.com/at/rezept/hendlfilet-in-rahm-mit-gemuese-be68ffe940",
+          "app_url": "https://uselisto.com/app",
+          "campaign": "recept-at-2026-W46",
+          "highlights": [
+            "Hendlfilet",
+            "Cremefine zum Kochen",
+            "Traungold Schnittkäse"
+          ]
+        }
+      }
+    }
+  ],
+  "next_cursor": null
+}

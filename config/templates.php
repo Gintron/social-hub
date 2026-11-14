@@ -22,6 +22,11 @@ return [
     'kinds/quote-square' => ['view' => 'templates.kinds.quote', 'width' => 1080, 'height' => 1080, 'kinds' => ['quote'], 'label' => 'Citat — kvadrat'],
     'kinds/quote-portrait' => ['view' => 'templates.kinds.quote', 'width' => 1080, 'height' => 1350, 'kinds' => ['quote'], 'label' => 'Citat — portret'],
 
+    // Recept: kartica jela. Prije udice i poziva, jer defaultFor() uzima prvi ključ vrste i to mora ostati kartica.
+    'kinds/recipe-square' => ['view' => 'templates.kinds.recipe', 'width' => 1080, 'height' => 1080, 'kinds' => ['recipe'], 'label' => 'Recept — kvadrat'],
+    'kinds/recipe-portrait' => ['view' => 'templates.kinds.recipe', 'width' => 1080, 'height' => 1350, 'kinds' => ['recipe'], 'label' => 'Recept — portret'],
+    'kinds/recipe-story' => ['view' => 'templates.kinds.recipe', 'width' => 1080, 'height' => 1920, 'kinds' => ['recipe'], 'label' => 'Recept — story 9:16'],
+
     // Vertikalni format 9:16 za Reels i TikTok; isti pogledi, druga visina.
     'kinds/job-story' => ['view' => 'templates.kinds.job', 'width' => 1080, 'height' => 1920, 'kinds' => ['job'], 'label' => 'Oglas — story 9:16'],
     'kinds/job-hook-story' => ['view' => 'templates.kinds.job-hook', 'width' => 1080, 'height' => 1920, 'kinds' => ['job'], 'label' => 'Oglas — uvod 9:16'],
@@ -32,9 +37,9 @@ return [
     'kinds/quote-story' => ['view' => 'templates.kinds.quote', 'width' => 1080, 'height' => 1920, 'kinds' => ['quote'], 'label' => 'Citat — story 9:16'],
 
     // Digest: naslovnica i slajdovi za carousel od više stavki odjednom.
-    'kinds/digest-cover' => ['view' => 'templates.kinds.digest-cover', 'width' => 1080, 'height' => 1080, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Digest — naslovnica'],
-    'kinds/digest-cover-portrait' => ['view' => 'templates.kinds.digest-cover', 'width' => 1080, 'height' => 1350, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Digest — naslovnica (portret)'],
-    'kinds/digest-cover-story' => ['view' => 'templates.kinds.digest-cover', 'width' => 1080, 'height' => 1920, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison'], 'label' => 'Digest — naslovnica 9:16'],
+    'kinds/digest-cover' => ['view' => 'templates.kinds.digest-cover', 'width' => 1080, 'height' => 1080, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'recipe'], 'label' => 'Digest — naslovnica'],
+    'kinds/digest-cover-portrait' => ['view' => 'templates.kinds.digest-cover', 'width' => 1080, 'height' => 1350, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'recipe'], 'label' => 'Digest — naslovnica (portret)'],
+    'kinds/digest-cover-story' => ['view' => 'templates.kinds.digest-cover', 'width' => 1080, 'height' => 1920, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'recipe'], 'label' => 'Digest — naslovnica 9:16'],
     'kinds/job-digest-cover-story' => ['view' => 'templates.kinds.job-digest-cover', 'width' => 1080, 'height' => 1920, 'kinds' => ['job'], 'label' => 'Poslovi — pregled 9:16'],
 
     // Set slajdova jedne stavke (config/template_sets.php): udica prije kartice, poziv na akciju poslije.
@@ -50,6 +55,12 @@ return [
     'kinds/comparison-hook-square' => ['view' => 'templates.kinds.comparison-hook', 'width' => 1080, 'height' => 1080, 'kinds' => ['comparison'], 'label' => 'Usporedba, udica — kvadrat'],
     'kinds/comparison-hook-portrait' => ['view' => 'templates.kinds.comparison-hook', 'width' => 1080, 'height' => 1350, 'kinds' => ['comparison'], 'label' => 'Usporedba, udica — portret'],
     'kinds/comparison-hook-story' => ['view' => 'templates.kinds.comparison-hook', 'width' => 1080, 'height' => 1920, 'kinds' => ['comparison'], 'label' => 'Usporedba, udica — story 9:16'],
+    'kinds/recipe-hook-square' => ['view' => 'templates.kinds.recipe-hook', 'width' => 1080, 'height' => 1080, 'kinds' => ['recipe'], 'label' => 'Recept, udica — kvadrat'],
+    'kinds/recipe-hook-portrait' => ['view' => 'templates.kinds.recipe-hook', 'width' => 1080, 'height' => 1350, 'kinds' => ['recipe'], 'label' => 'Recept, udica — portret'],
+    'kinds/recipe-hook-story' => ['view' => 'templates.kinds.recipe-hook', 'width' => 1080, 'height' => 1920, 'kinds' => ['recipe'], 'label' => 'Recept, udica — story 9:16'],
+    'kinds/recipe-cta-square' => ['view' => 'templates.kinds.recipe-cta', 'width' => 1080, 'height' => 1080, 'kinds' => ['recipe'], 'label' => 'Recept, poziv na akciju — kvadrat'],
+    'kinds/recipe-cta-portrait' => ['view' => 'templates.kinds.recipe-cta', 'width' => 1080, 'height' => 1350, 'kinds' => ['recipe'], 'label' => 'Recept, poziv na akciju — portret'],
+    'kinds/recipe-cta-story' => ['view' => 'templates.kinds.recipe-cta', 'width' => 1080, 'height' => 1920, 'kinds' => ['recipe'], 'label' => 'Recept, poziv na akciju — story 9:16'],
     'kinds/cta-square' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1080, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'quote'], 'label' => 'Poziv na akciju — kvadrat'],
     'kinds/cta-portrait' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1350, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'quote'], 'label' => 'Poziv na akciju — portret'],
     'kinds/cta-story' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1920, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'quote'], 'label' => 'Poziv na akciju — story 9:16'],

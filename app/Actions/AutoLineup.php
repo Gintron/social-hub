@@ -15,6 +15,7 @@ use App\Models\PostDraft;
 use App\Models\SocialAccount;
 use App\Publishing\LinkPreflight;
 use App\Publishing\RestrictedGoodsCheck;
+use App\Recipe\RecipeInfo;
 use App\Support\DailyPostLimit;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
@@ -49,7 +50,7 @@ final class AutoLineup
     /**
      * Every kind the lineup can post, and the order a brand without its own `lineup_priority` uses.
      */
-    public const KINDS = ['catalog', 'comparison', 'deal'];
+    public const KINDS = ['catalog', 'comparison', 'deal', 'recipe'];
 
     /**
      * A window is not filled this close to its end: the post would go out with no time to spare.
@@ -194,6 +195,13 @@ final class AutoLineup
                 }
 
                 $platforms = $itemRules->map(fn (AutoPublishRule $rule): string => $rule->platform->value)->all();
+
+                // A dish whose numbers do not add up (RecipeInfo) would be drafted as a plain item and posted with none of them.
+                if ($item->kind === ContentKind::Recipe && ($problem = RecipeInfo::problemsOf($item)) !== []) {
+                    Log::info('hub.autolineup.no_recipe', ['item' => $item->id, 'reason' => implode(' ', $problem)]);
+
+                    continue;
+                }
 
                 // A leaflet without a usable demo has no video. CreateDraft would save the draft before it found that
                 // out, and the window would then hold a post with no media, so the leaflet is passed over here.

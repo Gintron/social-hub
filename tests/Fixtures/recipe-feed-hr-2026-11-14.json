@@ -1,0 +1,401 @@
+{
+  "version": "1",
+  "brand": "uselisto",
+  "items": [
+    {
+      "id": "recipe:c7bd988657",
+      "kind": "recipe",
+      "title": "Pileća prsa s mahunama u vrhnju",
+      "subtitle": "Ribola",
+      "body_text": "Trakice piletine pirjane su s mahunama u blagom umaku od vrhnja.",
+      "facts": [
+        {
+          "label": "NA AKCIJI",
+          "value": "4 od 7 sastojaka"
+        },
+        {
+          "label": "ZBROJ SASTOJAKA NA AKCIJI",
+          "value": "8,96 €"
+        },
+        {
+          "label": "UŠTEDA PREMA LETKU",
+          "value": "2,20 €"
+        },
+        {
+          "label": "VRIJEME",
+          "value": "25 min"
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Recept i popis u Listu",
+        "url": "https://uselisto.com/recept/pileca-prsa-s-mahunama-u-vrhnju-c7bd988657"
+      },
+      "url": "https://uselisto.com/recept/pileca-prsa-s-mahunama-u-vrhnju-c7bd988657",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/recipes/c7bd988657.webp",
+          "role": "primary",
+          "alt": "Pileća prsa s mahunama u vrhnju, AI ilustracija jela"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/fc146e7c-91f3-44cb-ba75-e0604324d5ec/logo-muuwtqqf-1186.webp",
+          "role": "logo",
+          "alt": "Ribola"
+        }
+      ],
+      "priority": 71,
+      "tags": [
+        "recept",
+        "štokuhati",
+        "ribola",
+        "brzo"
+      ],
+      "published_at": "2026-11-12T08:00:00.000Z",
+      "expires_at": "2026-11-17T23:59:59.000Z",
+      "updated_at": "2026-11-12T08:00:00.000Z",
+      "raw": {
+        "recipe": {
+          "recipe_id": "c7bd988657",
+          "minutes": 25,
+          "servings": 4,
+          "ingredients_total": 7,
+          "ingredients_on_sale": 4,
+          "total_cents": 896,
+          "saving_cents": 220,
+          "currency": "EUR",
+          "valid_to": "2026-11-17",
+          "chain": "ribola",
+          "chains": [
+            "Ribola"
+          ],
+          "ai_image": true,
+          "page_url": "https://uselisto.com/recept/pileca-prsa-s-mahunama-u-vrhnju-c7bd988657",
+          "app_url": "https://uselisto.com/app",
+          "campaign": "recept-2026-W46",
+          "highlights": [
+            "Pileća prsa",
+            "Zelena mahuna",
+            "Vrhnje za kuhanje",
+            "Češnjak"
+          ]
+        }
+      }
+    },
+    {
+      "id": "recipe:c64197381d",
+      "kind": "recipe",
+      "title": "Pečeni bataci s brokulom i paprikom",
+      "subtitle": "Konzum",
+      "body_text": "Bataci se peku s celerom, uz brokulu i pečenu papriku kao prilog.",
+      "facts": [
+        {
+          "label": "NA AKCIJI",
+          "value": "4 od 6 sastojaka"
+        },
+        {
+          "label": "ZBROJ SASTOJAKA NA AKCIJI",
+          "value": "7,16 €"
+        },
+        {
+          "label": "UŠTEDA PREMA LETKU",
+          "value": "4,50 €"
+        },
+        {
+          "label": "VRIJEME",
+          "value": "75 min"
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Recept i popis u Listu",
+        "url": "https://uselisto.com/recept/peceni-bataci-s-brokulom-i-paprikom-c64197381d"
+      },
+      "url": "https://uselisto.com/recept/peceni-bataci-s-brokulom-i-paprikom-c64197381d",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/recipes/c64197381d.webp",
+          "role": "primary",
+          "alt": "Pečeni bataci s brokulom i paprikom, AI ilustracija jela"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/7c5e7e42-7487-4307-a726-f5f28f0687aa/logo-msu71e3q-c86b.webp",
+          "role": "logo",
+          "alt": "Konzum"
+        }
+      ],
+      "priority": 70,
+      "tags": [
+        "recept",
+        "štokuhati",
+        "konzum"
+      ],
+      "published_at": "2026-11-12T08:00:00.000Z",
+      "expires_at": "2026-11-16T23:59:59.000Z",
+      "updated_at": "2026-11-12T08:00:00.000Z",
+      "raw": {
+        "recipe": {
+          "recipe_id": "c64197381d",
+          "minutes": 75,
+          "servings": 4,
+          "ingredients_total": 6,
+          "ingredients_on_sale": 4,
+          "total_cents": 716,
+          "saving_cents": 450,
+          "currency": "EUR",
+          "valid_to": "2026-11-16",
+          "chain": "konzum",
+          "chains": [
+            "Konzum"
+          ],
+          "ai_image": true,
+          "page_url": "https://uselisto.com/recept/peceni-bataci-s-brokulom-i-paprikom-c64197381d",
+          "app_url": "https://uselisto.com/app",
+          "campaign": "recept-2026-W46",
+          "highlights": [
+            "Pileći batak i zabatak",
+            "Brokula",
+            "Pečena paprika filet",
+            "Celer glava"
+          ]
+        }
+      }
+    },
+    {
+      "id": "recipe:6277d4b098",
+      "kind": "recipe",
+      "title": "Svinjetina s kiselom repom",
+      "subtitle": "Konzum",
+      "body_text": "Svinjetina se polako pirja s kiselom repom, celerom i rajčicom.",
+      "facts": [
+        {
+          "label": "NA AKCIJI",
+          "value": "5 od 8 sastojaka"
+        },
+        {
+          "label": "ZBROJ SASTOJAKA NA AKCIJI",
+          "value": "7,75 €"
+        },
+        {
+          "label": "UŠTEDA PREMA LETKU",
+          "value": "4,76 €"
+        },
+        {
+          "label": "VRIJEME",
+          "value": "110 min"
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Recept i popis u Listu",
+        "url": "https://uselisto.com/recept/svinjetina-s-kiselom-repom-6277d4b098"
+      },
+      "url": "https://uselisto.com/recept/svinjetina-s-kiselom-repom-6277d4b098",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/recipes/6277d4b098.webp",
+          "role": "primary",
+          "alt": "Svinjetina s kiselom repom, AI ilustracija jela"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/7c5e7e42-7487-4307-a726-f5f28f0687aa/logo-msu71e3q-c86b.webp",
+          "role": "logo",
+          "alt": "Konzum"
+        }
+      ],
+      "priority": 71,
+      "tags": [
+        "recept",
+        "štokuhati",
+        "konzum"
+      ],
+      "published_at": "2026-11-12T08:00:00.000Z",
+      "expires_at": "2026-11-16T23:59:59.000Z",
+      "updated_at": "2026-11-12T08:00:00.000Z",
+      "raw": {
+        "recipe": {
+          "recipe_id": "6277d4b098",
+          "minutes": 110,
+          "servings": 4,
+          "ingredients_total": 8,
+          "ingredients_on_sale": 5,
+          "total_cents": 775,
+          "saving_cents": 476,
+          "currency": "EUR",
+          "valid_to": "2026-11-16",
+          "chain": "konzum",
+          "chains": [
+            "Konzum"
+          ],
+          "ai_image": true,
+          "page_url": "https://uselisto.com/recept/svinjetina-s-kiselom-repom-6277d4b098",
+          "app_url": "https://uselisto.com/app",
+          "campaign": "recept-2026-W46",
+          "highlights": [
+            "Kisela repa rezana",
+            "Celer glava",
+            "Sjeckana rajčica",
+            "Kruh rustika kukuruzni"
+          ]
+        }
+      }
+    },
+    {
+      "id": "recipe:9c348496fd",
+      "kind": "recipe",
+      "title": "Pečena piletina s avokadom i salatom",
+      "subtitle": "Tommy",
+      "body_text": "Pečena piletina s prilogom, avokadom i svježom zelenom salatom.",
+      "facts": [
+        {
+          "label": "NA AKCIJI",
+          "value": "3 od 4 sastojaka"
+        },
+        {
+          "label": "ZBROJ SASTOJAKA NA AKCIJI",
+          "value": "6,13 €"
+        },
+        {
+          "label": "VRIJEME",
+          "value": "20 min"
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Recept i popis u Listu",
+        "url": "https://uselisto.com/recept/pecena-piletina-s-avokadom-i-salatom-9c348496fd"
+      },
+      "url": "https://uselisto.com/recept/pecena-piletina-s-avokadom-i-salatom-9c348496fd",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/recipes/9c348496fd.webp",
+          "role": "primary",
+          "alt": "Pečena piletina s avokadom i salatom, AI ilustracija jela"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/a148a034-fb37-41f1-8397-0345da23f66e/logo-muuwsp4e-ce99.webp",
+          "role": "logo",
+          "alt": "Tommy"
+        }
+      ],
+      "priority": 54,
+      "tags": [
+        "recept",
+        "štokuhati",
+        "tommy",
+        "brzo"
+      ],
+      "published_at": "2026-11-12T08:00:00.000Z",
+      "expires_at": "2026-11-17T23:59:59.000Z",
+      "updated_at": "2026-11-12T08:00:00.000Z",
+      "raw": {
+        "recipe": {
+          "recipe_id": "9c348496fd",
+          "minutes": 20,
+          "servings": 4,
+          "ingredients_total": 4,
+          "ingredients_on_sale": 3,
+          "total_cents": 613,
+          "saving_cents": 0,
+          "currency": "EUR",
+          "valid_to": "2026-11-17",
+          "chain": "tommy",
+          "chains": [
+            "Tommy"
+          ],
+          "ai_image": true,
+          "page_url": "https://uselisto.com/recept/pecena-piletina-s-avokadom-i-salatom-9c348496fd",
+          "app_url": "https://uselisto.com/app",
+          "campaign": "recept-2026-W46",
+          "highlights": [
+            "Avokado",
+            "Salata Kristal"
+          ]
+        }
+      }
+    },
+    {
+      "id": "recipe:280f867692",
+      "kind": "recipe",
+      "title": "Piletina s paprikom i rajčicom",
+      "subtitle": "Spar",
+      "body_text": "Komadi piletine pirjani s paprikom u umaku od rajčice.",
+      "facts": [
+        {
+          "label": "NA AKCIJI",
+          "value": "3 od 6 sastojaka"
+        },
+        {
+          "label": "ZBROJ SASTOJAKA NA AKCIJI",
+          "value": "5,57 €"
+        },
+        {
+          "label": "UŠTEDA PREMA LETKU",
+          "value": "3,20 €"
+        },
+        {
+          "label": "VRIJEME",
+          "value": "55 min"
+        }
+      ],
+      "badges": [],
+      "price": null,
+      "cta": {
+        "label": "Recept i popis u Listu",
+        "url": "https://uselisto.com/recept/piletina-s-paprikom-i-rajcicom-280f867692"
+      },
+      "url": "https://uselisto.com/recept/piletina-s-paprikom-i-rajcicom-280f867692",
+      "images": [
+        {
+          "url": "https://api.uselisto.com/files/recipes/280f867692.webp",
+          "role": "primary",
+          "alt": "Piletina s paprikom i rajčicom, AI ilustracija jela"
+        },
+        {
+          "url": "https://api.uselisto.com/files/chains/701be0e3-da76-4527-963b-4a2ad792651a/logo-mt2j01xs-0c5c.webp",
+          "role": "logo",
+          "alt": "Spar"
+        }
+      ],
+      "priority": 57,
+      "tags": [
+        "recept",
+        "štokuhati",
+        "spar"
+      ],
+      "published_at": "2026-11-12T08:00:00.000Z",
+      "expires_at": "2026-11-17T23:59:59.000Z",
+      "updated_at": "2026-11-12T08:00:00.000Z",
+      "raw": {
+        "recipe": {
+          "recipe_id": "280f867692",
+          "minutes": 55,
+          "servings": 4,
+          "ingredients_total": 6,
+          "ingredients_on_sale": 3,
+          "total_cents": 557,
+          "saving_cents": 320,
+          "currency": "EUR",
+          "valid_to": "2026-11-17",
+          "chain": "spar",
+          "chains": [
+            "Spar"
+          ],
+          "ai_image": true,
+          "page_url": "https://uselisto.com/recept/piletina-s-paprikom-i-rajcicom-280f867692",
+          "app_url": "https://uselisto.com/app",
+          "campaign": "recept-2026-W46",
+          "highlights": [
+            "Crvena špic paprika",
+            "Pasirana rajčica"
+          ]
+        }
+      }
+    }
+  ],
+  "next_cursor": null
+}

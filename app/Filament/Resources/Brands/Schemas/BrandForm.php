@@ -341,6 +341,7 @@ final class BrandForm
                                         'catalog' => 'Katalog (letak)',
                                         'comparison' => 'Usporedba',
                                         'deal' => 'Akcija',
+                                        'recipe' => 'Recept',
                                     ])->required())
                                     ->reorderableWithButtons()
                                     ->addActionLabel('Dodaj vrstu')

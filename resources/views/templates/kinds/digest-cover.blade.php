@@ -15,6 +15,9 @@
 @endphp
 
 @section('styles')
+@if(!empty($item['recipe_cover']))
+@include('templates.partials.recipe-cover-styles')
+@endif
   .cover { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; overflow: hidden;
            padding: {{ $story ? '150px 72px 40px' : ($square ? '0 72px' : '56px 72px') }}; gap: {{ $square ? 22 : 26 }}px;
            background: linear-gradient(160deg, {{ $brand['primary'] }} 0%, {{ $brand['accent'] }} 100%); color: #fff; }
@@ -49,6 +52,9 @@
 @endsection
 
 @section('card')
+  @if(!empty($item['recipe_cover']))
+    @include('templates.partials.recipe-cover')
+  @else
   <div class="cover{{ $directStory ? ' cover--direct' : '' }}">
     @if(!empty($item['kicker']))
       <div class="kicker">{{ $item['kicker'] }}</div>
@@ -96,5 +102,6 @@
       </div>
     @endif
   </div>
+  @endif
   @include('templates.partials.footer', ['cta' => $directStory ? ($brand['cta'] ?? '') : ($item['url_display'] ?? ($brand['site'] ?? ''))])
 @endsection
