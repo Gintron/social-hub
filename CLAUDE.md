@@ -138,7 +138,7 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   (`PostVariant::showsAiDish()`, i na Instagram slici i roditelju carousela). Sve riječi piše `RecipeCopy` na jeziku brenda (`Wording`), brojeve glasu
   `SpokenCroatian`/`SpokenGerman`. Poveznica je stranica jela (po kanalu kao kod letka: FB komentar s oznakom, IG/TikTok upisiva adresa, YouTube opis;
   video kaže mjesto, pa se renderira po mjestu). Jelo mora vrijediti još 3 dana nakon objave, a izvor ga ograničava na 8 dana od skupine.
-  Udica je postavka brenda (`voice.recipe_hook`), ne kod. `hub:recipe-source` pravi izvor i pravila isključena i s odobrenjem.
+  Udica je postavka brenda (`voice.recipe_hook`: pitanje, broj, vrijeme ili „iz letka na tanjur“ s naslovnicom letka, samo HR), ne kod. `hub:recipe-source` pravi izvor i pravila isključena i s odobrenjem.
 - **Dnevni limit brenda** (`brands.daily_post_limit`, `App\Support\DailyPostLimit`): koliko objava automatika smije
   staviti na jedan lokalni dan brenda, **zajedno** — pojedinačne stavke svih izvora i pregledi. `daily_cap` pravila
   to ne može obećati (po kanalu je, a pregledi mu ne podliježu). Broje se nacrti koji izlaze ili su izašli

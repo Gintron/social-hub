@@ -79,7 +79,12 @@
             "Zelena mahuna",
             "Vrhnje za kuhanje",
             "Češnjak"
-          ]
+          ],
+          "leaflet_cover": {
+            "url": "https://api.uselisto.com/files/catalogs/0c1096c3-6c06-47cc-83f3-a6bf3e3a6f9c/pages/002.webp",
+            "width": 1600,
+            "height": 2209
+          }
         }
       }
     },
@@ -159,7 +164,12 @@
             "Brokula",
             "Pečena paprika filet",
             "Celer glava"
-          ]
+          ],
+          "leaflet_cover": {
+            "url": "https://api.uselisto.com/files/catalogs/e4fa8382-01b2-4471-9d47-9da40711f65c/pages/001.webp",
+            "width": 1600,
+            "height": 2199
+          }
         }
       }
     },
@@ -239,7 +249,12 @@
             "Celer glava",
             "Sjeckana rajčica",
             "Kruh rustika kukuruzni"
-          ]
+          ],
+          "leaflet_cover": {
+            "url": "https://api.uselisto.com/files/catalogs/e4fa8382-01b2-4471-9d47-9da40711f65c/pages/001.webp",
+            "width": 1600,
+            "height": 2199
+          }
         }
       }
     },
@@ -314,7 +329,12 @@
           "highlights": [
             "Avokado",
             "Salata Kristal"
-          ]
+          ],
+          "leaflet_cover": {
+            "url": "https://api.uselisto.com/files/catalogs/2cf12683-9f41-4861-80c0-79ae70d88637/pages/001.webp",
+            "width": 1600,
+            "height": 2191
+          }
         }
       }
     },
@@ -392,7 +412,12 @@
           "highlights": [
             "Crvena špic paprika",
             "Pasirana rajčica"
-          ]
+          ],
+          "leaflet_cover": {
+            "url": "https://api.uselisto.com/files/catalogs/7c1a18cd-e4b5-4491-816c-4aa5bed50634/pages/001.webp",
+            "width": 1600,
+            "height": 2172
+          }
         }
       }
     }

@@ -575,6 +575,7 @@ final class CaptionBuilder
             $lead,
             '👇 '.$parts['link'],
             $parts['ai'],
+            $parts['ask'],
             implode(' ', array_slice($hashtags, 0, $platform === Platform::FacebookPage ? 3 : self::FEW_HASHTAGS)),
         ], fn (?string $section): bool => filled($section))));
     }

@@ -31,6 +31,8 @@ final readonly class RecipeInfo
     /**
      * @param  list<string>  $chains  As the source names them, with a regional edition ("Billa (Wien)").
      * @param  list<string>  $highlights  Main ingredients on sale, without a brand; empty when the source did not send them.
+     * @param  array{url: string, width: int, height: int}|null  $leafletCover  The cover of the shop's leaflet, a public page of the catalogue (it says
+     *                                                                          nothing about which products are in the dish); null when the source sent none.
      */
     public function __construct(
         public string $recipeId,
@@ -49,6 +51,7 @@ final readonly class RecipeInfo
         public ?string $appUrl,
         public ?string $campaign,
         public array $highlights,
+        public ?array $leafletCover = null,
     ) {}
 
     /**
@@ -127,6 +130,7 @@ final readonly class RecipeInfo
             appUrl: filled($block['app_url'] ?? null) ? (string) $block['app_url'] : null,
             campaign: filled($block['campaign'] ?? null) ? (string) $block['campaign'] : null,
             highlights: array_slice($highlights, 0, self::MAX_HIGHLIGHTS),
+            leafletCover: self::cover($block['leaflet_cover'] ?? null),
         );
     }
 
@@ -206,5 +210,21 @@ final readonly class RecipeInfo
         }, $this->chains);
 
         return array_values(array_unique(array_filter($names, fn (string $name): bool => $name !== '')));
+    }
+
+    /**
+     * The cover of the leaflet, when the source sent one that can be shown. A decoration, never a condition: one that does not hold up
+     * is no cover, and the dish is told without it.
+     *
+     * @return array{url: string, width: int, height: int}|null
+     */
+    private static function cover(mixed $cover): ?array
+    {
+        if (! is_array($cover) || ! is_string($cover['url'] ?? null) || preg_match('~^https?://~i', $cover['url']) !== 1
+            || ! is_int($cover['width'] ?? null) || ! is_int($cover['height'] ?? null) || $cover['width'] < 1 || $cover['height'] < 1) {
+            return null;
+        }
+
+        return ['url' => $cover['url'], 'width' => $cover['width'], 'height' => $cover['height']];
     }
 }

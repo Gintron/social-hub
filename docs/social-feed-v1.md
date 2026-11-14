@@ -227,6 +227,7 @@ jamstvo izvora, s negativnim testom na njegovoj strani.
 | `valid_to`, `chain`, `chains[]` | Rok `YYYY-MM-DD`, slug dućana i njegova imena. |
 | `ai_image` | `true`: slika je AI ilustracija. Izostavljeno se čita kao `true`. |
 | `page_url`, `app_url`, `campaign` | Stranica jela, `https://uselisto.com/app`, `recept-<ISO tjedan>` (AT `recept-at-…`); hub dodaje `utm_source` kanala i `utm_medium=social`. |
+| `leaflet_cover` | Neobavezno: `{url, width, height}` naslovnice letka dućana (javna stranica kataloga), samo za jelo iz **jednog** dućana. Hub otvara video njome („Iz letka na tanjur“). Ne govori koji su proizvodi u receptu. Izvor ga šalje samo za tržišta čiji popis alkohola poznaje jezik letka (HR; AT tek kad njemačke riječi uđu u Listin `isAlcohol`): naslovnica je slika cijele stranice, a hub ne vidi slike. Hub je ne prikazuje ako se slika ne da dohvatiti. |
 | `highlights[]` | Neobavezno, samo uz `query.highlights=1`: do četiri glavna sastojka na akciji, bez marke i teksta iz letka. Hub ih ne prikazuje osim kad brend traži (`voice.recipe_highlights`). |
 
 Filteri izvora: `query.kind=recipe`, `query.country`, `query.chain`, `query.highlights`. `since` se ne gleda (kao kod kataloga): zbrojevi se

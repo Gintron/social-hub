@@ -20,7 +20,7 @@ Jedna stavka = jedno jelo. Slajdovi su po vrsti (`config/template_sets.php`): **
 
 | Slajd | Što kaže |
 |---|---|
-| Udica (`recipe-hook`) | Jelo i jedna rečenica (≤ 2,5 s u videu): pitanje „Što kuhati ovaj tjedan?“, ili „4 sastojka na akciji“ (+ „ušteda 2,20 €“ kad je ≥ 1 €), ili „Gotovo za 25 minuta“. **Nikad zbroj prvi**: zbroj je jedno pakiranje svakog sastojka na akciji i jedan skup sastojak ga napuhne (viđeno: 35,68 €). |
+| Udica (`recipe-hook`) | Jelo i jedna rečenica (≤ 2,5 s u videu): pitanje „Što kuhati ovaj tjedan?“, ili „4 sastojka na akciji“ (+ „ušteda 2,20 €“ kad je ≥ 1 €), ili „Gotovo za 25 minuta“, ili **„Iz letka na tanjur“**: naslovnica letka dućana (nagnuta, s imenom dućana), strelica i jelo. Naslovnica je javna stranica kataloga i ne govori koji su proizvodi u receptu; feed je šalje samo za HR dok Listin `isAlcohol` ne zna njemačke riječi (inače bi naslovnica Eurosparova letka pokazala pivo). **Nikad zbroj prvi**: zbroj je jedno pakiranje svakog sastojka na akciji i jedan skup sastojak ga napuhne (viđeno: 35,68 €). |
 | Kartica (`recipe`) | Jelo, dućan, trajanje · porcije · rok, i tri pločice: *Na akciji 4 / 7*, *Zbroj 8,96 €*, *Ušteda 2,20 €*. Sastojci kao čipovi samo uz `voice.recipe_highlights`. |
 | Poziv (`recipe-cta`) | „Recept i popis za kupnju čekaju u aplikaciji Listo.“, gumb „Preuzmi Listo“ i **gdje je poveznica** (komentar, biografija ili opis, kako kanal kaže). |
 | Naslovnica pregleda | Naslov serije, „5 jela iz akcija“, četiri jela s dućanom (`partials/recipe-cover`). |
@@ -30,9 +30,13 @@ Platformska oznaka AI sadržaja šalje se za recepte **u svakom formatu** (`Post
 YouTube `containsSyntheticMedia`, Instagram `is_ai_generated` na spremniku slike, Reela i roditelja carousela (ne na djeci; Instagram Platform
 changelog, 22. 6. 2026.). Facebook nema parametra, pa je ondje samo oznaka na slici i rečenica u tekstu.
 
-**Prva sekunda je postavka brenda** (`voice.recipe_hook`): `question`, `figure`, `time` ili `alternate` (zadano: pitanje i broj naizmjence, po
-jelu, ne po danu; `time` samo za jela ≤ 30 min). Kanal pamti koja je udica išla (`settings.hook`) da se doseg može usporediti nakon 24 i 72 h.
+**Prva sekunda je postavka brenda** (`voice.recipe_hook`): `question`, `figure`, `time`, `leaflet` ili `alternate` (zadano: pitanje, broj i, za jelo
+koje ima naslovnicu, letak naizmjence, po jelu a ne po danu; `time` samo za jela ≤ 30 min; `leaflet` bez naslovnice je pitanje). Kanal pamti koja je udica išla (`settings.hook`) da se doseg može usporediti nakon 24 i 72 h.
 Pobjednika ne proglašavati prije ~10 objava po udici.
+
+**Glas je kratak** (verzija 2, ~12 s umjesto 18 s): hook (1,5 s), „4 od 7 sastojaka je na akciji u trgovini Ribola.“ (~4 s) i „Recept i popis su u aplikaciji Listo.
+Poveznica je u komentaru.“ (~4,5 s). Naslov, zbroj i uštedu glas ne čita jer su na ekranu; kartica nije mirna deset sekundi. Pod tekstom objave (FB stranica,
+Instagram, TikTok) stoji pitanje „Hoće li ovo biti ručak ovaj tjedan?“, namjerno bez „napiši u komentar“ (Facebook slabije rangira objave koje traže reakciju).
 
 Riječi (glas, titlovi, naslovi, tekst, komentar) piše samo `App\Recipe\RecipeCopy` na jeziku brenda (`Wording`: `hr`, `de`); brojeve glasu
 izgovara `SpokenCroatian`/`SpokenGerman`, nikad model. Naziv dućana nema padeža („u trgovini Ribola“, „bei Eurospar“).
@@ -71,4 +75,6 @@ Probni nacrt bez čekanja automatike: `./vendor/bin/sail artisan hub:recipe-draf
 - **Njemački tekstovi nisu prošli izvornog govornika.** AT objave ostaju „traži odobrenje“.
 - Zvuk i naglasak (npr. „Ribola“, „Eurospar“): ne može se slušati; odlučuje uho (`hub:voiceover-test`).
 - Izgled na pravom telefonu i žive objave na bilo kojem kanalu. Uzorci su renderirani na Macu (fontovi se mogu razlikovati od Linuxa).
+- Naslovnica letka: Listo je bira istim pravilima kao za video o letku (prva stranica s proizvodima bez alkohola); hub ne vidi slike, pa je to jedina zaštita. Slika koja se ne dohvati
+  znači udicu „pitanje“ na ekranu, a glas bi i dalje rekao „Iz letka na tanjur“ (rijetko; ne rješava se dok se ne pojavi).
 - Instagram `is_ai_generated` na slici i carouselu: po dokumentaciji vrijedi, ali nije isprobano na živom računu (kao ni za Reel).

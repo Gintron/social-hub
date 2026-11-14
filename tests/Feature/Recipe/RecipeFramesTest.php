@@ -27,13 +27,19 @@ final class RecipeFramesTest extends TestCase
 
     private const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAIAAADZF8uwAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAF0lEQVQYlWN8zMDPQAgwEVQxqmgAFAEAuUMBCmEmg4kAAAAASUVORK5CYII=';
 
+    /** The leaflet's cover answers 404 while this is true. */
+    private bool $coverFails = false;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         // RemoteImageCache keeps files for a week: a URL a former run fetched would be answered from the disk.
         File::deleteDirectory(storage_path('app/cache/images'));
-        Http::fake(['*' => Http::response((string) base64_decode(self::PIXEL), 200, ['Content-Type' => 'image/png'])]);
+        $this->coverFails = false;
+        Http::fake(fn ($request) => $this->coverFails && str_contains($request->url(), '/pages/002.webp')
+            ? Http::response('', 404)
+            : Http::response((string) base64_decode(self::PIXEL), 200, ['Content-Type' => 'image/png']));
     }
 
     public function test_every_slide_of_a_dish_in_every_shape_renders_with_the_label_of_the_picture(): void
@@ -118,8 +124,46 @@ final class RecipeFramesTest extends TestCase
         $this->assertStringContainsString('Poveznica je u komentaru.', $this->html($item->brand, $item, 'kinds/recipe-cta-story'));
         $this->assertStringContainsString('Poveznica je u opisu.', $this->html($item->brand, $item, 'kinds/recipe-cta-story', ['link_in' => 'description']));
         $this->assertStringContainsString('Poveznica je u biografiji.', $this->html($item->brand, $item, 'kinds/recipe-cta-story', ['link_in' => 'bio']));
-        $this->assertStringContainsString('Recept i popis za kupnju čekaju u aplikaciji Listo.', $this->html($item->brand, $item, 'kinds/recipe-cta-story'));
+        $this->assertStringContainsString('Recept i popis su u aplikaciji Listo.', $this->html($item->brand, $item, 'kinds/recipe-cta-story'));
         $this->assertStringContainsString('Preuzmi Listo', $this->html($item->brand, $item, 'kinds/recipe-cta-story'));
+    }
+
+    public function test_the_leaflet_hook_opens_with_the_cover_of_the_shops_leaflet_and_the_dish(): void
+    {
+        $item = $this->recipeItem();
+        $item->brand->voice = [...$item->brand->voice, 'recipe_hook' => 'leaflet'];
+
+        foreach (['square', 'portrait', 'story'] as $shape) {
+            $html = $this->html($item->brand, $item, "kinds/recipe-hook-{$shape}");
+
+            $this->assertStringContainsString('class="lf-leaflet"', $html, $shape);
+            $this->assertStringContainsString('class="lf-dish"', $html, $shape);
+            $this->assertStringContainsString('Iz letka na tanjur', $html, $shape);
+            $this->assertStringContainsString('<div class="rc-plaque">Ribola</div>', $html, $shape);
+            $this->assertStringContainsString('AI ilustracija', $html, $shape);
+            $this->assertStringNotContainsString('Što kuhati ovaj tjedan?', $html, $shape);
+        }
+
+        // The picture of the leaflet is fetched for the hook that shows it, and for no other.
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), '/pages/002.webp'));
+    }
+
+    public function test_the_other_hooks_do_not_fetch_the_leaflet_and_a_leaflet_that_cannot_be_fetched_falls_back_to_the_question(): void
+    {
+        $item = $this->recipeItem();
+        $item->brand->voice = [...$item->brand->voice, 'recipe_hook' => 'question'];
+        $question = $this->html($item->brand, $item, 'kinds/recipe-hook-story');
+
+        $this->assertStringNotContainsString('lf-leaflet"', $question);
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/pages/002.webp'));
+
+        File::deleteDirectory(storage_path('app/cache/images'));
+        $this->coverFails = true;
+        $item->brand->voice = [...$item->brand->voice, 'recipe_hook' => 'leaflet'];
+        $fallback = $this->html($item->brand, $item, 'kinds/recipe-hook-story');
+
+        $this->assertStringNotContainsString('class="lf-leaflet"', $fallback);
+        $this->assertStringContainsString('Što kuhati ovaj tjedan?', $fallback);
     }
 
     public function test_the_german_slides_are_german(): void
@@ -182,7 +226,7 @@ final class RecipeFramesTest extends TestCase
         $script = app(\App\Voiceover\ScriptBuilder::class)->build($item->brand, $scenes, $post->contentItems, $post->title);
 
         $this->assertCount(3, $script->lines);
-        $this->assertSame('Pileća prsa s mahunama u vrhnju. 4 od 7 sastojaka je na akciji u trgovini Ribola, zajedno 8,96 €.', $script->lines[1]->text);
+        $this->assertSame('4 od 7 sastojaka je na akciji u trgovini Ribola.', $script->lines[1]->text);
         $this->assertStringEndsWith('Poveznica je u komentaru.', $script->lines[2]->text);
 
         $onYoutube = app(\App\Voiceover\ScriptBuilder::class)->build($item->brand, $scenes, $post->contentItems, $post->title, 'description');

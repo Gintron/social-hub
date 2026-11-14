@@ -61,6 +61,22 @@ final class RecipeInfoTest extends TestCase
         $this->assertNull(RecipeInfo::fromArray(array_diff_key($this->block(), ['saving_cents' => 1]))->shownSavingCents());
     }
 
+    public function test_the_cover_of_the_leaflet_is_a_decoration_and_never_a_condition(): void
+    {
+        $cover = ['url' => 'https://api.uselisto.com/files/catalogs/x/pages/001.webp', 'width' => 1600, 'height' => 2209];
+
+        $this->assertSame($cover, RecipeInfo::fromArray($this->block(['leaflet_cover' => $cover]))->leafletCover);
+        $this->assertNull(RecipeInfo::fromArray($this->block())->leafletCover);
+
+        // One that cannot be shown is no cover, and the dish is still a dish.
+        foreach ([['url' => '/files/x.webp', 'width' => 10, 'height' => 10], ['url' => 'https://x/y', 'width' => 0, 'height' => 10], ['url' => 'https://x/y', 'width' => '10', 'height' => 10], 'x', []] as $bad) {
+            $info = RecipeInfo::fromArray($this->block(['leaflet_cover' => $bad]));
+
+            $this->assertNull($info->leafletCover);
+            $this->assertSame(4, $info->ingredientsOnSale);
+        }
+    }
+
     public function test_a_source_that_does_not_say_who_drew_the_picture_is_taken_to_have_had_it_drawn(): void
     {
         $this->assertTrue(RecipeInfo::fromArray(array_diff_key($this->block(), ['ai_image' => 1]))->aiImage);

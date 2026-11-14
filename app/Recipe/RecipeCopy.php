@@ -26,27 +26,40 @@ final class RecipeCopy
 
     public const HOOK_TIME = 'time';
 
+    /** "Iz letka na tanjur": the cover of the shop's leaflet, then the dish. Only for a dish whose source sent the cover. */
+    public const HOOK_LEAFLET = 'leaflet';
+
     /** `alternate` is the brand's choice of letting the question and the number take turns, so their reach can be compared. */
     public const HOOK_ALTERNATE = 'alternate';
 
-    public const HOOKS = [self::HOOK_QUESTION, self::HOOK_FIGURE, self::HOOK_TIME];
+    public const HOOKS = [self::HOOK_QUESTION, self::HOOK_FIGURE, self::HOOK_TIME, self::HOOK_LEAFLET];
 
     /** A dish this quick may be told by its time ("Gotovo za 25 minuta"); a long one would promise a weeknight it does not keep. */
     public const QUICK_MINUTES = 30;
 
     /**
-     * How the first second of this dish is told. The brand chooses (`voice.recipe_hook`): the question, the number, the time, or
-     * both of the first two by turns. By turns is decided by the dish, not by the day, so every render of it says the same.
+     * How the first second of this dish is told. The brand chooses (`voice.recipe_hook`): the question, the number, the time, the
+     * leaflet, or the question, the number and (where the dish has a leaflet to show) the leaflet by turns. By turns is decided by the
+     * dish, not by the day, so every render of it says the same. A style the dish cannot have (a leaflet it has no cover of, a time
+     * it is too slow for) is the question.
      */
     public static function hookStyle(ContentItem $item, Brand $brand): string
     {
         $choice = (string) data_get($brand->voice, 'recipe_hook', self::HOOK_ALTERNATE);
-        $minutes = RecipeInfo::tryFromItem($item)?->minutes ?? PHP_INT_MAX;
+        $info = RecipeInfo::tryFromItem($item);
+        $minutes = $info?->minutes ?? PHP_INT_MAX;
+        $hasLeaflet = $info?->leafletCover !== null;
+
+        if ($choice === self::HOOK_ALTERNATE) {
+            $turns = $hasLeaflet ? [self::HOOK_QUESTION, self::HOOK_FIGURE, self::HOOK_LEAFLET] : [self::HOOK_QUESTION, self::HOOK_FIGURE];
+
+            return $turns[crc32($item->external_id) % count($turns)];
+        }
 
         return match (true) {
             $choice === self::HOOK_TIME && $minutes <= self::QUICK_MINUTES => self::HOOK_TIME,
-            in_array($choice, [self::HOOK_QUESTION, self::HOOK_FIGURE], true) => $choice,
-            $choice === self::HOOK_ALTERNATE => crc32($item->external_id) % 2 === 0 ? self::HOOK_QUESTION : self::HOOK_FIGURE,
+            $choice === self::HOOK_LEAFLET && $hasLeaflet => self::HOOK_LEAFLET,
+            $choice === self::HOOK_FIGURE => self::HOOK_FIGURE,
             default => self::HOOK_QUESTION,
         };
     }
@@ -85,6 +98,8 @@ final class RecipeCopy
             'hook_saving' => $saving === null ? null : Wording::get($language, 'recipe.hook.saving', ['amount' => RecipeInfo::money($saving)]),
             'hook_time' => self::timePhrase($info, $language),
             'from_leaflet' => Wording::get($language, 'recipe.hook.from_leaflet'),
+            'hook_leaflet' => Wording::get($language, 'recipe.hook.leaflet'),
+            'has_leaflet' => $info->leafletCover !== null,
             'chain' => implode(' · ', $info->shops()),
             'meta' => implode(' · ', [
                 Wording::get($language, 'recipe.card.minutes', ['minutes' => $info->minutes]),
@@ -140,15 +155,16 @@ final class RecipeCopy
         $hook = match (self::hookStyle($item, $brand)) {
             self::HOOK_FIGURE => self::onSaleCount($info, $language).'.',
             self::HOOK_TIME => self::timePhrase($info, $language).'.',
+            self::HOOK_LEAFLET => Wording::get($language, 'recipe.hook.leaflet').'.',
             default => Wording::get($language, 'recipe.question'),
         };
 
-        // The title ends its sentence so the numbers start a new one: "Pileća prsa s mahunama u vrhnju. 4 od 7 …".
-        $card = self::sentence((string) $item->title).' '.Wording::get($language, 'voice.recipe.on_sale', [
+        // Short on purpose: the title, the sum and the saving are on the screen, and a voice that reads them keeps a still card for ten
+        // seconds. It says what is not obvious from the picture: how much of the dish is on sale, and where.
+        $card = Wording::get($language, 'voice.recipe.on_sale', [
             'on' => $info->ingredientsOnSale,
             'total' => $info->ingredientsTotal,
             'shop' => self::shop($info, $language, spoken: true),
-            'sum' => RecipeInfo::money($info->totalCents),
         ]);
 
         $closing = Wording::get($language, 'recipe.cta.line', ['brand' => $brand->name]).' '.self::linkSentence($where, $language);
@@ -159,7 +175,7 @@ final class RecipeCopy
     /**
      * The sentences of a caption: the lead (the dish and its numbers), the saving, where the link is and that the picture is drawn.
      *
-     * @return array{lead: string, saving: string|null, link: string, ai: string|null, question: string}
+     * @return array{lead: string, saving: string|null, link: string, ai: string|null, question: string, ask: string}
      */
     public static function captionParts(ContentItem $item, Brand $brand, string $where = CatalogCopy::WHERE_COMMENT): array
     {
@@ -169,6 +185,9 @@ final class RecipeCopy
 
         return [
             'question' => Wording::get($language, 'recipe.question'),
+            // A question under the post: a reason to answer in the comments without asking for it (a post that asks for a like, a share or
+            // a comment is ranked lower on Facebook).
+            'ask' => Wording::get($language, 'recipe.caption.ask'),
             'lead' => Wording::get($language, 'recipe.caption.body', [
                 'title' => mb_rtrim(mb_trim((string) $item->title), '.!?:'),
                 'on' => $info->ingredientsOnSale,

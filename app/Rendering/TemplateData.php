@@ -200,6 +200,7 @@ final class TemplateData
             'recipe' => $item->kind === ContentKind::Recipe
                 ? RecipeCopy::view($item, $brand, CatalogCopy::knownPlace($overrides['link_in'] ?? null) ?? CatalogCopy::WHERE_COMMENT)
                 : null,
+            'recipe_leaflet' => $item->kind === ContentKind::Recipe ? $this->recipeLeaflet($item, $brand) : null,
             'cta_label' => $item->cta['label'] ?? null,
             'rows' => $comparison ? $this->rows($item, $facts) : [],
         ], $overrides);
@@ -392,6 +393,26 @@ final class TemplateData
         }
 
         return false;
+    }
+
+    /**
+     * The cover of the shop's leaflet for a hook that opens with it ("Iz letka na tanjur"), as a picture and its proportions. Fetched
+     * only when the hook is that one: the picture is 1600 px wide and no other slide wants it. Null when there is none to show, and the
+     * hook then falls back to the question (the slide decides, see kinds/recipe-hook).
+     *
+     * @return array{image: string, ratio: float}|null
+     */
+    private function recipeLeaflet(ContentItem $item, Brand $brand): ?array
+    {
+        $cover = RecipeInfo::tryFromItem($item)?->leafletCover;
+
+        if ($cover === null || RecipeCopy::hookStyle($item, $brand) !== RecipeCopy::HOOK_LEAFLET) {
+            return null;
+        }
+
+        $image = $this->images->dataUri($cover['url']);
+
+        return $image === null ? null : ['image' => $image, 'ratio' => $cover['width'] / $cover['height']];
     }
 
     /**

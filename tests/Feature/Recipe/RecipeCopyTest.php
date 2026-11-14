@@ -28,9 +28,10 @@ final class RecipeCopyTest extends TestCase
         $item = $this->recipeItem(itemAttributes: []);
         $lines = RecipeCopy::voiceLines($item, $item->brand);
 
-        $this->assertSame('Pileća prsa s mahunama u vrhnju. 4 od 7 sastojaka je na akciji u trgovini Ribola, zajedno 8,96 €.', $lines['card']);
-        $this->assertSame('Recept i popis za kupnju čekaju u aplikaciji Listo. Poveznica je u komentaru.', $lines['closing']);
-        $this->assertContains($lines['hook'], ['Što kuhati ovaj tjedan?', '4 sastojka na akciji.']);
+        // Short on purpose: the title, the sum and the saving are on the screen, and a voice that reads them holds a still card for ten seconds.
+        $this->assertSame('4 od 7 sastojaka je na akciji u trgovini Ribola.', $lines['card']);
+        $this->assertSame('Recept i popis su u aplikaciji Listo. Poveznica je u komentaru.', $lines['closing']);
+        $this->assertContains($lines['hook'], ['Što kuhati ovaj tjedan?', '4 sastojka na akciji.', 'Iz letka na tanjur.']);
     }
 
     public function test_the_voice_says_the_same_in_german_with_the_shop_after_bei(): void
@@ -38,9 +39,9 @@ final class RecipeCopyTest extends TestCase
         $item = $this->recipeItem(market: 'at');
         $lines = RecipeCopy::voiceLines($item, $item->brand);
 
-        $this->assertSame('Hendlfilet mit Spinat und Erdäpfeln. 4 von 6 Zutaten sind bei Eurospar im Angebot, zusammen 15,26 €.', $lines['card']);
+        $this->assertSame('4 von 6 Zutaten sind bei Eurospar im Angebot.', $lines['card']);
         $this->assertSame('Rezept und Einkaufsliste findest du in der App Listo. Den Link findest du im Kommentar.', $lines['closing']);
-        $this->assertContains($lines['hook'], ['Was kochen diese Woche?', '4 Zutaten im Angebot.']);
+        $this->assertContains($lines['hook'], ['Was kochen diese Woche?', '4 Zutaten im Angebot.', 'Aus dem Prospekt auf den Teller.']);
     }
 
     public function test_a_channel_that_has_its_link_in_the_description_says_so(): void
@@ -67,15 +68,25 @@ final class RecipeCopyTest extends TestCase
         $slow = $this->recipeItem(feedItem: [...$this->recipeFeedItem(1), 'id' => 'recipe:slow', 'raw' => ['recipe' => [...$this->recipeFeedItem(1)['raw']['recipe'], 'minutes' => 75]]], brand: $brand);
         $this->assertSame('question', RecipeCopy::hookStyle($slow, $brand));
 
+        // The leaflet is the brand's choice too, and a dish whose source sent no cover is told with the question instead.
+        $brand->voice = [...$brand->voice, 'recipe_hook' => 'leaflet'];
+        $this->assertSame('leaflet', RecipeCopy::hookStyle($item, $brand));
+        $feed = $this->recipeFeedItem(1);
+        unset($feed['raw']['recipe']['leaflet_cover']);
+        $plain = $this->recipeItem(feedItem: [...$feed, 'id' => 'recipe:no-cover'], brand: $brand);
+        $this->assertSame('question', RecipeCopy::hookStyle($plain, $brand));
+
         // By turns: the same dish says the same thing every time it is asked, and the five dishes of the fixture do not all say one thing.
+        // Without a cover the turns are the question and the number only.
         $brand->voice = [...$brand->voice, 'recipe_hook' => 'alternate'];
+        $this->assertContains(RecipeCopy::hookStyle($plain, $brand), ['question', 'figure']);
         $this->assertSame(RecipeCopy::hookStyle($item, $brand), RecipeCopy::hookStyle($item, $brand));
         $styles = array_map(
             fn (int $index): string => RecipeCopy::hookStyle($this->recipeItem(feedItem: [...$this->recipeFeedItem($index), 'id' => "recipe:turn-{$index}"], brand: $brand), $brand),
             range(0, 4),
         );
-        $this->assertContains('question', $styles);
-        $this->assertContains('figure', $styles);
+        $this->assertGreaterThanOrEqual(2, count(array_unique($styles)), 'the dishes do not all say one thing');
+        $this->assertEmpty(array_diff($styles, ['question', 'figure', 'leaflet']));
     }
 
     public function test_the_view_of_a_slide_has_the_numbers_as_the_item_gave_them_and_the_label_of_the_picture(): void
@@ -88,6 +99,8 @@ final class RecipeCopyTest extends TestCase
         $this->assertSame('2,20 €', $view['saving']);
         $this->assertSame('ušteda 2,20 €', $view['hook_saving']);
         $this->assertSame('4 sastojka na akciji', $view['hook_on_sale']);
+        $this->assertSame('Iz letka na tanjur', $view['hook_leaflet']);
+        $this->assertTrue($view['has_leaflet']);
         $this->assertSame('Gotovo za 25 minuta', $view['hook_time']);
         $this->assertSame('25 min · 4 porcije · Vrijedi do 17. 11.', $view['meta']);
         $this->assertSame('4 od 7 sastojaka na akciji', $view['on_sale']);
@@ -126,7 +139,9 @@ final class RecipeCopyTest extends TestCase
             $text = $captions->for($platform, $item, $item->brand);
 
             $this->assertStringContainsString('🍽️ Što kuhati ovaj tjedan? Pileća prsa s mahunama u vrhnju: 4 od 7 sastojaka je na akciji u trgovini Ribola, zajedno 8,96 €. Ušteda prema letku: 2,20 €.', $text, $platform->value);
-            $this->assertStringContainsString('👇 Recept i popis za kupnju čekaju u aplikaciji Listo. Poveznica je u komentaru.', $text, $platform->value);
+            $this->assertStringContainsString('👇 Recept i popis su u aplikaciji Listo. Poveznica je u komentaru.', $text, $platform->value);
+            // A question under the post, not an ask for a comment: a post that asks for one is ranked lower on Facebook.
+            $this->assertStringContainsString('Hoće li ovo biti ručak ovaj tjedan?', $text, $platform->value);
             $this->assertStringContainsString('Slika jela je AI ilustracija.', $text, $platform->value);
             $this->assertStringNotContainsString('http', $text, 'the link is the first comment, never the text');
         }
@@ -163,6 +178,7 @@ final class RecipeCopyTest extends TestCase
         $this->assertStringContainsString('🍽️ Was kochen diese Woche? Hendlfilet mit Spinat und Erdäpfeln: 4 von 6 Zutaten sind bei Eurospar im Angebot, zusammen 15,26 €. Ersparnis laut Prospekt: 2,70 €.', $text);
         $this->assertStringContainsString('Den Link findest du im Kommentar.', $text);
         $this->assertStringContainsString('Das Bild ist eine KI-Illustration.', $text);
+        $this->assertStringContainsString('Wäre das dein Essen diese Woche?', $text);
         $this->assertStringNotContainsString('akciji', $text);
     }
 
@@ -203,13 +219,13 @@ final class RecipeCopyTest extends TestCase
         $hr = $this->recipeItem();
         $croatian = app(SpokenCroatian::class)->speak(RecipeCopy::voiceLines($hr, $hr->brand)['card'], []);
 
-        $this->assertStringContainsString('Četiri od sedam sastojaka je na akciji u trgovini Ribola, zajedno osam eura i devedeset šest centi.', $croatian);
+        $this->assertStringContainsString('Četiri od sedam sastojaka je na akciji u trgovini Ribola.', $croatian);
         $this->assertDoesNotMatchRegularExpression('/\d/', $croatian);
 
         $at = $this->recipeItem(market: 'at');
         $german = app(SpokenGerman::class)->speak(RecipeCopy::voiceLines($at, $at->brand)['card'], []);
 
-        $this->assertStringContainsString('vier von sechs Zutaten sind bei Eurospar im Angebot, zusammen fünfzehn Euro sechsundzwanzig.', $german);
+        $this->assertStringContainsString('vier von sechs Zutaten sind bei Eurospar im Angebot.', $german);
         $this->assertDoesNotMatchRegularExpression('/\d/', $german);
     }
 }
