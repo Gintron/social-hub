@@ -347,7 +347,7 @@ final class BrandForm
                                     ->live(),
                                 Repeater::make('lineup_priority')->label('Redoslijed vrsta')
                                     ->visible(fn (Get $get): bool => (bool) $get('auto_lineup'))
-                                    ->helperText('Prva vrsta ide prva. Vrsta koja nije na popisu se ne objavljuje automatski. Prazan popis = ništa.')
+                                    ->helperText('Prva vrsta ide prva, a sljedeća samo kad prva nema što objaviti u tom terminu (recept je prvi, katalog zadnji). Vrsta koja nije na popisu se ne objavljuje automatski. Prazan popis = ništa.')
                                     ->simple(Select::make('kind')->options([
                                         'catalog' => 'Katalog (letak)',
                                         'comparison' => 'Usporedba',
@@ -356,7 +356,7 @@ final class BrandForm
                                     ])->required())
                                     ->reorderableWithButtons()
                                     ->addActionLabel('Dodaj vrstu')
-                                    ->default(['catalog', 'comparison', 'deal']),
+                                    ->default(['recipe', 'comparison', 'deal', 'catalog']),
                             ]),
 
                         Section::make('Pregledi')

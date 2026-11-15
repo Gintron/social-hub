@@ -149,7 +149,9 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   stavke odmah po sinkronizaciji, nego po terminu objave (`brands.posting_windows`). Termin se puni 30 min prije
   otvaranja (sinkronizacija, ingest i `hub:auto-lineup` u :30). Dnevni limit se dijeli po terminima (5 nad 3 daje
   2, 2, 1; limit manji od broja termina daje jednu po terminu). Vrsta ide po `brands.lineup_priority` (zadano
-  katalog, usporedba, akcija); vrsta koja nije na popisu se ne objavljuje. Kandidati se čitaju **vrstu po vrstu**
+  recept, usporedba, akcija, katalog); vrsta koja nije na popisu se ne objavljuje. Redoslijed je prednost, ne kvota: recept ide
+  uvijek kad ga ima, a ostale vrste samo popunjavaju termine u kojima ga nema (jelo mora nadživjeti objavu 3 dana, pa ga pred kraj
+  tjedna letaka ima malo), da nijedan dan ne ostane prazan. Letak je zadnji: izlazi tek kad ništa iznad njega ne čeka. Kandidati se čitaju **vrstu po vrstu**
   (do 100 po vrsti), ne jedan bazen preko vrsta: inače bi sto akcija višeg prioriteta zauvijek zaklonilo katalog koji
   brend stavlja prvim. Stavka kataloga bez `raw.demo` i stavka koju nijedan otvoreni kanal ne uzima (alkohol,
   `RestrictedGoodsCheck`) preskaču se prije nego što se nacrt spremi, da termin ne ostane zauzet objavom koju bi

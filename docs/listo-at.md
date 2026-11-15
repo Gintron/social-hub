@@ -58,7 +58,7 @@ brend ima iste postavke kao dolje.
 | Pregledi (serije) | ne kopiraju se | bez njih; vidi § 4 |
 | Glas (voice-over) | isključen, bez glasa | glas bira uho: `hub:voiceover-test "Hey, der neue Prospekt von Billa ist da." --brand=uselisto-at --voice=<id>`. Bez glasa video izlazi s titlovima, to je dopušteno. |
 | Izgovor imena | prazno | Billa, Spar, Hofer, Lidl, MPREIS, Müller, Bipa: provjeriti uhom |
-| Lineup (`auto_lineup`) | kopira se | ostavi; vrste redom katalog, usporedba, akcija |
+| Lineup (`auto_lineup`) | kopira se | ostavi; vrste redom recept, usporedba, akcija, katalog (zadano od 15. 11. 2026.) |
 
 ## 3. Izvori i pravila (panel → Izvori)
 

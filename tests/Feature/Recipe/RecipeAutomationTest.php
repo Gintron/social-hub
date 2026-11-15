@@ -20,6 +20,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use ReflectionMethod;
+use Tests\Support\MakesCatalogItems;
 use Tests\Support\MakesRecipeItems;
 use Tests\TestCase;
 
@@ -29,6 +30,7 @@ use Tests\TestCase;
  */
 final class RecipeAutomationTest extends TestCase
 {
+    use MakesCatalogItems;
     use MakesRecipeItems;
     use RefreshDatabase;
 
@@ -96,9 +98,68 @@ final class RecipeAutomationTest extends TestCase
         $this->assertSame(0, app(AutoLineup::class)->fill($brand));
     }
 
-    public function test_the_default_order_of_a_brand_without_its_own_still_starts_with_the_catalog(): void
+    public function test_the_default_order_of_a_brand_without_its_own_puts_the_dish_first_and_the_leaflet_last(): void
     {
-        $this->assertSame(['catalog', 'comparison', 'deal', 'recipe'], AutoLineup::KINDS);
+        $this->assertSame(['recipe', 'comparison', 'deal', 'catalog'], AutoLineup::KINDS);
+    }
+
+    public function test_a_waiting_dish_takes_the_window_before_a_leaflet_a_comparison_and_a_deal(): void
+    {
+        // No `lineup_priority` of its own: the default order decides.
+        $brand = $this->brand(['lineup_priority' => null]);
+        $source = $this->source($brand);
+        $dish = $this->dish($brand, $source, 0);
+        $this->otherKind($brand, $source, ContentKind::Catalog, 'catalog:1', priority: 100);
+        $this->otherKind($brand, $source, ContentKind::Comparison, 'comparison:1', priority: 100);
+        $this->otherKind($brand, $source, ContentKind::Deal, 'deal:1', priority: 100);
+
+        $this->assertSame(1, app(AutoLineup::class)->fill($brand));
+
+        $this->assertSame($dish->id, PostDraft::query()->with('contentItems')->sole()->contentItems->sole()->id);
+    }
+
+    public function test_when_no_dish_is_left_the_window_is_not_empty_and_the_leaflet_comes_after_a_comparison_and_a_deal(): void
+    {
+        $brand = $this->brand(['lineup_priority' => null]);
+        $source = $this->source($brand);
+        // The only dish ends in two days: it does not outlast its post, so it is not waiting (the end of a leaflet week).
+        $this->dish($brand, $source, 0, daysLeft: 2);
+        $catalog = $this->otherKind($brand, $source, ContentKind::Catalog, 'catalog:1', priority: 100);
+        $deal = $this->otherKind($brand, $source, ContentKind::Deal, 'deal:1', priority: 1);
+
+        $this->assertSame(1, app(AutoLineup::class)->fill($brand));
+        $this->assertSame($deal->id, PostDraft::query()->with('contentItems')->sole()->contentItems->sole()->id, 'a deal of priority 1 still goes before a leaflet of priority 100');
+
+        // The next window: nothing else waits, so the leaflet fills it instead of leaving it empty.
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-07 17:45', 'Europe/Zagreb'));
+        $this->assertSame(1, app(AutoLineup::class)->fill($brand));
+        $this->assertSame($catalog->id, PostDraft::query()->with('contentItems')->orderByDesc('id')->first()->contentItems->sole()->id);
+    }
+
+    public function test_each_window_takes_one_dish_until_they_run_out_and_the_order_can_still_be_changed_per_brand(): void
+    {
+        $brand = $this->brand(['lineup_priority' => null]);
+        $source = $this->source($brand);
+        $this->dish($brand, $source, 0);
+        $this->dish($brand, $source, 1);
+        $this->otherKind($brand, $source, ContentKind::Deal, 'deal:1');
+
+        $kinds = [];
+        foreach (['2026-09-07 11:45', '2026-09-07 17:45'] as $moment) {
+            CarbonImmutable::setTestNow(CarbonImmutable::parse($moment, 'Europe/Zagreb'));
+            $this->assertSame(1, app(AutoLineup::class)->fill($brand));
+            $kinds[] = PostDraft::query()->with('contentItems')->orderByDesc('id')->first()->contentItems->sole()->kind;
+        }
+        $this->assertSame([ContentKind::Recipe, ContentKind::Recipe], $kinds, 'two windows, two dishes');
+
+        // A brand that wants the leaflet first still says so in its own order, and gets it.
+        $other = $this->brand(['slug' => 'uselisto-x', 'lineup_priority' => ['catalog', 'recipe']]);
+        $otherSource = $this->source($other);
+        $this->dish($other, $otherSource, 2);
+        $leaflet = $this->otherKind($other, $otherSource, ContentKind::Catalog, 'catalog:x');
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-07 11:45', 'Europe/Zagreb'));
+        $this->assertSame(1, app(AutoLineup::class)->fill($other));
+        $this->assertSame($leaflet->id, PostDraft::query()->where('brand_id', $other->id)->with('contentItems')->sole()->contentItems->sole()->id);
     }
 
     public function test_a_roundup_of_dishes_has_a_headline_in_the_brands_language(): void
@@ -192,6 +253,35 @@ final class RecipeAutomationTest extends TestCase
             'published_at' => CarbonImmutable::now()->subHour(),
             'expires_at' => CarbonImmutable::now()->addDays($daysLeft),
         ]);
+    }
+
+    /**
+     * An item of another kind in the same source (a leaflet is made from the feed, with the demo block its video needs).
+     */
+    private function otherKind(Brand $brand, Source $source, ContentKind $kind, string $externalId, int $priority = 3): ContentItem
+    {
+        $attributes = [
+            'kind' => $kind,
+            'external_id' => $externalId,
+            'title' => $externalId,
+            'url' => 'https://example.test/'.str_replace(':', '/', $externalId),
+            'priority' => $priority,
+            'published_at' => CarbonImmutable::now()->subHour(),
+            'expires_at' => CarbonImmutable::now()->addDays(10),
+        ];
+
+        if ($kind === ContentKind::Catalog) {
+            $attributes = [...\App\Sources\ContentItemData::fromFeedItem($this->catalogFeedItem())->toAttributes(), ...$attributes];
+        }
+
+        if ($kind === ContentKind::Catalog) {
+            return ContentItem::query()->create([
+                ...$attributes,
+                'source_id' => $source->id, 'brand_id' => $brand->id, 'first_seen_at' => now(), 'last_seen_at' => now(),
+            ]);
+        }
+
+        return ContentItem::factory()->for($source)->create($attributes);
     }
 
     private function headline(Brand $brand, int $count): string

@@ -29,7 +29,12 @@ use Throwable;
 
 /**
  * The brand's automatic posts, one at a time, in its posting windows: each post takes the first kind in the
- * brand's order that has an item waiting (by default a catalog, then a comparison, then a deal).
+ * brand's order that has an item waiting (by default a dish, then a comparison, then a deal, then a catalog).
+ *
+ * The order is a preference, not a quota: a dish is posted whenever one is waiting, and the kinds after it only fill the
+ * windows that no dish can have. That is the whole of "meals first": no window goes empty on a day the dishes ran out
+ * (a dish has to outlast its post by `hub.min_days_valid.recipe` days, so at the end of a leaflet week there are few),
+ * and a leaflet is posted only when nothing above it waits.
  *
  * The daily limit (`daily_post_limit`) is the number of posts a day, shared out over the windows (see quota()).
  * A window is filled from `LEAD_MINUTES` before it opens, so the candidates are the ones the sources have
@@ -48,9 +53,11 @@ final class AutoLineup
     public const LEAD_MINUTES = 30;
 
     /**
-     * Every kind the lineup can post, and the order a brand without its own `lineup_priority` uses.
+     * Every kind the lineup can post, and the order a brand without its own `lineup_priority` uses: what to cook from
+     * the offers first (it is what the app is about), then what the leaflets say about one product, and the leaflet
+     * itself last.
      */
-    public const KINDS = ['catalog', 'comparison', 'deal', 'recipe'];
+    public const KINDS = ['recipe', 'comparison', 'deal', 'catalog'];
 
     /**
      * A window is not filled this close to its end: the post would go out with no time to spare.

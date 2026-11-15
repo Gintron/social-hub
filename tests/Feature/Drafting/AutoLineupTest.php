@@ -385,6 +385,9 @@ final class AutoLineupTest extends TestCase
     {
         return Brand::factory()->create($overrides + [
             'slug' => 'uselisto',
+            // These tests are about how a window is filled, so they say the order they rely on; the order a brand without its own gets
+            // (a dish first, the leaflet last) is tested in RecipeAutomationTest.
+            'lineup_priority' => ['catalog', 'comparison', 'deal'],
             'timezone' => 'Europe/Zagreb',
             'posting_windows' => [
                 ['from' => '07:30', 'to' => '09:00'],

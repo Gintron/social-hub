@@ -56,12 +56,26 @@ Poveznica je **stranica jela** (odgovor na objavu, s gumbima za trgovine), po ka
 1. Listo mora imati uključene stranice recepata za tržište (`RECIPES_WEB_MARKETS`), inače feed ne šalje ništa (hub ne dobiva poveznicu na 404).
 2. `./vendor/bin/sail artisan hub:recipe-source uselisto` (i `uselisto-at`): izvor `listo-recepti` (`query.kind=recipe`, ista adresa, ključ i država) i pravilo po kanalu,
    **sve isključeno, „Traži odobrenje“ uključeno**, 1 dnevno. U panelu: Izvori → *Testiraj vezu* (mora vratiti stavke vrste Recept) → uključi izvor i pravila.
-3. Brendovi → Raspored objava: „Redoslijed vrsta“: **Recept prvi**, pa katalog, usporedba, akcija. Predloženi termini: pon–pet 16:30, sub–ned 10:00; dnevni limit 2.
+3. Brendovi → Raspored objava: „Redoslijed vrsta“: **Recept prvi**, pa usporedba, akcija, katalog zadnji (zadani redoslijed od 15. 11. 2026.; vidi „Obroci prvi“ niže). Predloženi termini: pon–pet 16:30, sub–ned 10:00; dnevni limit 2.
 4. Tjedni pregled (carousel): Brendovi → Pregledi → nova serija, vrsta **Recept**, format Carousel (Instagram, Facebook), npr. nedjeljom 17:00, 5 jela;
    za „Što kuhati iz Konzuma“ oznaka serije `konzum` (opće polje `tags`).
 5. Glas (Luka, `eleven_v4`) za HR; za AT video izlazi s titlovima dok se ne izabere glas. Prvih ~5 objava pogledati pa isključiti „Traži odobrenje“.
 
 Probni nacrt bez čekanja automatike: `./vendor/bin/sail artisan hub:recipe-draft --brand=uselisto --format=video --sync`.
+
+## Obroci prvi (lineup)
+
+Redoslijed vrsta u lineupu je **prednost, ne kvota** (`AutoLineup`): svaki termin uzima prvu vrstu s redoslijeda koja ima stavku na čekanju. S redoslijedom
+`recept, usporedba, akcija, katalog` jelo dobiva termin kad god ga ima, a usporedba, akcija i letak samo popunjavaju termine u kojima jela nema, pa dan ne ostaje prazan.
+
+- Jela ima manje nego se čini: mora nadživjeti objavu 3 dana (`hub.min_days_valid.recipe`), a većina ističe kad završi tjedan letaka. Pred kraj tjedna ih ostane malo,
+  nakon novog letka (Listo gradi nove skupine svakih 6 sati) opet puno. To je razlog zašto letak i akcija ostaju kao zamjena, a ne isključuju se.
+- **Dnevni limit kanala** (`daily_cap` pravila) vrijedi za sve vrste zajedno: najveći `daily_cap` pravila kanala određuje koliko objava kanal smije taj dan. Pravila s limitom 1
+  znače jednu objavu dnevno bez obzira na `daily_post_limit` brenda.
+- „Traži odobrenje“ na pravilu recepta drži cijeli nacrt, ali termin je zauzet: ako nacrt nitko ne odobri, u tom terminu ne izlazi ništa (ni letak). Kasnije odobren nacrt
+  izlazi odmah (termin je prošao). Zato je odobravanje ujutro dio rutine dok je uključeno.
+- Uključivanje na produkciji (po brendu): redoslijed vrsta u panelu, pravila recepta uključiti (odobrenje ostaje) s `daily_cap` kakav brend smije dnevno, izvor `listo-recepti`
+  mora biti uključen. Ništa se ne mijenja dok se to ne napravi: prekidač je redoslijed i pravila, ne kod.
 
 ## Što hub čuva
 
