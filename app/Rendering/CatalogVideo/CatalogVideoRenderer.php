@@ -237,10 +237,13 @@ final class CatalogVideoRenderer
      * The soundtrack in two passes: mix everything, measure it, then bring the measured mix to the target
      * loudness in one linear step (no pumping, and the peak lands where it is told to).
      *
+     * Public because the video of a dish (RecipeVideoRenderer) is mixed the same way: its plan carries the same `duration`,
+     * `voice` and `sounds`.
+     *
      * @param  array<string, mixed>  $plan
      * @return array{path: string, filter: string|null, loudness: array<string, mixed>}
      */
-    private function mix(string $work, array $plan, ?Narration $narration, ?string $audioPath): array
+    public function mix(string $work, array $plan, ?Narration $narration, ?string $audioPath): array
     {
         $arguments = ['ffmpeg', '-y', '-hide_banner', '-loglevel', 'error'];
         $index = 0;
@@ -334,7 +337,7 @@ final class CatalogVideoRenderer
     /**
      * @param  array{path: string, filter: string|null, loudness: array<string, mixed>}  $mix
      */
-    private function encode(string $work, array $mix, string $output): void
+    public function encode(string $work, array $mix, string $output): void
     {
         $this->run([
             'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',

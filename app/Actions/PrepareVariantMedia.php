@@ -11,12 +11,14 @@ use App\Enums\Platform;
 use App\Jobs\RenderCatalogVideoJob;
 use App\Jobs\RenderDigestJob;
 use App\Jobs\RenderMediaJob;
+use App\Jobs\RenderRecipeVideoJob;
 use App\Jobs\RenderSlidesJob;
 use App\Jobs\RenderVideoJob;
 use App\Models\MediaAsset;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
 use App\Rendering\CatalogVideo\CatalogVideoRenderer;
+use App\Rendering\RecipeVideo\RecipeVideoRenderer;
 use App\Rendering\ScenePlanner;
 use App\Rendering\TemplateRegistry;
 use App\Rendering\VideoRenderer;
@@ -126,8 +128,10 @@ final class PrepareVariantMedia
             if ($format === ContentFormat::Video && $item->kind === ContentKind::Recipe) {
                 $voice = array_key_exists('voiceover', $video) ? (bool) $video['voiceover'] : $variant->wantsVoiceover();
                 $where = $variant->linkIn();
-                $asset = $fresh ? null : $this->latestVideo($draft, $voice, $where);
-                $asset !== null ? $this->attach($variant, [$asset]) : $groups['recipe:'.($voice ? 'voice' : 'plain').':'.$where][] = $variant;
+                // The brand chooses how a dish is told in a video: the three slides, or one scene in motion (`voice.recipe_video`).
+                $scene = RecipeVideoRenderer::chosenBy($draft->brand);
+                $asset = $fresh ? null : ($scene ? $this->latestSceneVideo($draft, RecipeVideoRenderer::TEMPLATE_KEY, $voice, $where) : $this->latestVideo($draft, $voice, $where));
+                $asset !== null ? $this->attach($variant, [$asset]) : $groups[($scene ? 'recipe-scene:' : 'recipe:').($voice ? 'voice' : 'plain').':'.$where][] = $variant;
 
                 continue;
             }
@@ -214,6 +218,13 @@ final class PrepareVariantMedia
                 where: CatalogCopy::knownPlace(array_pad(explode(':', $argument, 2), 2, '')[1]) ?? CatalogCopy::WHERE_COMMENT,
                 audio: (string) ($video['audio'] ?? 'auto'),
             ),
+            'recipe-scene' => new RenderRecipeVideoJob(
+                $draft->id,
+                $ids,
+                voiceover: str_starts_with($argument, 'voice'),
+                where: CatalogCopy::knownPlace(array_pad(explode(':', $argument, 2), 2, '')[1]) ?? CatalogCopy::WHERE_COMMENT,
+                audio: (string) ($video['audio'] ?? 'auto'),
+            ),
             // The group is `recipe:{voice|plain}:{where}`, like the leaflet's.
             'recipe' => new RenderVideoJob(
                 $draft->id,
@@ -290,8 +301,16 @@ final class PrepareVariantMedia
      */
     private function latestCatalogVideo(PostDraft $draft, bool $voice, string $where): ?MediaAsset
     {
+        return $this->latestSceneVideo($draft, CatalogVideoRenderer::TEMPLATE_KEY, $voice, $where);
+    }
+
+    /**
+     * The newest scene video of the draft (a new catalog's, a dish's) with this voice (or none) and this sentence about the link.
+     */
+    private function latestSceneVideo(PostDraft $draft, string $templateKey, bool $voice, string $where): ?MediaAsset
+    {
         return $draft->mediaAssets()
-            ->where('template_key', CatalogVideoRenderer::TEMPLATE_KEY)
+            ->where('template_key', $templateKey)
             ->latest('id')
             ->get()
             ->first(fn (MediaAsset $asset): bool => (data_get($asset->params, 'voiceover.status') === 'ok') === $voice

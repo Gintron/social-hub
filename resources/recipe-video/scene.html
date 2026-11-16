@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<title>Jelo — video</title>
+<link rel="stylesheet" href="scene.css">
+</head>
+<body>
+<!--
+  Jedan kadar videa jela u 1080×1920, nacrtan za trenutak t (scene.js → renderAt). Ne animira se sam: Node
+  (resources/js/catalog-frames.mjs) postavlja t i snima sličicu, pa je svaka sličica deterministična, a provjera
+  izgleda jedna naredba (`--at 2.4`). Što se vidi i kada piše App\Recipe\RecipeSceneBundle u data.js (window.SCENE).
+-->
+<div id="stage"></div>
+<script src="data.js"></script>
+<script src="scene.js"></script>
+</body>
+</html>

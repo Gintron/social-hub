@@ -104,3 +104,38 @@ Redoslijed vrsta u lineupu je **prednost, ne kvota** (`AutoLineup`): svaki termi
 - Naslovnica letka: Listo je bira istim pravilima kao za video o letku (prva stranica s proizvodima bez alkohola); hub ne vidi slike, pa je to jedina zaštita. Slika koja se ne dohvati
   znači udicu „pitanje“ na ekranu, a glas bi i dalje rekao „Iz letka na tanjur“ (rijetko; ne rješava se dok se ne pojavi).
 - Instagram `is_ai_generated` na slici i carouselu: po dokumentaciji vrijedi, ali nije isprobano na živom računu (kao ni za Reel).
+
+## Video jela kao scena u pokretu (16. 11. 2026., iza prekidača)
+
+Uz tri mirna kadra postoji i **scena u pokretu** (`resources/recipe-video`, `App\Rendering\RecipeVideo\RecipeVideoRenderer`), po uzoru na promo video
+„Što kuhati ovaj tjedan?“ (Listo, `video/scene/kuhaj.js`). Brend je bira postavkom **`voice.recipe_video = scene`**; bez nje (ili uz `slides`) sve ostaje
+kako je bilo, pa deploy sam ne mijenja nijednu objavu. Glas, titlovi, tekst objave, poveznica i komentar su isti: scena govori iste tri rečenice
+(`RecipeCopy::voiceLines`) i isti `ScenePlanner`/`Narrator` put, pa su i spremljeni isječci glasa isti.
+
+| Dio | Što se vidi | Što se čuje |
+|---|---|---|
+| Udica (0 – ~2 s) | jela preko cijelog kadra, do tri (dva druga živa jela brenda pa jelo objave), naslov udice i žuta naljepnica | rečenica udice |
+| Aplikacija | zaslon „Što kuhati“: kartica jela; redom se istaknu „dućan · N sastojaka na akciji“, ušteda i zbroj | „4 od 6 sastojaka je na akciji u trgovini Konzum.“ |
+| Popis | dodir na karticu (zvuk dodavanja iz aplikacije), popis s glavnim sastojcima i „na akciji“ | prva polovica završne rečenice |
+| Poziv (~2,6 s) | zelena kartica: gdje su recept i popis, gumb, gdje je poveznica | „…Poveznica je u komentaru.“ |
+
+- **Pravila jela vrijede i ovdje.** Naljepnica udice nikad ne kaže zbroj: kaže broj sastojaka na akciji, a uz udicu `figure` uštedu prema letku (kad je ≥ 1 €) ili vrijeme.
+  Zbroj je samo na kartici aplikacije, s oznakom „zbroj sastojaka na akciji“. Nijedan proizvod, marka, cijena ni izrezak iz letka nije u sceni (`RecipeSceneBundle`).
+- **Druga jela u udici** su živa jela istog brenda (`ContentItem::live()`, bez označenih kao `restricted`, s ispravnim blokom i slikom), izabrana po jelu objave, ne po satu.
+  Bez njih udica je samo jelo objave. Svako jelo nosi oznaku „AI ilustracija“.
+- **Popis** traži isto što i zadnji kadar (Z1): `voice.recipe_highlights` na brendu i `query.highlights=1` na izvoru. Bez toga dodir otvara poziv.
+- **Vremena** su u `App\Recipe\RecipeVideoPlan` (video čeka rečenice; bez glasa isti oblik po procijenjenom trajanju), oko 12–14 s. Mirni kraj poziva snima se jednom.
+- **Zvuk i kodiranje** su od videa kataloga (`CatalogVideoRenderer::mix`/`encode`: −14 LUFS, H.264/yuv420p + AAC, faststart). Naslovnica je kadar na 0,4 s (prvo jelo s naljepnicom); TikTok uzima isti trenutak.
+- **Odabir** je u `PrepareVariantMedia` (grupa `recipe-scene:{voice|plain}:{mjesto}` → `RenderRecipeVideoJob`); video scene se ne zamjenjuje slideshowom istog nacrta ni obrnuto.
+
+Uključivanje po brendu (radi Marijan; `voice` je JSON, ostale postavke ostaju):
+
+```bash
+php artisan tinker --execute="\$b = App\Models\Brand::where('slug', 'uselisto')->firstOrFail(); \$b->update(['voice' => [...\$b->voice, 'recipe_video' => 'scene']]); echo \$b->voice['recipe_video'];"
+```
+
+Povratak na tri kadra: ista naredba sa `slides`. Već renderirani nacrti zadržavaju svoj video; novi se renderiraju po postavci.
+
+Provjereno: testovi `RecipeSceneVideoTest` (plan, paket, odabir; cijeli put s Chromiumom i ffmpegom u privremenom spremniku), uzorci HR (Luka) i AT (Lola) s pravim glasom i slikama.
+Nije provjereno: render na produkcijskom poslužitelju (Chromium tamo crta video kataloga, ali ova scena ima zamućenu pozadinu u udici; lokalno ~75 s za 370 sličica),
+izgled na pravom telefonu, žive objave. Glazba u uzorcima je zadana podloga huba.
