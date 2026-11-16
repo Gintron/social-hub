@@ -61,12 +61,21 @@ final class RecipeFramesTest extends TestCase
         $item = $this->recipeItem();
         $html = $this->html($item->brand, $item, 'kinds/recipe-story');
 
-        foreach (['Pileća prsa s mahunama u vrhnju', '4 / 7', '8,96 €', '2,20 €', 'Ribola', '25 min · 4 porcije · Vrijedi do 17. 11.', 'Recept i popis za kupnju'] as $text) {
+        foreach (['Pileća prsa s mahunama u vrhnju', '4 / 7', '8,96 €', '2,20 €', 'Ribola', 'Recept i popis za kupnju'] as $text) {
             $this->assertStringContainsString($text, $html);
         }
-        // The ingredients are not shown unless the brand asks for them.
+        // The three numbers are rows, and the saving says what it is against: the old prices of the leaflet.
+        foreach (['Na akciji', 'Zbroj', 'Ušteda prema letku'] as $label) {
+            $this->assertStringContainsString($label, $html);
+        }
+        // The time, the portions and the day the offer ends are pills, and the end is a date: the video is made before it goes out.
+        foreach (['25 min', '4 porcije', 'do 17. 11.'] as $pill) {
+            $this->assertStringContainsString($pill, $html);
+        }
+        $this->assertStringNotContainsString('još 2 dana', $html);
+        // No ingredient on the card, whether or not the brand shows them on the last slide.
         $this->assertStringNotContainsString('Zelena mahuna', $html);
-        $this->assertStringNotContainsString('rc-chip"><span>', $html);
+        $this->assertStringNotContainsString('class="rc-chip"', $html);
     }
 
     public function test_a_long_name_is_set_smaller_instead_of_being_cut(): void
@@ -92,14 +101,63 @@ final class RecipeFramesTest extends TestCase
         $this->assertSame(523, $long, 'over 52 characters: 84 × 0.62, three lines');
     }
 
-    public function test_the_ingredients_stand_under_the_name_when_the_brand_asks_for_them(): void
+    public function test_the_last_slide_is_the_list_in_the_app_when_the_brand_shows_the_ingredients(): void
     {
         $item = $this->recipeItem();
         $item->brand->voice = [...$item->brand->voice, 'recipe_highlights' => true];
-        $html = $this->html($item->brand, $item, 'kinds/recipe-story');
 
-        $this->assertStringContainsString('<span class="rc-chip"><span>✓</span>Zelena mahuna</span>', $html);
-        $this->assertSame(4, mb_substr_count($html, '<span class="rc-chip">'));
+        foreach (['square', 'portrait', 'story'] as $shape) {
+            $html = $this->html($item->brand, $item, "kinds/recipe-cta-{$shape}");
+
+            $this->assertStringContainsString('class="rz"', $html, $shape);
+            $this->assertSame(4, mb_substr_count($html, 'class="rz__row"'), $shape);
+            foreach (['Moj popis', 'Zelena mahuna', 'Vrhnje za kuhanje', 'na akciji', '4 na popisu', 'Preuzmi Listo', 'Poveznica je u komentaru.'] as $text) {
+                $this->assertStringContainsString($text, $html, "{$shape}: {$text}");
+            }
+            // The picture is in the list as a small round one, and the note under the button says it is drawn.
+            $this->assertStringContainsString('Slika jela je AI ilustracija.', $html, $shape);
+            $this->assertStringContainsString('data:image/png;base64,', $html, $shape);
+            // The names are the dish's: no price and no brand of a product.
+            $this->assertStringNotContainsString('€', $html, $shape);
+        }
+    }
+
+    public function test_without_the_ingredients_the_last_slide_is_the_dish_in_a_circle_as_it_was(): void
+    {
+        $item = $this->recipeItem();
+        $html = $this->html($item->brand, $item, 'kinds/recipe-cta-story');
+
+        $this->assertStringNotContainsString('class="rz"', $html);
+        $this->assertStringContainsString('Recept i popis su u aplikaciji Listo.', $html);
+        $this->assertStringContainsString('AI ilustracija', $html);
+    }
+
+    public function test_the_hook_is_the_dish_across_the_frame_with_a_panel_pills_and_the_label_under_the_apps_top(): void
+    {
+        $item = $this->recipeItem();
+
+        foreach (['square', 'portrait', 'story'] as $shape) {
+            $html = $this->html($item->brand, $item, "kinds/recipe-hook-{$shape}");
+
+            $this->assertStringContainsString('class="rp__panel"', $html, $shape);
+            $this->assertStringContainsString('Što kuhati ovaj tjedan?', $html, $shape);
+            foreach (['25 min', '4 porcije', 'do 17. 11.'] as $pill) {
+                $this->assertStringContainsString($pill, $html, "{$shape}: {$pill}");
+            }
+            $this->assertStringContainsString('AI ilustracija', $html, $shape);
+            $this->assertStringContainsString('Ribola', $html, $shape);
+            $this->assertStringNotContainsString('class="lf-stage"', $html, $shape);
+        }
+
+        // On 9:16 the label and the shop's plaque sit under the top of the app, not at the edge.
+        $this->assertMatchesRegularExpression('/\.rp \.rp__ai \{ left: 40px; top: 200px;/', $this->html($item->brand, $item, 'kinds/recipe-hook-story'));
+
+        // The minutes are the line itself on the time hook, so the pill does not say them twice.
+        $item->brand->voice = [...$item->brand->voice, 'recipe_hook' => 'time'];
+        $time = $this->html($item->brand, $item, 'kinds/recipe-hook-story');
+        $this->assertStringContainsString('Gotovo za 25 minuta', $time);
+        $this->assertSame(1, mb_substr_count($time, '25 min'), 'only inside "Gotovo za 25 minuta", not again as a pill');
+        $this->assertStringContainsString('4 porcije', $time);
     }
 
     public function test_a_saving_under_a_euro_leaves_no_tile_and_no_pill(): void
@@ -196,7 +254,7 @@ final class RecipeFramesTest extends TestCase
         $card = $this->html($item->brand, $item, 'kinds/recipe-portrait');
         $cta = $this->html($item->brand, $item, 'kinds/recipe-cta-portrait');
 
-        foreach (['Hendlfilet mit Spinat und Erdäpfeln', '4 / 6', '15,26 €', '2,70 €', 'Im Angebot', 'Zusammen', 'Ersparnis', 'Eurospar', '30 Min. · 4 Portionen · Gültig bis 18.11.', 'KI-Illustration'] as $text) {
+        foreach (['Hendlfilet mit Spinat und Erdäpfeln', '4 / 6', '15,26 €', '2,70 €', 'Im Angebot', 'Zusammen', 'Ersparnis', 'Eurospar', '30 Min.', '4 Portionen', 'bis 18.11.', 'Ersparnis lt. Prospekt', 'KI-Illustration'] as $text) {
             $this->assertStringContainsString($text, $card);
         }
         $this->assertStringContainsString('Rezept und Einkaufsliste findest du in der App Listo.', $cta);

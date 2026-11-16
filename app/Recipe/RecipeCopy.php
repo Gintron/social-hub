@@ -88,8 +88,17 @@ final class RecipeCopy
         ];
 
         if ($saving !== null) {
-            $tiles[] = ['label' => Wording::get($language, 'recipe.card.saving_label'), 'value' => RecipeInfo::money($saving), 'accent' => true];
+            // The long label says what the saving is against: it is always the old prices of the leaflet, never the price of the dish.
+            $tiles[] = [
+                'label' => Wording::get($language, 'recipe.card.saving_label'),
+                'label_long' => Wording::get($language, 'recipe.card.saving_label_long'),
+                'value' => RecipeInfo::money($saving),
+                'accent' => true,
+            ];
         }
+
+        // The main ingredients, when the source sent them and the brand wants them shown (voice.recipe_highlights).
+        $highlights = (bool) data_get($brand->voice, 'recipe_highlights', false) ? $info->highlights : [];
 
         return [
             'hook_style' => $hookStyle,
@@ -110,8 +119,18 @@ final class RecipeCopy
             'sum' => RecipeInfo::money($info->totalCents),
             'saving' => $saving === null ? null : RecipeInfo::money($saving),
             'tiles' => $tiles,
-            // The dish's main ingredients, when the source sent them and the brand wants them on the card (voice.recipe_highlights).
-            'highlights' => (bool) data_get($brand->voice, 'recipe_highlights', false) ? $info->highlights : [],
+            // The time, the portions and the day the offer ends, as the pills under a hook and a card carry them. The end is a date, not
+            // "two days left": a video is rendered before it goes out, and a count of days would be wrong by the time it is seen.
+            'chips' => [
+                ['icon' => 'clock', 'text' => Wording::get($language, 'recipe.card.minutes', ['minutes' => $info->minutes])],
+                ['icon' => 'plate', 'text' => Wording::get($language, 'recipe.card.servings', ['count' => $info->servings, 'portions' => Wording::plural($language, $info->servings, 'portions')])],
+                ['icon' => 'hourglass', 'text' => Wording::get($language, 'recipe.card.until_short', ['date' => self::date($info->validTo, $language)]), 'accent' => true],
+            ],
+            // The dish's main ingredients: the rows of the shopping list on the last slide.
+            'highlights' => $highlights,
+            'list_title' => Wording::get($language, 'recipe.list.title'),
+            'list_on_sale' => Wording::get($language, 'recipe.list.on_sale'),
+            'list_added' => Wording::get($language, 'recipe.list.added', ['count' => count($highlights)]),
             'ai' => $info->aiImage,
             'ai_label' => Wording::get($language, 'recipe.ai_label'),
             'ai_note' => Wording::get($language, 'recipe.ai_note'),

@@ -41,6 +41,18 @@ Instagram, TikTok) stoji pitanje „Hoće li ovo biti ručak ovaj tjedan?“, na
 Riječi (glas, titlovi, naslovi, tekst, komentar) piše samo `App\Recipe\RecipeCopy` na jeziku brenda (`Wording`: `hr`, `de`); brojeve glasu
 izgovara `SpokenCroatian`/`SpokenGerman`, nikad model. Naziv dućana nema padeža („u trgovini Ribola“, „bei Eurospar“).
 
+## Izgled kadrova (16. 11. 2026., odabir H2 + K3 + Z1)
+
+Tri kadra jela su `kinds/recipe-hook`, `kinds/recipe` i `kinds/recipe-cta` u formatima 9:16, 4:5 i 1:1 (isti raspored, tri mjere):
+
+- **Udica (H2):** jelo preko cijele širine, tamni panel preko donjeg ruba s pitanjem (ili brojem, ili vremenom, kako brend bira `voice.recipe_hook`) i tri pilule: vrijeme, porcije i **datum** kraja akcije
+  („do 17. 11."). Datum, ne „još 2 dana": video se renderira prije nego izađe, pa bi broj dana bio kriv. Udica s naslovnicom letka (`leaflet`) ostaje svoja pozornica.
+- **Kartica (K3):** jelo s naslovom preko slike i tri retka (na akciji, zbroj, **ušteda prema letku**), pa pilule. Nijedan sastojak ni proizvod nije na kartici.
+- **Popis (Z1):** telefon s Listinim popisom: glavni sastojci jela s kvačicom i „na akciji", „4 na popisu", pa gumb i „Poveznica je u komentaru." Treba `voice.recipe_highlights` na brendu **i**
+  `query.highlights=1` na izvoru (inače feed ne šalje nazive); bez njih zadnji kadar je jelo u krugu kao prije. Nazivi su sastojci jela, nikad proizvod, marka ni cijena iz letka.
+- Na 9:16 oznaka „AI ilustracija" i pločica dućana stoje ispod vrha aplikacije (y = 200), sav sadržaj iznad y = 1380 (kartica) odnosno 1500 (udica i popis), kao i dosad.
+- Uzorci: `artifacts/listo-recepti/{hr,at}/v3-*.jpg` (renderira ih `storage/app/proposals/samples-v3.php`, ignoriran), list prijedloga `prijedlog-v3.png`.
+
 ## Poveznica i prvi komentar
 
 Poveznica je **stranica jela** (odgovor na objavu, s gumbima za trgovine), po kanalu (`App\Recipe\RecipeVariant`, ista pravila kao letak):
