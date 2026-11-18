@@ -27,7 +27,7 @@ Pinterest (svakih par sati)           →  novi <item> (guid listo-pin-<id>) pos
 * **Jedan pin po specifikaciji i tjednu** (ISO tjedan u vremenu brenda): ponovno pokretanje ne radi ništa, a propušteni četvrtak nadoknađuje petak.
 * **Jelo se ne ponavlja**: isti pin nikad ne uzima jelo koje je već imao, a dva pina istog tjedna ne dijele jelo. Specifikacija bez jela (dućan bez jela
   ovaj tjedan, sva jela iskorištena) ne radi pin i piše u log.
-* **Što pin kaže**: jelo na slici (AI ilustracija, s oznakom), naslov i izvor („BILLA-Prospekt“). **Nikakva cijena, datum ni broj**: ponude jela ističu u srijedu,
+* **Što pin kaže**: jelo na slici (AI ilustracija, s oznakom), naslov i izvor („BILLA-Prospekt“); naslov i opis počinju imenom jela („<jelo> – <naslov pina>“), jer Pinterestova pretraga traži po riječima, a ime jela ne ističe s ponudom. **Nikakva cijena, datum ni broj**: ponude jela ističu u srijedu,
   a pin živi mjesecima. Zato **poveznica vodi na stranicu koja ostaje** (`/at/rezepte/<lanac>`, `/at/rezepte`), s `utm_source=pinterest&utm_medium=social&utm_campaign=pin-<ploča>`
   (Listin web to prosljeđuje u Play `referrer` i Apple `ct`).
 * **AI oznaka**: Pinterestov prekidač „KI-modifiziert“ postoji samo pri ručnoj izradi pina; feed ga ne može postaviti. Zato je oznaka na samoj slici
@@ -45,6 +45,13 @@ Svaka ploča je jedan feed. U Pinterestu: **Business hub → Create → Bulk cre
 | Schnelle Rezepte unter 30 Minuten | `https://hub.uselisto.com/pinterest/uselisto-at/schnell.xml` |
 
 Prije dodavanja pokreni `php artisan hub:pinterest-pins` na produkciji i otvori feed u pregledniku: mora biti XML s `<item>` (prazan feed Pinterest odbija ili ostavi bez pinova).
+
+## Kad nešto pođe po zlu
+
+* **Jelo čija se slika ne može nacrtati** ne zaustavlja tjedan: pin uzima sljedeće najbolje jelo (do 3 pokušaja), ostali pinovi se rade dalje. Pin koji ne uspije ni tako ide u izlaz naredbe i u log (`hub.pinterest.pin_failed`), a naredba završi s greškom.
+* **Tjedan bez ijednog pina** (nema jela na akciji, svaka slika pada) logira se kao `hub.pinterest.no_pins_this_week` i naredba završi s greškom. Hub nema kanal za obavijesti, pa to vidi samo log/izlaz zakazane naredbe: povremeno pogledaj feed ili `storage/logs`.
+* **Brend bez `site_url`** (apsolutni URL) ne radi pinove: poveznica bi bila relativna i Pinterest je odbija.
+* Riječi koje hub dodaje (opis, AI napomena, opis i jezik feeda) su u `App\Support\Wording` po jeziku brenda; naslov, „eyebrow“ i „headline“ pina su u `config/pinterest.php` uz brend.
 
 ## Održavanje
 

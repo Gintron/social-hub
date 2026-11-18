@@ -79,7 +79,8 @@ final class ImageRenderer
                 'format' => 'jpg',
                 'disk' => $disk,
                 'path' => $path,
-                'bytes' => mb_strlen($binary),
+                // The size in bytes (mb_strlen would count characters of the JPEG's bytes): feeds and APIs state it as the file's length.
+                'bytes' => filesize($jpg) ?: null,
                 'checksum' => hash('sha256', $binary),
             ]);
         } finally {

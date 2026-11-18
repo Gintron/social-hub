@@ -6,6 +6,7 @@ namespace App\Pinterest;
 
 use App\Models\Brand;
 use App\Models\MediaAsset;
+use App\Support\Wording;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -52,8 +53,8 @@ final class PinFeed
             .'<rss version="2.0"><channel>'
             .'<title>'.$this->e("{$brand->name} – {$name}").'</title>'
             .'<link>'.$this->e($site.'/rezepte').'</link>'
-            .'<description>'.$this->e("Neue Pins für das Board „{$name}“").'</description>'
-            .'<language>de-AT</language>'
+            .'<description>'.$this->e(Wording::get($brand, 'pin.feed_description', ['board' => $name])).'</description>'
+            .'<language>'.$this->e(Wording::get($brand, 'pin.feed_language')).'</language>'
             .'<lastBuildDate>'.now()->toRfc2822String().'</lastBuildDate>'
             .$items
             .'</channel></rss>';

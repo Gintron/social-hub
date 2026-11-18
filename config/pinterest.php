@@ -17,6 +17,10 @@ declare(strict_types=1);
  *  - `max_minutes` only dishes done within this many minutes
  *  - `path`       the page it links to, under the brand's `site_url`
  *  - `shop`       the shop as the text names it ("BILLA")
+ *  - `lead`       optional first sentence of the description; without it Wording's `pin.lead` (the hub's own words, in the brand's language)
+ *
+ * `eyebrow`, `headline` and `title` are the brand's own words and live here; the words the hub adds (description, AI note) are in App\Support\Wording.
+ * The title is "<dish> – <title>": the dish's name does not end with its offers, and Pinterest search matches on it.
  */
 return [
     'brands' => [
@@ -27,7 +31,6 @@ return [
                 'wochenplan' => 'Wochenplan: günstig kochen',
                 'schnell' => 'Schnelle Rezepte unter 30 Minuten',
             ],
-            'ai_note' => 'Bild: KI-Illustration.',
             'pins' => [
                 ['id' => 'billa', 'board' => 'angebote', 'chain' => 'billa', 'path' => '/rezepte/billa', 'shop' => 'BILLA', 'eyebrow' => 'BILLA-Prospekt', 'headline' => 'Günstig kochen mit dem BILLA-Prospekt', 'title' => 'Günstig kochen mit dem BILLA-Prospekt'],
                 ['id' => 'spar', 'board' => 'angebote', 'chain' => 'spar', 'path' => '/rezepte/spar', 'shop' => 'SPAR', 'eyebrow' => 'SPAR-Angebote', 'headline' => 'Was kochen mit den SPAR-Angeboten?', 'title' => 'Was kochen mit den SPAR-Angeboten?'],

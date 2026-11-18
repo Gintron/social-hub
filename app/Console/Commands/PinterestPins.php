@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\Brand;
 use App\Pinterest\PinBuilder;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final class PinterestPins extends Command
@@ -30,10 +31,12 @@ final class PinterestPins extends Command
                 continue;
             }
 
+            $problems = [];
+
             try {
-                $made = $builder->buildWeek($brand);
+                $made = $builder->buildWeek($brand, null, $problems);
             } catch (Throwable $e) {
-                // One brand's failed render (Chromium, an image that would not download) must not stop the others.
+                // One brand's failure (no site_url, Chromium missing) must not stop the others.
                 report($e);
                 $this->error("{$slug}: {$e->getMessage()}");
                 $failed = true;
@@ -41,7 +44,21 @@ final class PinterestPins extends Command
                 continue;
             }
 
+            foreach ($problems as $problem) {
+                $this->error("{$slug}: {$problem}");
+            }
+
             $this->info(sprintf('%s: %d novih pinova (tjedan %s).', $slug, count($made), PinBuilder::weekOf($brand, now())));
+
+            // Nothing in the hub notifies anyone, so the run says it loudly: a week with no pin at all (no dishes on offer, every picture failing) leaves the
+            // feeds as they were, and Pinterest then has nothing new to publish.
+            if ($builder->pinsOfWeek($brand, now()) === 0) {
+                Log::error('hub.pinterest.no_pins_this_week', ['brand' => $slug, 'problems' => $problems]);
+                $this->error("{$slug}: ovaj tjedan nema nijednog pina, feedovi ostaju kakvi jesu.");
+                $failed = true;
+            } elseif ($problems !== []) {
+                $failed = true;
+            }
         }
 
         return $failed ? self::FAILURE : self::SUCCESS;
