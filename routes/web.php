@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Meta\MetaOAuthController;
 use App\Http\Controllers\Meta\MetaWebhookController;
+use App\Http\Controllers\PinterestFeedController;
 use App\Http\Controllers\TikTok\TikTokBusinessOAuthController;
 use App\Http\Controllers\TikTok\TikTokOAuthController;
 use App\Http\Controllers\VoiceoverAudioController;
@@ -50,6 +51,12 @@ Route::middleware(['web', 'auth'])->group(function (): void {
     // Listening to a voice sample from the brand form; the clips are on a private disk.
     Route::get('/voiceovers/{voiceover}/audio', VoiceoverAudioController::class)->name('voiceovers.audio');
 });
+
+/*
+ * The feeds Pinterest reads (Auto-publish on a board), one per board of config/pinterest.php. Public: Pinterest fetches them without a login, and
+ * they hold only what the pins already show. See docs/pinterest.md.
+ */
+Route::get('/pinterest/{brand}/{board}.xml', [PinterestFeedController::class, 'show'])->name('pinterest.feed');
 
 /*
  * Called by Meta, not by a browser: no session, no CSRF token, authenticated by signed_request.

@@ -31,5 +31,8 @@ Schedule::command('hub:agent-draft')->dailyAt('07:30')->timezone($tz)->withoutOv
 // AI characters: today's topics, once each character's morning (brands.persona.suggest_at, local time) has come.
 Schedule::command('hub:suggest-topics')->hourlyAt(5)->withoutOverlapping();
 
+// Pinterest: the week's pins, drawn and added to the feeds Pinterest reads. Thursday morning, when the new leaflets and the dishes made from them are out.
+Schedule::command('hub:pinterest-pins')->weeklyOn(4, '08:30')->timezone($tz)->withoutOverlapping();
+
 // Spoken clips are kept for re-renders and then deleted from disk; the record of what was said stays.
 Schedule::command('hub:prune-voiceovers')->weeklyOn(0, '04:15')->timezone($tz)->withoutOverlapping();

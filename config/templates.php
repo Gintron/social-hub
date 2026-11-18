@@ -64,6 +64,8 @@ return [
     'kinds/cta-square' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1080, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'quote'], 'label' => 'Poziv na akciju — kvadrat'],
     'kinds/cta-portrait' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1350, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'quote'], 'label' => 'Poziv na akciju — portret'],
     'kinds/cta-story' => ['view' => 'templates.kinds.cta', 'width' => 1080, 'height' => 1920, 'kinds' => ['job', 'deal', 'article', 'event', 'generic', 'comparison', 'quote'], 'label' => 'Poziv na akciju — story 9:16'],
+    // Pinterest: the pin of a dish (app/Pinterest). `kinds` is empty on purpose: defaultFor() and the pickers never offer it as a slide of a post.
+    'kinds/recipe-pin' => ['view' => 'templates.kinds.recipe-pin', 'width' => 1000, 'height' => 1500, 'kinds' => [], 'label' => 'Pinterest — pin jela 2:3'],
     // A product feature uses a real screenshot and one instruction, for carousels and video alike.
     'kinds/feature-portrait' => ['view' => 'templates.kinds.feature', 'width' => 1080, 'height' => 1350, 'kinds' => ['generic'], 'label' => 'Demonstracija — portret'],
     'kinds/feature-story' => ['view' => 'templates.kinds.feature', 'width' => 1080, 'height' => 1920, 'kinds' => ['generic'], 'label' => 'Demonstracija — story 9:16'],

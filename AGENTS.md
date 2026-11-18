@@ -34,6 +34,8 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   sinkronizacija stvarno donijela nove stavke. Bez toga bi svaki prolaz preispitivao cijeli katalog.
 - **`ContentItem::imageUrl()` ne vraća zamjenu za tuđu ulogu**: traženje `logo` bez logotipa vraća
   `null`, ne prvu sliku — inače proizvod završi u logo pločici svakog predloška.
+- **Pinterest ide kroz RSS feed, ne kroz API** (`docs/pinterest.md`, `app/Pinterest`): Trial pristup daje pinove vidljive samo vlasniku, Standard traži pregled.
+  Pin ne smije reći ništa što ističe (cijena, datum, broj na akciji) i vodi na stranicu koja ostaje; jedan pin po specifikaciji i tjednu.
 - **Chromium u Sailu** je Playwrightov arm64 build na `/usr/local/bin/hub-chrome` (Chrome for Testing nema
   arm64 Linux build); produkcija koristi Puppeteerov cache. Ne mijenjati bez čitanja `docker/8.4/Dockerfile`.
 
