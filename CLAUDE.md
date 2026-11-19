@@ -116,6 +116,13 @@ Laravel 13 / PHP 8.4 / Filament 5 hub za objave na društvenim mrežama za više
   **format i postavke kanala** (`format`, `settings`); kampanja se slaže u panelu, ne u kodu.
   `daily_cap` je **po kanalu**: stavke idu po prioritetu, pa kanal s malim limitom (2 Reela) dobije
   najbolje, a kanal bez limita (grupe) sve. Nove objave se slažu iza već zakazanih (`PostingSchedule::queueAfter`).
+  **Kanale objave bira dan objave, ne dan nastanka nacrta** (`ApplyAutoPublishRules::targetsAt`): kanal uzima stavku
+  do svog limita za dan u kojem objava izlazi, a kanal koji taj dan nema ništa uzima je i kad mu je „danas“ tempo
+  iscrpljen. Inače bi kanal povezan naknadno, koji danas još nije ništa dobio, bio jedini „otvoren“ i sam odnio dnevnu
+  stavku — a stavka koja je već u nacrtu ne bira se opet, pa bi Facebook i Instagram taj dan ostali bez objave (YouTube
+  19. 11. 2026., nacrt 283). Dan pun na svim kanalima ne zadržava stavku: ide na prvi sljedeći dan s mjestom. Kanal s
+  pravilom a bez aktivnog računa (istekao token) ostaje bez svih objava tog prolaza, a stavka se ne vraća: prolaz to
+  upisuje kao `hub.autopublish.channel_missing`.
 - **Ponuda mora nadživjeti objavu.** `config/hub.php` → `min_days_valid` (`deal` i `comparison`: 3 dana) —
   kupac treba stići kupiti. Mjeri se od **termina kad objava izlazi**, ne od danas: `ContentItem::scopePostableAt()` /
   `isPostableAt()`. `ApplyAutoPublishRules` drži svaku stavku uz termin koji će stvarno dobiti (stavka na rubu

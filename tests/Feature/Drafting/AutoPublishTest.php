@@ -234,6 +234,83 @@ final class AutoPublishTest extends TestCase
         $this->assertTrue($drafts->every(fn (PostDraft $draft): bool => $draft->variants->contains('platform', Platform::FacebookPage)));
     }
 
+    public function test_a_channel_connected_later_does_not_take_the_days_item_alone(): void
+    {
+        // One window a day, so every post gets a day of its own.
+        $source = $this->source();
+        $source->brand->update(['posting_windows' => [['from' => '12:00', 'to' => '12:30']]]);
+        SocialAccount::factory()->for($source->brand)->create();
+        SocialAccount::factory()->for($source->brand)->instagram()->create();
+        $this->rule($source, Platform::FacebookPage, dailyCap: 1);
+        $this->rule($source, Platform::InstagramBusiness, dailyCap: 1);
+
+        $this->fakeFeed(1);
+        $this->sync($source);
+        $this->assertSame(1, PostDraft::query()->count());
+
+        // YouTube comes in the same day: it has posted nothing today, Facebook and Instagram have used their share.
+        SocialAccount::factory()->for($source->brand)->create(['platform' => Platform::YouTube]);
+        $this->rule($source, Platform::YouTube, dailyCap: 1);
+
+        $this->fakeFeed(1, startAt: 10);
+        $this->sync($source->refresh());
+
+        $second = PostDraft::query()->with('variants')->orderByDesc('id')->first();
+
+        $this->assertSame(2, PostDraft::query()->count());
+        $this->assertNotSame(
+            PostDraft::query()->orderBy('id')->first()->scheduled_at->setTimezone('Europe/Zagreb')->toDateString(),
+            $second->scheduled_at->setTimezone('Europe/Zagreb')->toDateString(),
+            'each post has a day of its own',
+        );
+        $this->assertEqualsCanonicalizing(
+            ['fb_page', 'ig_business', 'youtube'],
+            $second->variants->map(fn ($variant): string => $variant->platform->value)->all(),
+            'the next day goes out on every channel, not on the new one alone',
+        );
+    }
+
+    public function test_a_day_full_on_every_channel_moves_the_item_to_the_next_day(): void
+    {
+        $source = $this->source();
+        SocialAccount::factory()->for($source->brand)->create();
+        $this->rule($source, Platform::FacebookPage, dailyCap: 1);
+
+        // Last night's pass gave the Facebook post of today (08:00) a draft.
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-06 21:00', 'Europe/Zagreb'));
+        $this->fakeFeed(1);
+        $this->sync($source);
+
+        // This morning the day's allowance of Facebook is used on the day of the post, though today's pacing is not.
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-07 06:30', 'Europe/Zagreb'));
+        $this->fakeFeed(1, startAt: 10);
+        $this->sync($source->refresh());
+
+        $this->assertSame(
+            ['2026-09-07 08:00', '2026-09-08 08:00'],
+            PostDraft::query()->orderBy('scheduled_at')->get()
+                ->map(fn (PostDraft $draft): string => $draft->scheduled_at->setTimezone('Europe/Zagreb')->format('Y-m-d H:i'))->all(),
+        );
+    }
+
+    public function test_a_channel_never_gets_more_than_its_cap_on_one_day(): void
+    {
+        $source = $this->source();
+        SocialAccount::factory()->for($source->brand)->create();
+        SocialAccount::factory()->for($source->brand)->create(['platform' => Platform::YouTube]);
+        $this->rule($source, Platform::FacebookPage, dailyCap: 1);
+        $this->rule($source, Platform::YouTube);
+
+        $this->fakeFeed(3);
+        $this->sync($source);
+
+        // Three posts go out on one day: YouTube takes them all, Facebook only the first.
+        $drafts = PostDraft::query()->with('variants')->orderBy('id')->get();
+
+        $this->assertCount(3, $drafts);
+        $this->assertSame([1, 0, 0], $drafts->map(fn (PostDraft $draft): int => $draft->variants->where('platform', Platform::FacebookPage)->count())->all());
+    }
+
     public function test_a_second_batch_queues_behind_the_posts_already_scheduled(): void
     {
         $this->fakeFeed(2);

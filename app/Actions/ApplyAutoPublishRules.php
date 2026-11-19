@@ -45,6 +45,11 @@ final class ApplyAutoPublishRules
 
     private const CANDIDATE_POOL = 100;
 
+    /**
+     * How many days on, at most, an item goes when the days before it are full on every channel.
+     */
+    private const SLOT_DAYS_AHEAD = 14;
+
     public function __construct(
         private readonly CreateDraft $createDraft,
         private readonly PostingSchedule $schedule,
@@ -119,30 +124,54 @@ final class ApplyAutoPublishRules
 
         $options = $rules->mapWithKeys(fn (AutoPublishRule $rule): array => [$rule->platform->value => $rule->channelOptions()])->all();
 
+        $ruleFor = $rules->keyBy(fn (AutoPublishRule $rule): string => $rule->platform->value);
+
+        // A draft is made for the channels that are connected when the pass runs, and its item is then used up for
+        // good: a channel with a rule but no active account (a lapsed token) misses every post of this pass.
+        $missing = array_values(array_diff($ruleFor->keys()->all(), $connected));
+
+        if ($missing !== []) {
+            Log::warning('hub.autopublish.channel_missing', ['source' => $source->name, 'platforms' => $missing]);
+        }
+
+        // Posts the source already has on each channel and day, read once and kept up to date as drafts are made.
+        $onDay = [];
+        $floor = null;
         $created = 0;
 
         foreach ($items as $item) {
-            $open = array_keys(array_filter($remaining, fn (int $left): bool => $left > 0));
-
-            if ($open === []) {
-                break;
-            }
-
             // Goods a channel does not take (RestrictedGoodsCheck) go only to the channels that do. An item none
             // of the open channels takes is passed over, and its slot goes to the next item.
             $blocked = $this->goods->blockedOn($item);
-            $targets = $accounts->filter(fn (SocialAccount $account): bool => in_array($account->platform->value, $open, true)
-                && ! in_array($account->platform->value, $blocked, true))->values();
+            $eligible = $accounts->reject(fn (SocialAccount $account): bool => in_array($account->platform->value, $blocked, true));
 
-            if ($targets->isEmpty()) {
+            if ($eligible->isEmpty()) {
+                continue;
+            }
+
+            $slot = $slots[$created];
+
+            if ($floor !== null && $slot->lessThan($floor)) {
+                $slot = $this->schedule->nextSlot($source->brand, $floor);
+            }
+
+            $targets = $this->targetsAt($source, $eligible, $ruleFor, $remaining, $slot, $onDay);
+
+            // A day on which every channel has had its share does not hold the item: it goes out on the next day with room.
+            for ($days = 0; $targets->isEmpty() && $days < self::SLOT_DAYS_AHEAD; $days++) {
+                $slot = $this->schedule->nextSlot($source->brand, $source->brand->dayBoundsUtc($slot)[1]->addSecond());
+                $targets = $this->targetsAt($source, $eligible, $ruleFor, $remaining, $slot, $onDay);
+            }
+
+            if ($targets->isEmpty() || ! $item->isPostableAt($slot)) {
                 continue;
             }
 
             $targeted = $targets->map(fn (SocialAccount $account): string => $account->platform->value)->unique()->values()->all();
 
             // The brand's own limit for the day this post would go out, on top of each rule's cap.
-            if (! $this->dailyLimit->hasRoom($source->brand, $slots[$created])) {
-                Log::info('hub.autopublish.daily_post_limit', ['source' => $source->name, 'slot' => $slots[$created]->toIso8601String()]);
+            if (! $this->dailyLimit->hasRoom($source->brand, $slot)) {
+                Log::info('hub.autopublish.daily_post_limit', ['source' => $source->name, 'slot' => $slot->toIso8601String()]);
 
                 break;
             }
@@ -152,7 +181,7 @@ final class ApplyAutoPublishRules
                     item: $item,
                     accounts: $targets,
                     actor: ActorType::System,
-                    scheduledAt: $slots[$created],
+                    scheduledAt: $slot,
                     // One rule asking for a person's look is enough to hold the whole draft: it is one post, and
                     // approving it approves every channel it goes to.
                     status: $this->needsApproval($rules, $targeted) ? DraftStatus::PendingApproval : DraftStatus::Approved,
@@ -161,8 +190,10 @@ final class ApplyAutoPublishRules
 
                 foreach ($targeted as $platform) {
                     $remaining[$platform]--;
+                    $onDay[$this->dayKey($source, $platform, $slot)]++;
                 }
 
+                $floor = $slot->addMinutes(PostingSchedule::SPACING_MINUTES);
                 $created++;
             } catch (Throwable $e) {
                 Log::warning('hub.autopublish.draft_failed', ['item' => $item->id, 'error' => $e->getMessage()]);
@@ -188,6 +219,53 @@ final class ApplyAutoPublishRules
         }
 
         return $this->execute($source);
+    }
+
+    /**
+     * The accounts that take the post going out at `$slot`.
+     *
+     * A channel takes it up to its cap for the brand's day of the post, counted by the day the post goes out. The
+     * pacing (`$remaining`: how many posts the passes of today may still add) alone must not decide who gets an
+     * item: a channel connected later has used nothing today while the others have, so it was the only one open
+     * and took the day's item alone, and Facebook and Instagram lost that day for good (an item already in a draft
+     * is never picked again). So a channel with nothing on that day takes the item whatever its pacing says, and
+     * one with posts on it takes it only while the pacing and its cap allow.
+     *
+     * @param  Collection<int, SocialAccount>  $accounts
+     * @param  Collection<string, AutoPublishRule>  $ruleFor  platform value => rule
+     * @param  array<string, int>  $remaining  platform value => posts left today
+     * @param  array<string, int>  $onDay  counts by `dayKey`, filled as they are read
+     * @return Collection<int, SocialAccount>
+     */
+    private function targetsAt(Source $source, Collection $accounts, Collection $ruleFor, array $remaining, CarbonImmutable $slot, array &$onDay): Collection
+    {
+        return $accounts->filter(function (SocialAccount $account) use ($source, $ruleFor, $remaining, $slot, &$onDay): bool {
+            $platform = $account->platform->value;
+            $key = $this->dayKey($source, $platform, $slot);
+            $onDay[$key] ??= $this->postsOnDay($source, $platform, $slot);
+
+            return $onDay[$key] < ($ruleFor[$platform]->daily_cap ?? self::DEFAULT_DAILY_CAP)
+                && (($remaining[$platform] ?? 0) > 0 || $onDay[$key] === 0);
+        })->values();
+    }
+
+    private function dayKey(Source $source, string $platform, CarbonImmutable $slot): string
+    {
+        return $platform.'|'.$source->brand->dayBoundsUtc($slot)[0]->toDateTimeString();
+    }
+
+    /**
+     * Automatic single posts of the source that go out on the brand's local day of `$slot`, on a channel.
+     */
+    private function postsOnDay(Source $source, string $platform, CarbonImmutable $slot): int
+    {
+        return PostDraft::query()
+            ->where('created_by_type', ActorType::System->value)
+            ->where('kind', PostDraft::KIND_SINGLE)
+            ->whereBetween('scheduled_at', $source->brand->dayBoundsUtc($slot))
+            ->whereHas('contentItems', fn ($query) => $query->where('source_id', $source->id))
+            ->whereHas('variants', fn ($query) => $query->where('platform', $platform))
+            ->count();
     }
 
     /**

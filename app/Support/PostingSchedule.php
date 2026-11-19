@@ -40,7 +40,7 @@ final class PostingSchedule
             return $after;
         }
 
-        $timezone = $brand->timezone ?: (string) config('hub.brand_default_timezone', 'Europe/Zagreb');
+        $timezone = $brand->localTimezone();
         $local = $after->setTimezone($timezone);
 
         for ($day = 0; $day <= self::MAX_DAYS_AHEAD; $day++) {

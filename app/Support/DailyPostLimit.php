@@ -39,9 +39,7 @@ final class DailyPostLimit
             return null;
         }
 
-        $day = $at->setTimezone($brand->timezone ?: (string) config('hub.brand_default_timezone', 'Europe/Zagreb'));
-        $from = $day->startOfDay()->utc();
-        $to = $day->endOfDay()->utc();
+        [$from, $to] = $brand->dayBoundsUtc($at);
 
         // A draft published on the spot has no time set: it counts on the day it was made.
         $used = PostDraft::query()

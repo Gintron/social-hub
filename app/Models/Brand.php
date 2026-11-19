@@ -78,6 +78,26 @@ final class Brand extends Model
     }
 
     /**
+     * The zone the brand's posting windows and "a day" are counted in.
+     */
+    public function localTimezone(): string
+    {
+        return $this->timezone ?: (string) config('hub.brand_default_timezone', 'Europe/Zagreb');
+    }
+
+    /**
+     * The start and end (UTC) of the brand's local day that contains `$at`.
+     *
+     * @return array{0: \Carbon\CarbonImmutable, 1: \Carbon\CarbonImmutable}
+     */
+    public function dayBoundsUtc(\Carbon\CarbonImmutable $at): array
+    {
+        $day = $at->setTimezone($this->localTimezone());
+
+        return [$day->startOfDay()->utc(), $day->endOfDay()->utc()];
+    }
+
+    /**
      * The language the brand's channels speak, one of Wording::LANGUAGES. Anything else (an empty or unknown value)
      * is Croatian, the language every brand spoke before it had a choice.
      */
