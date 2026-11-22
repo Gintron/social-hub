@@ -9,6 +9,7 @@ use App\Enums\Platform;
 use App\Models\Brand;
 use App\Models\SocialAccount;
 use App\Models\User;
+use Filament\Notifications\NotificationMailbox;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -85,7 +86,7 @@ final class MetaSharedGrantTest extends TestCase
         $this->assertSame(AccountStatus::NeedsReconnect, $ig->refresh()->status);
         $this->assertSame(AccountStatus::Active, SocialAccount::query()->where('external_id', 'page-s')->firstOrFail()->status);
 
-        $notice = collect(session('filament.notifications'))->firstWhere('title', 'Ovo povezivanje je oduzelo pristup drugim računima');
+        $notice = $this->lostAccessNotice();
         $this->assertNotNull($notice);
         $this->assertStringContainsString('Listo - Popis', (string) $notice['body']);
         $this->assertStringContainsString('(Listo)', (string) $notice['body']);
@@ -210,9 +211,21 @@ final class MetaSharedGrantTest extends TestCase
 
     private function titleOfLostAccessNotice(): ?string
     {
-        $notice = collect(session('filament.notifications', []))->firstWhere('title', 'Ovo povezivanje je oduzelo pristup drugim računima');
+        return $this->lostAccessNotice()['title'] ?? null;
+    }
 
-        return $notice['title'] ?? null;
+    /**
+     * Filament keeps queued notifications in a per-session mailbox in the cache (not in
+     * `session('filament.notifications')` any more), so this reads them from there.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function lostAccessNotice(): ?array
+    {
+        $mailbox = app(NotificationMailbox::class);
+        $mailbox->flush();
+
+        return collect($mailbox->pull())->firstWhere('title', 'Ovo povezivanje je oduzelo pristup drugim računima');
     }
 
     private function pageOf(Brand $brand, string $id, ?string $token, AccountStatus $status = AccountStatus::Active): SocialAccount

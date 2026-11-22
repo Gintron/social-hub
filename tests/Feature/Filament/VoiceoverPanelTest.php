@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Models\Voiceover;
 use App\Voiceover\Ipa;
 use Filament\Actions\Testing\TestAction;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -92,14 +93,20 @@ final class VoiceoverPanelTest extends TestCase
         ]);
         $brand = Brand::factory()->create();
 
-        Livewire::test(EditBrand::class, ['record' => $brand->getRouteKey()])
+        $form = Livewire::test(EditBrand::class, ['record' => $brand->getRouteKey()])
             ->assertOk()
             ->assertSee('ElevenLabs je spojen')
             ->assertSee('plan creator')
             ->assertSee('87.500 od 100.000 znakova')
-            ->assertSee('★ Ana')
-            ->assertSee('Bruno')
-            ->assertDontSee('Popis glasova se ne može učitati');
+            ->assertDontSee('Popis glasova se ne može učitati')
+            ->instance()->form;
+
+        // Filament no longer renders a dynamic Select's options into the page (it fetches them
+        // when the dropdown opens), so the voices are read from the field itself.
+        $voice = $form->getFlatFields()['voiceover.voice_id'];
+        $this->assertInstanceOf(Select::class, $voice);
+        $this->assertStringContainsString('★ Ana', $voice->getOptions()['v-a']);
+        $this->assertStringContainsString('Bruno', $voice->getOptions()['v-b']);
     }
 
     public function test_an_api_that_is_down_costs_the_form_nothing_after_the_first_look(): void
